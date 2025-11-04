@@ -1,0 +1,22 @@
+package dto
+
+type Pagination struct {
+	Page     int   `json:"page"`
+	PageSize int   `json:"page_size"`
+	Total    int64 `json:"total"`
+}
+
+type PaginatedUsersResponse struct {
+	Users      []UserResponse `json:"users"`
+	Pagination Pagination     `json:"pagination"`
+}
+
+type PaginatedChannelsResponse struct {
+	Channels   []ChannelResponse `json:"channels"`
+	Pagination Pagination        `json:"pagination"`
+}
+
+type PaginatedMessagesResponse struct {
+	Messages   []MessageResponse `json:"messages"`
+	Pagination Pagination        `json:"pagination"`
+}
