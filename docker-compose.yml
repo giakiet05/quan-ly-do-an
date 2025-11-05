@@ -1,0 +1,26 @@
+
+services:
+  redis:
+    image: redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - project_gate_net
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file: ./backend/.env
+    environment:
+      REDIS_ADDR: redis:6379
+      TZ: Asia/Ho_Chi_Minh
+    depends_on:
+      - redis
+    networks:
+      - project_gate_net
+networks:
+  project_gate_net:
+
+volumes:
+  redis_data:

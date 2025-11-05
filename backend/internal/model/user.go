@@ -45,7 +45,6 @@ type RoleContent struct {
 
 type UserRoleContent struct {
 	Avatar   string `bson:"avatar,omitempty" json:"avatar,omitempty"`
-	Cover    string `bson:"cover,omitempty" json:"cover,omitempty"`
 	BanStart string `bson:"ban_start,omitempty" json:"ban_start,omitempty"`
 	BanEnd   string `bson:"ban_end,omitempty" json:"ban_end,omitempty"`
 }
