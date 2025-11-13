@@ -15,7 +15,7 @@ import (
 
 type ChannelService interface {
 	Start()
-	CreateChannel(req *dto.CreateChannelRequest, userID string) (*model.Channel, error)
+	CreateChannel(req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error)
 	GetChannelByID(channelID string) (*model.Channel, error)
 	GetChannelsByUserID(userID string, requesterID string, page int, pageSize int) (*dto.PaginatedChannelsResponse, error)
 	GetChannelByBothUserID(user1ID string, user2ID string, requesterID string) (*model.Channel, error)
@@ -74,57 +74,27 @@ func (s *channelService) handleNewAvatar(event bus.Event) {
 	}
 }
 
-func (s *channelService) CreateChannel(req *dto.CreateChannelRequest, userID string) (*model.Channel, error) {
+func (s *channelService) CreateChannel(req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	if userID != req.Member1 && userID != req.Member2 {
-		return nil, apperror.ErrForbidden
+	// Require at least 2 members
+	if len(req.Members) < 2 {
+		return nil, apperror.ErrBadRequest
 	}
 
-	member1ID, err := primitive.ObjectIDFromHex(req.Member1)
-	if err != nil {
-		return nil, err
+	isMember := false
+	for _, m := range req.Members {
+		if m.ID.Hex() == requesterID {
+			isMember = true
+			break
+		}
 	}
-	member2ID, err := primitive.ObjectIDFromHex(req.Member2)
-	if err != nil {
-		return nil, err
-	}
-
-	channel := &model.Channel{
-		ID: primitive.NewObjectID(),
-		Members: []model.ChannelMember{
-			{
-				UserID:   member1ID,
-				Username: req.Member1Username,
-				Avatar:   req.Member1Avatar,
-			},
-			{
-				UserID:   member2ID,
-				Username: req.Member2Username,
-				Avatar:   req.Member2Avatar,
-			},
-		},
-		Settings: []model.ChannelSetting{
-			{
-				UserID:          member1ID,
-				Notification:    true,
-				TypingIndicator: true,
-				IsDeleted:       false,
-			},
-			{
-				UserID:          member2ID,
-				Notification:    true,
-				TypingIndicator: true,
-				IsDeleted:       false,
-			},
-		},
-		Status:    model.ChannelStatusActive,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+	if !isMember {
+		return nil, apperror.ErrBadRequest
 	}
 
-	return s.channelRepository.Create(ctx, channel)
+	return s.channelRepository.Create(ctx, req, requesterID)
 }
 
 func (s *channelService) GetChannelByID(channelID string) (*model.Channel, error) {
@@ -182,7 +152,7 @@ func (s *channelService) UpdateChannel(req *dto.UpdateChannelRequest, requesterI
 
 	isMember := false
 	for _, member := range channel.Members {
-		if member.UserID.Hex() == requesterID {
+		if member.ID.Hex() == requesterID {
 			isMember = true
 			break
 		}
@@ -199,9 +169,6 @@ func (s *channelService) UpdateChannel(req *dto.UpdateChannelRequest, requesterI
 	updated := false
 	for i := range channel.Settings {
 		if channel.Settings[i].UserID == requesterObjectID {
-			if req.Nickname != nil {
-				channel.Settings[i].Nickname = req.Nickname
-			}
 			if req.Notification != nil {
 				channel.Settings[i].Notification = *req.Notification
 			}

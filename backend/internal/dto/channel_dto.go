@@ -7,12 +7,7 @@ import (
 )
 
 type CreateChannelRequest struct {
-	Member1         string `json:"member_1"`
-	Member1Username string `json:"member_1_username"`
-	Member1Avatar   string `json:"member_1_avatar"`
-	Member2         string `json:"member_2"`
-	Member2Username string `json:"member_2_username"`
-	Member2Avatar   string `json:"member_2_avatar"`
+	Members []model.UserInfo `bson:"members" json:"members"`
 }
 
 type GetChannelByUserIDQuery struct {
@@ -55,7 +50,7 @@ func FromChannel(channel *model.Channel) *ChannelResponse {
 	members := make([]ChannelMemberResponse, len(channel.Members))
 	for i, m := range channel.Members {
 		members[i] = ChannelMemberResponse{
-			UserID:   m.UserID.Hex(),
+			UserID:   m.ID.Hex(),
 			Username: m.Username,
 			Avatar:   m.Avatar,
 		}
@@ -65,7 +60,6 @@ func FromChannel(channel *model.Channel) *ChannelResponse {
 	for i, s := range channel.Settings {
 		settings[i] = ChannelSettingResponse{
 			UserID:          s.UserID.Hex(),
-			Nickname:        s.Nickname,
 			Notification:    s.Notification,
 			TypingIndicator: s.TypingIndicator,
 		}

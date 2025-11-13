@@ -4,7 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/giakiet05/lkforum/internal/apperror"
 	"github.com/giakiet05/lkforum/internal/config"
+	"github.com/giakiet05/lkforum/internal/dto"
 	"github.com/giakiet05/lkforum/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -13,7 +15,7 @@ import (
 )
 
 type ChannelRepo interface {
-	Create(ctx context.Context, channel *model.Channel) (*model.Channel, error)
+	Create(ctx context.Context, req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error)
 	GetByID(ctx context.Context, channelID string) (*model.Channel, error)
 	GetByUserID(ctx context.Context, userID string, page int, pageSize int) ([]model.Channel, int64, error)
 	GetByBothUserID(ctx context.Context, user1ID string, user2ID string) (*model.Channel, error)
@@ -31,7 +33,31 @@ func NewChannelRepo(db *mongo.Database) ChannelRepo {
 	return &channelRepo{channelCollection: db.Collection(config.ChannelColName)}
 }
 
-func (c *channelRepo) Create(ctx context.Context, channel *model.Channel) (*model.Channel, error) {
+func (c *channelRepo) Create(ctx context.Context, req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error) {
+	requesterObjectID, err := primitive.ObjectIDFromHex(requesterID)
+	if err != nil {
+		return nil, apperror.ErrInternal
+	}
+	
+	settings := make([]model.ChannelSetting, 0, len(req.Members))
+	for _, m := range req.Members {
+		settings = append(settings, model.ChannelSetting{
+			UserID:          m.ID,
+			Notification:    true,
+			TypingIndicator: true,
+			IsDeleted:       false,
+		})
+	}
+
+	channel := &model.Channel{
+		AdminIDs:  []primitive.ObjectID{requesterObjectID},
+		Members:   req.Members,
+		Settings:  settings,
+		Status:    model.ChannelStatusActive,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
 	result, err := c.channelCollection.InsertOne(ctx, channel)
 	if err != nil {
 		return nil, err
@@ -220,7 +246,7 @@ func (c *channelRepo) IsMember(ctx context.Context, channelID string, userID str
 	}
 
 	for _, m := range channel.Members {
-		if m.UserID == userObjectID {
+		if m.ID == userObjectID {
 			return true, nil
 		}
 	}

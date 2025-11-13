@@ -17,20 +17,14 @@ var (
 )
 
 const (
-	UserColName            = "users"
-	PostColName            = "posts"
-	CommunityColName       = "communities"
-	CommentColName         = "comments"
-	ChannelColName         = "channels"
-	MessageColName         = "messages"
-	VoteColName            = "votes"
-	PollVoteColName        = "poll_votes"
-	NotificationColName    = "notifications"
-	ReportColName          = "reports"
-	MembershipColName      = "memberships"
-	LikedPostColName       = "liked_posts"
-	SavedPostColName       = "saved_posts"
-	UserPostHistoryColName = "user_post_history"
+	UserColName         = "users"
+	ClassroomColName    = "classrooms"
+	GroupColName        = "groups"
+	UniversityColName   = "universities"
+	ChannelColName      = "channels"
+	MessageColName      = "messages"
+	NotificationColName = "notifications"
+	MembershipColName   = "memberships"
 )
 
 // NewMongoClient creates and returns a new MongoDB client
@@ -79,19 +73,13 @@ func verifyCollections(ctx context.Context, db *mongo.Database) error {
 
 	required := []string{
 		UserColName,
-		PostColName,
-		CommunityColName,
-		CommentColName,
+		ClassroomColName,
+		GroupColName,
+		UniversityColName,
 		ChannelColName,
 		MessageColName,
-		VoteColName,
-		PollVoteColName,
 		NotificationColName,
-		ReportColName,
 		MembershipColName,
-		LikedPostColName,
-		SavedPostColName,
-		UserPostHistoryColName,
 	}
 
 	existing := make(map[string]bool, len(collections))

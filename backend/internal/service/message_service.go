@@ -111,10 +111,10 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 	isMember := false
 	var recipientIDs []string
 	for _, member := range channel.Members {
-		if member.UserID == senderObjectID {
+		if member.ID == senderObjectID {
 			isMember = true
 		} else {
-			recipientIDs = append(recipientIDs, member.UserID.Hex())
+			recipientIDs = append(recipientIDs, member.ID.Hex())
 		}
 	}
 	if !isMember {
@@ -129,7 +129,6 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 		Type:           msgType,
 		Content:        content,
 		IsSend:         false,
-		IsRead:         false,
 		IsDeleted:      false,
 		CreatedAt:      time.Now(),
 	}
@@ -174,8 +173,8 @@ func (m *messageService) handleTypingEvent(event bus.Event) {
 	// Gather recipients except the sender
 	var recipientIDs []string
 	for _, member := range channel.Members {
-		if member.UserID.Hex() != senderID {
-			recipientIDs = append(recipientIDs, member.UserID.Hex())
+		if member.ID.Hex() != senderID {
+			recipientIDs = append(recipientIDs, member.ID.Hex())
 		}
 	}
 

@@ -25,7 +25,6 @@ const (
 
 type ChannelSetting struct {
 	UserID          primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Nickname        *string            `bson:"nickname,omitempty" json:"nickname,omitempty"`
 	Notification    bool               `bson:"notification" json:"notification"`
 	TypingIndicator bool               `bson:"typing_indicator" json:"typing_indicator"`
 	IsDeleted       bool               `bson:"is_deleted" json:"is_deleted"`
