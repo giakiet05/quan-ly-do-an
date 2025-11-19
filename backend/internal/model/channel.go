@@ -7,13 +7,14 @@ import (
 )
 
 type Channel struct {
-	ID        primitive.ObjectID   `bson:"_id,omitempty" json:"id,omitempty"`
-	AdminIDs  []primitive.ObjectID `bson:"admin_ids,omitempty" json:"admin_ids,omitempty"`
-	Members   []UserInfo           `bson:"members" json:"members"`
-	Settings  []ChannelSetting     `bson:"settings" json:"settings"`
-	Status    ChannelStatus        `bson:"status" json:"status"`
-	CreatedAt time.Time            `bson:"created_at" json:"created_at"`
-	UpdatedAt time.Time            `bson:"updated_at" json:"updated_at"`
+	ID         primitive.ObjectID   `bson:"_id,omitempty" json:"id,omitempty"`
+	AdminIDs   []primitive.ObjectID `bson:"admin_ids,omitempty" json:"admin_ids,omitempty"`
+	Members    []UserInfo           `bson:"members" json:"members"`
+	Settings   []ChannelSetting     `bson:"settings" json:"settings"`
+	Background *string              `bson:"background" json:"background"`
+	Status     ChannelStatus        `bson:"status" json:"status"`
+	CreatedAt  time.Time            `bson:"created_at" json:"created_at"`
+	UpdatedAt  time.Time            `bson:"updated_at" json:"updated_at"`
 }
 
 type ChannelStatus string

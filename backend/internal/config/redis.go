@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,7 +13,7 @@ import (
 const (
 	// Redis key patterns
 	RedisInvalidatedUserKey = "invalidated:user:%s"
-	RedisActiveUsersKey     = "channel:%s:active_users"
+	RedisActiveUsersKey     = "channel:%s:active_users:%s"
 	RedisMembersCountKey    = "community:%s:member_count"
 )
 
@@ -24,8 +26,18 @@ func NewRedisClient() *redis.Client {
 		DB:       Cfg.Redis.DB,
 	})
 
-	// Create a context with a timeout to test the connection.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// default timeout
+	timeoutSec := 5
+	timeoutStr := os.Getenv("REDIS_TIMEOUT")
+	if timeoutStr != "" {
+		if v, err := strconv.Atoi(timeoutStr); err == nil {
+			timeoutSec = v
+		} else {
+			log.Printf("Invalid REDIS_TIMEOUT value: %s (using default 5s)", timeoutStr)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSec)*time.Second)
 	defer cancel()
 
 	// Ping the Redis server to ensure the connection is alive.
@@ -39,4 +51,29 @@ func NewRedisClient() *redis.Client {
 	}
 
 	return client
+}
+
+func ResetRedisAppKeys(rdb *redis.Client) {
+	ctx := context.Background()
+
+	patterns := []string{
+		"invalidated:user:*",
+		"channel:*:active_users",
+		"community:*:member_count",
+	}
+
+	for _, pattern := range patterns {
+		iter := rdb.Scan(ctx, 0, pattern, 0).Iterator()
+
+		for iter.Next(ctx) {
+			key := iter.Val()
+			if err := rdb.Del(ctx, key).Err(); err != nil {
+				log.Printf("Failed to delete redis key %s: %v", key, err)
+			}
+		}
+
+		if err := iter.Err(); err != nil {
+			log.Printf("Error during scan for pattern %s: %v", pattern, err)
+		}
+	}
 }

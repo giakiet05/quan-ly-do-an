@@ -40,6 +40,8 @@ func NewNotificationService(notificationRepo repo.NotificationRepo, userRepo rep
 func (s *notificationService) Start() {
 	eventChannel := make(bus.EventListener, 100)
 
+	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
+
 	log.Println("NotificationService started and subscribed to events.")
 
 	go s.processEvents(eventChannel)
@@ -63,57 +65,68 @@ func (s *notificationService) handleBroadcast(event bus.Event) {
 	eventType, _ := payload["event_type"].(bus.BroadcastEventType)
 	data := payload["data"]
 
+	if len(recipientIDs) == 0 {
+		return
+	}
+
 	switch eventType {
 	case bus.BroadcastEventMessageCreated:
-		// Send notification to user not in chat
 		var messageData dto.MessageResponse
 		if err := util.DecodeJson(data, &messageData); err != nil {
 			log.Printf("Failed to decode message: %v", err)
 			return
 		}
 
+		senderObjectID, err := primitive.ObjectIDFromHex(messageData.SenderID)
+		if err != nil {
+			return
+		}
+
+		// Redis key for active users
 		key := fmt.Sprintf(config.RedisActiveUsersKey, messageData.ChannelID)
-		isInChat, err := s.redisClient.SIsMember(ctx, key, recipientIDs[0]).Result()
-		if err != nil {
-			log.Printf("Failed to check active users: %v", err)
-			return
-		}
+		for _, rid := range recipientIDs {
+			if rid == messageData.SenderID {
+				continue
+			}
+			
+			// Check if user is currently active in this chat
+			rctx, rcancel := util.NewDefaultDBContext()
+			isInChat, err := s.redisClient.SIsMember(rctx, key, rid).Result()
+			defer rcancel()
+			if err != nil {
+				log.Printf("Failed to check active users: %v", err)
+				continue
+			}
+			if isInChat {
+				continue
+			}
 
-		if isInChat {
-			// Recipient is in chat, skip notification
-			return
-		}
+			recipientObjectID, err := primitive.ObjectIDFromHex(rid)
+			if err != nil {
+				continue
+			}
 
-		recipientObjectID, err := primitive.ObjectIDFromHex(recipientIDs[0])
-		if err != nil {
-			return
-		}
+			notification := &model.Notification{
+				RecipientID: recipientObjectID,
+				ActorID:     senderObjectID,
+				Type:        model.NotificationTypeNewMessage,
+				Message:     fmt.Sprintf("Tin nhắn mới từ %s", messageData.SenderUsername),
+				Link:        fmt.Sprintf("/channels/%s", messageData.ChannelID),
+				IsRead:      false,
+				CreatedAt:   time.Now(),
+			}
+			createdNotification, err := s.notificationRepo.Create(ctx, notification)
+			if err != nil {
+				log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+				continue
+			}
 
-		actorObjectID, err := primitive.ObjectIDFromHex(messageData.SenderID)
-		if err != nil {
-			return
+			// Publish event for each recipient
+			s.eventBus.Publish(bus.NotificationCreatedEvent{
+				RecipientID:  rid,
+				Notification: dto.FromNotification(createdNotification),
+			})
 		}
-
-		notification := &model.Notification{
-			RecipientID: recipientObjectID,
-			ActorID:     actorObjectID,
-			Type:        model.NotificationTypeNewMessage,
-			Message:     fmt.Sprintf("Tin nhắn mới từ %s", messageData.SenderUsername),
-			Link:        fmt.Sprintf("/channels/%s", messageData.ChannelID),
-			IsRead:      false,
-			CreatedAt:   time.Now(),
-		}
-
-		createdNotification, err := s.notificationRepo.Create(ctx, notification)
-		if err != nil {
-			log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
-			return
-		}
-
-		s.eventBus.Publish(bus.NotificationCreatedEvent{
-			RecipientID:  recipientIDs[0],
-			Notification: dto.FromNotification(createdNotification),
-		})
 	}
 }
 

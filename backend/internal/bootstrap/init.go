@@ -55,7 +55,7 @@ func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sen
 		AuthService:         service.NewAuthService(repos.UserRepo, emailSender),
 		UserService:         service.NewUserService(repos.UserRepo, eventBus),
 		NotificationService: service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
-		ChannelService:      service.NewChannelService(repos.ChannelRepo, eventBus),
+		ChannelService:      service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
 		MessageService:      service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
 	}
 }
@@ -95,12 +95,15 @@ func Init() (*gin.Engine, error) {
 
 	redisClient := config.NewRedisClient()
 
+	config.ResetRedisAppKeys(redisClient)
+	log.Println("Redis app keys reset complete")
+
 	if err := InitializeTokenService(redisClient); err != nil {
 		log.Printf("Warning: Token invalidation service not available: %v\n", err)
 	}
 
-	client := config.NewMongoClient()
-	db := client.Database(config.Cfg.DBName)
+	mongoClient := config.NewMongoClient()
+	db := mongoClient.Database(config.Cfg.DBName)
 	router := gin.Default()
 
 	router.Use(func(c *gin.Context) {
@@ -119,7 +122,7 @@ func Init() (*gin.Engine, error) {
 	wsHub := ws.NewHub(eventBus)
 	emailSender := email.NewSMTPSender()
 
-	repos := initRepos(client, db)
+	repos := initRepos(mongoClient, db)
 	services := initServices(repos, redisClient, emailSender, eventBus)
 	controllers := initControllers(services, wsHub)
 	initRoutes(controllers, router)

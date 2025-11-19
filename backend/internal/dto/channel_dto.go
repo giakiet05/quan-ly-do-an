@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"errors"
 	"time"
 
 	"github.com/giakiet05/lkforum/internal/model"
@@ -19,18 +20,21 @@ type GetChannelByUserIDQuery struct {
 type UpdateChannelRequest struct {
 	ChannelID       string               `json:"channel_id"`
 	Nickname        *string              `json:"nickname,omitempty"`
+	Background      *string              `json:"background,omitempty"`
 	Notification    *bool                `json:"notification,omitempty"`
 	TypingIndicator *bool                `json:"typing_indicator,omitempty"`
 	Status          *model.ChannelStatus `json:"status,omitempty"`
 }
 
 type ChannelResponse struct {
-	ID        string                   `json:"id"`
-	Members   []ChannelMemberResponse  `json:"members"`
-	Settings  []ChannelSettingResponse `json:"settings"`
-	Status    model.ChannelStatus      `json:"status"`
-	CreatedAt time.Time                `json:"created_at"`
-	UpdatedAt time.Time                `json:"updated_at"`
+	ID                 string                   `json:"id"`
+	Members            []ChannelMemberResponse  `json:"members"`
+	Settings           []ChannelSettingResponse `json:"settings"`
+	Background         *string                  `json:"background"`
+	Status             model.ChannelStatus      `json:"status"`
+	UnreadMessageCount *int64                   `json:"unread_message_count,omitempty"`
+	CreatedAt          time.Time                `json:"created_at"`
+	UpdatedAt          time.Time                `json:"updated_at"`
 }
 
 type ChannelMemberResponse struct {
@@ -46,7 +50,7 @@ type ChannelSettingResponse struct {
 	TypingIndicator bool    `json:"typing_indicator"`
 }
 
-func FromChannel(channel *model.Channel) *ChannelResponse {
+func FromChannel(channel *model.Channel, unreadCount *int64) *ChannelResponse {
 	members := make([]ChannelMemberResponse, len(channel.Members))
 	for i, m := range channel.Members {
 		members[i] = ChannelMemberResponse{
@@ -66,19 +70,24 @@ func FromChannel(channel *model.Channel) *ChannelResponse {
 	}
 
 	return &ChannelResponse{
-		ID:        channel.ID.Hex(),
-		Members:   members,
-		Settings:  settings,
-		Status:    channel.Status,
-		CreatedAt: channel.CreatedAt,
-		UpdatedAt: channel.UpdatedAt,
+		ID:                 channel.ID.Hex(),
+		Members:            members,
+		Settings:           settings,
+		Status:             channel.Status,
+		UnreadMessageCount: unreadCount,
+		CreatedAt:          channel.CreatedAt,
+		UpdatedAt:          channel.UpdatedAt,
 	}
 }
 
-func FromChannels(channels []model.Channel) []ChannelResponse {
+func FromChannels(channels []model.Channel, unreadCounts []*int64) ([]ChannelResponse, error) {
+	if len(channels) != len(unreadCounts) {
+		return nil, errors.New("channels and unread message have different lengths")
+	}
+
 	responses := make([]ChannelResponse, len(channels))
 	for i, ch := range channels {
-		responses[i] = *FromChannel(&ch)
+		responses[i] = *FromChannel(&ch, unreadCounts[i])
 	}
-	return responses
+	return responses, nil
 }

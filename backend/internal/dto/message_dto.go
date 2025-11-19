@@ -31,14 +31,19 @@ type MessageResponse struct {
 	SenderUsername string            `json:"sender_username"`
 	Type           model.MessageType `json:"type"`
 	Content        string            `json:"content"`
+	ReadBy         []string          `json:"read_by"`
 	CreatedAt      time.Time         `json:"created_at"`
-	IsRead         bool              `json:"is_read"`
 }
 
 func FromMessage(message *model.Message) *MessageResponse {
 	var senderID string
 	if message.SenderID != nil {
 		senderID = message.SenderID.Hex()
+	}
+
+	readByString := make([]string, 0, len(message.ReadBy))
+	for _, readBy := range message.ReadBy {
+		readByString = append(readByString, readBy.Hex())
 	}
 
 	return &MessageResponse{
@@ -48,6 +53,7 @@ func FromMessage(message *model.Message) *MessageResponse {
 		SenderUsername: message.SenderUsername,
 		Type:           message.Type,
 		Content:        message.Content,
+		ReadBy:         readByString,
 		CreatedAt:      message.CreatedAt,
 	}
 }

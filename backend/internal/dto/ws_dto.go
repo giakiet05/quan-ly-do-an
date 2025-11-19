@@ -1,9 +1,6 @@
-package ws
+package dto
 
-import (
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/model"
-)
+import "github.com/giakiet05/lkforum/internal/model"
 
 type WebSocketMessageType string
 
@@ -25,18 +22,19 @@ type WebSocketMessage struct {
 type NewMessagePayload struct {
 	TempMessageID  string            `json:"temp_message_id"`
 	ChannelID      string            `json:"channel_id"`
+	SenderID       string            `json:"sender_id"`
 	SenderUsername string            `json:"sender_username"`
 	Type           model.MessageType `json:"type"`
 	Content        string            `json:"content"`
 }
 
 type SendMessagePayload struct {
-	Message dto.MessageResponse `json:"message"`
+	Message MessageResponse `json:"message"`
 }
 
 type ACKMessagePayload struct {
-	TempMessageID string              `json:"temp_message_id"`
-	Message       dto.MessageResponse `json:"message"`
+	TempMessageID string          `json:"temp_message_id"`
+	Message       MessageResponse `json:"message"`
 }
 
 type TypingIndicatorPayload struct {
@@ -54,9 +52,4 @@ type ErrorPayload struct {
 	TempMessageID *string `json:"temp_message_id,omitempty"`
 	ErrorCode     *string `json:"error_code,omitempty"`
 	ErrorMsg      string  `json:"error_msg"`
-}
-
-type ChatPresenceKey struct {
-	UserID    string
-	ChannelID string
 }

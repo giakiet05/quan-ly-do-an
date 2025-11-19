@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -18,6 +19,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const PresenceTTL = 30 * time.Second
+
 type MessageService interface {
 	Start()
 	GetMessageByID(channelID string, messageID string, requesterID string) (*model.Message, error)
@@ -32,7 +35,12 @@ type messageService struct {
 	redisClient       *redis.Client
 }
 
-func NewMessageService(messageRepo repo.MessageRepo, channelRepo repo.ChannelRepo, bus *bus.EventBus, redis *redis.Client) MessageService {
+func NewMessageService(
+	messageRepo repo.MessageRepo,
+	channelRepo repo.ChannelRepo,
+	bus *bus.EventBus,
+	redis *redis.Client,
+) MessageService {
 	return &messageService{
 		messageRepository: messageRepo,
 		channelRepository: channelRepo,
@@ -47,6 +55,7 @@ func (m *messageService) Start() {
 	m.eventBus.Subscribe(bus.TopicNewMessage, eventChannel)
 	m.eventBus.Subscribe(bus.TopicTypingMessage, eventChannel)
 	m.eventBus.Subscribe(bus.TopicInChatMessage, eventChannel)
+	m.eventBus.Subscribe(bus.TopicWSPackageSend, eventChannel)
 
 	log.Println("MessageService started and subscribed to events.")
 
@@ -62,6 +71,8 @@ func (m *messageService) processEvents(ch bus.EventListener) {
 			m.handleTypingEvent(event)
 		case bus.TopicInChatMessage:
 			m.handleInChatEvent(event)
+		case bus.TopicWSPackageSend:
+			m.handleMessageSend(event)
 		default:
 			log.Println("Unhandled event topic:", event.Topic())
 		}
@@ -128,6 +139,7 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 		SenderUsername: senderUsername,
 		Type:           msgType,
 		Content:        content,
+		ReadBy:         []primitive.ObjectID{},
 		IsSend:         false,
 		IsDeleted:      false,
 		CreatedAt:      time.Now(),
@@ -218,23 +230,78 @@ func (m *messageService) handleInChatEvent(event bus.Event) {
 		return
 	}
 
-	key := fmt.Sprintf(config.RedisActiveUsersKey, channelID)
+	activeKey := fmt.Sprintf(config.RedisActiveUsersKey, channelID, userID)
 	if isInChat {
-		// User joins chat
-		if err := m.redisClient.SAdd(ctx, key, userID).Err(); err != nil {
+		// Reset/refresh user presence with TTL
+		if err := m.redisClient.Set(ctx, activeKey, "1", PresenceTTL).Err(); err != nil {
 			m.publishMessageError(userID, channelID, "", apperror.ErrInternal)
 			return
 		}
+
+		// Mark all messages as read for this user
+		if err := m.messageRepository.MarkAllRead(ctx, channelID, userID); err != nil {
+			log.Printf("[messageService] failed to mark all messages as read in channel %s for user %s: %v",
+				channelID, userID, err)
+		}
 	} else {
-		// User leaves chat
-		if err := m.redisClient.SRem(ctx, key, userID).Err(); err != nil {
+		// Remove presence when user explicitly leaves chat
+		if err := m.redisClient.Del(ctx, activeKey).Err(); err != nil {
 			m.publishMessageError(userID, channelID, "", apperror.ErrInternal)
 			return
 		}
 	}
 }
 
-func (m *messageService) publishMessageError(senderID string, channelID string, tempMessageID string, err apperror.AppError) {
+func (m *messageService) handleMessageSend(event bus.Event) {
+	payload := event.Payload()
+
+	packageType, ok := payload["type"].(dto.WebSocketMessageType)
+	if !ok {
+		log.Printf("[messageService] invalid payload type")
+		return
+	}
+
+	if packageType != dto.SendMessage {
+		return
+	}
+
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	dataBytes, err := json.Marshal(payload["data"])
+	if err != nil {
+		log.Printf("[messageService] failed to marshal event data: %v", err)
+		return
+	}
+
+	var data dto.SendMessagePayload
+	if err := json.Unmarshal(dataBytes, &data); err != nil {
+		log.Printf("[messageService] failed to unmarshal SendMessagePayload: %v", err)
+		return
+	}
+
+	msg := data.Message
+
+	message, err := m.messageRepository.GetByID(ctx, msg.ID)
+	if err != nil {
+		log.Printf("[messageService] failed to get message (%s): %v", msg.ID, err)
+		return
+	}
+
+	message.IsSend = true
+	if _, err := m.messageRepository.Update(ctx, message); err != nil {
+		log.Printf("[messageService] failed to update message (%s): %v", msg.ID, err)
+		return
+	}
+
+	log.Printf("[messageService] message marked as sent: %s", msg.ID)
+}
+
+func (m *messageService) publishMessageError(
+	senderID string, channelID string,
+	tempMessageID string,
+	err apperror.AppError,
+) {
 	m.eventBus.Publish(bus.MessageErrorEvent{
 		SenderID:      senderID,
 		ChannelID:     channelID,
@@ -244,7 +311,10 @@ func (m *messageService) publishMessageError(senderID string, channelID string, 
 	})
 }
 
-func (m *messageService) GetMessageByID(channelID string, messageID string, requesterID string) (*model.Message, error) {
+func (m *messageService) GetMessageByID(
+	channelID string,
+	messageID string, requesterID string,
+) (*model.Message, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
@@ -267,7 +337,10 @@ func (m *messageService) GetMessageByID(channelID string, messageID string, requ
 	return message, nil
 }
 
-func (m *messageService) GetMessageFilter(query *dto.GetMessageFilterQuery, requesterID string) (*dto.PaginatedMessagesResponse, error) {
+func (m *messageService) GetMessageFilter(
+	query *dto.GetMessageFilterQuery,
+	requesterID string,
+) (*dto.PaginatedMessagesResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
