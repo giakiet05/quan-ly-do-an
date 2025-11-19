@@ -18,12 +18,12 @@ type Group struct {
 }
 
 type Task struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Title        string             `bson:"title" json:"title"`
-	AssignToID   primitive.ObjectID `bson:"assign_to_id" json:"assign_to_id"`
-	AssignToName string             `bson:"assign_to_name" json:"assign_to_name"`
-	DueDate      time.Time          `bson:"due_date" json:"due_date"`
-	Status       string             `bson:"status" json:"status"`
+	ID           primitive.ObjectID  `bson:"_id,omitempty" json:"id,omitempty"`
+	Title        string              `bson:"title" json:"title"`
+	AssignToID   *primitive.ObjectID `bson:"assign_to_id,omitempty" json:"assign_to_id,omitempty"`
+	AssignToName string              `bson:"assign_to_name" json:"assign_to_name"`
+	DueDate      time.Time           `bson:"due_date" json:"due_date"`
+	Status       string              `bson:"status" json:"status"`
 }
 
 type Report struct {

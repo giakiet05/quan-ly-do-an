@@ -27,3 +27,9 @@ type UserInfo struct {
 	Username string             `bson:"username" json:"username"`
 	Avatar   string             `bson:"avatar" json:"avatar"`
 }
+
+type UserInfoResponse struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+}
