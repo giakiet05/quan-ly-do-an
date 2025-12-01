@@ -6,24 +6,99 @@ import (
 	"github.com/giakiet05/lkforum/internal/model"
 )
 
+type CreateGroupRequest struct {
+	ClassroomID    string   `json:"classroom_id"`
+	ProjectGroupID string   `json:"project_group_id"`
+	ProjectID      string   `json:"project_id"`
+	MemberIDs      []string `json:"member_ids"`
+}
+
+type UpdateGroupRequest struct {
+	GroupID   string              `json:"group_id"`
+	ProjectID *string             `json:"project_id,omitempty"`
+	LeaderID  *string             `json:"leader_id,omitempty"`
+	Setting   *model.GroupSetting `json:"setting,omitempty"`
+}
+
+type UpdateGroupMembersRequest struct {
+	GroupID   string   `json:"group_id"`
+	MemberIDs []string `json:"member_ids"`
+	Action    string   `json:"action"` // "add" or "remove"
+}
+
+type CreateTaskRequest struct {
+	GroupID     string    `json:"group_id"`
+	Title       string    `json:"title"`
+	Details     *string   `json:"details,omitempty"`
+	AssignToIDs []string  `json:"assign_to_ids"`
+	DueDate     time.Time `json:"due_date"`
+	Status      string    `json:"status"`
+}
+
+type UpdateTaskRequest struct {
+	GroupID     string     `json:"group_id"`
+	TaskID      string     `json:"task_id"`
+	Title       *string    `json:"title,omitempty"`
+	Details     *string    `json:"details,omitempty"`
+	AssignToIDs []string   `json:"assign_to_ids,omitempty"`
+	DueDate     *time.Time `json:"due_date,omitempty"`
+	Status      *string    `json:"status,omitempty"`
+}
+
+type CreateReportRequest struct {
+	GroupID string       `json:"group_id"`
+	Title   string       `json:"title"`
+	Content string       `json:"content"`
+	Files   []model.File `json:"files"`
+}
+
+type UpdateReportRequest struct {
+	GroupID  string        `json:"group_id"`
+	ReportID string        `json:"report_id"`
+	Title    *string       `json:"title,omitempty"`
+	Content  *string       `json:"content,omitempty"`
+	Files    *[]model.File `json:"files,omitempty"`
+}
+
+type CreateReportFeedbackRequest struct {
+	GroupID  string `json:"group_id"`
+	ReportID string `json:"report_id"`
+	Content  string `json:"content"`
+	Grade    string `json:"grade"`
+}
+
+type UpdateReportFeedbackRequest struct {
+	GroupID    string  `json:"group_id"`
+	FeedbackID string  `json:"feedback_id"`
+	Content    *string `json:"content,omitempty"`
+	Grade      *string `json:"grade,omitempty"`
+}
+
+type GetGroupsFilterQuery struct {
+	ClassroomID string  `json:"classroom_id"`
+	ProjectID   *string `json:"project_id,omitempty"`
+	MemberID    *string `json:"member_id,omitempty"`
+}
+
 type GroupResponse struct {
 	ID             string                   `json:"id"`
 	ClassroomID    string                   `json:"classroom_id"`
 	ProjectID      string                   `json:"project_id"`
 	GroupChannelID string                   `json:"group_channel_id"`
+	LeaderID       string                   `json:"leader_id"`
 	Members        []model.UserInfoResponse `json:"members"`
 	Tasks          []TaskResponse           `json:"tasks"`
+	TaskStatuses   []string                 `json:"task_statuses"`
 	Reports        []ReportResponse         `json:"reports"`
 	Setting        model.GroupSetting       `json:"setting"`
 }
 
 type TaskResponse struct {
-	ID           string    `json:"id"`
-	Title        string    `son:"title"`
-	AssignToID   *string   `json:"assign_to_id"`
-	AssignToName string    `json:"assign_to_name"`
-	DueDate      time.Time `json:"due_date"`
-	Status       string    `json:"status"`
+	ID          string    `json:"id"`
+	Title       string    `son:"title"`
+	AssignToIDs []string  `json:"assign_to_ids"`
+	DueDate     time.Time `json:"due_date"`
+	Status      string    `json:"status"`
 }
 
 type ReportResponse struct {
@@ -49,19 +124,17 @@ func FromGroup(group *model.Group) *GroupResponse {
 	// Convert Tasks
 	tasks := make([]TaskResponse, len(group.Tasks))
 	for i, t := range group.Tasks {
-		var assignToID *string
-		if t.AssignToID != nil {
-			idStr := t.AssignToID.Hex()
-			assignToID = &idStr
+		assignToIDs := make([]string, len(t.AssignToIDs))
+		for j, oid := range t.AssignToIDs {
+			assignToIDs[j] = oid.Hex()
 		}
 
 		tasks[i] = TaskResponse{
-			ID:           t.ID.Hex(),
-			Title:        t.Title,
-			AssignToID:   assignToID,
-			AssignToName: t.AssignToName,
-			DueDate:      t.DueDate,
-			Status:       t.Status,
+			ID:          t.ID.Hex(),
+			Title:       t.Title,
+			AssignToIDs: assignToIDs,
+			DueDate:     t.DueDate,
+			Status:      t.Status,
 		}
 	}
 
@@ -97,8 +170,10 @@ func FromGroup(group *model.Group) *GroupResponse {
 		ClassroomID:    group.ClassroomID.Hex(),
 		ProjectID:      group.ProjectID.Hex(),
 		GroupChannelID: group.GroupChannelID.Hex(),
+		LeaderID:       group.LeaderID.Hex(),
 		Members:        members,
 		Tasks:          tasks,
+		TaskStatuses:   group.TaskStatuses,
 		Reports:        reports,
 		Setting:        group.Setting,
 	}

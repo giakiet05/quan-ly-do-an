@@ -19,6 +19,8 @@ import (
 
 type Repos struct {
 	repo.UserRepo
+	repo.ClassroomRepo
+	repo.GroupRepo
 	repo.NotificationRepo
 	repo.ChannelRepo
 	repo.MessageRepo
@@ -27,6 +29,7 @@ type Repos struct {
 type Services struct {
 	service.AuthService
 	service.UserService
+	service.GroupService
 	service.NotificationService
 	service.ChannelService
 	service.MessageService
@@ -39,6 +42,7 @@ type Controllers struct {
 	controller.WebSocketController
 	controller.ChannelController
 	controller.MessageController
+	controller.GroupController
 }
 
 func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
@@ -47,6 +51,7 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 		NotificationRepo: repo.NewNotificationRepo(db),
 		ChannelRepo:      repo.NewChannelRepo(db),
 		MessageRepo:      repo.NewMessageRepo(db),
+		GroupRepo:        repo.NewGroupRepo(db),
 	}
 }
 
@@ -54,6 +59,7 @@ func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sen
 	return &Services{
 		AuthService:         service.NewAuthService(repos.UserRepo, emailSender),
 		UserService:         service.NewUserService(repos.UserRepo, eventBus),
+		GroupService:        service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo),
 		NotificationService: service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
 		ChannelService:      service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
 		MessageService:      service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
@@ -64,6 +70,7 @@ func initControllers(services *Services, wsHub *ws.Hub) *Controllers {
 	return &Controllers{
 		AuthController:         *controller.NewAuthController(services.AuthService),
 		UserController:         *controller.NewUserController(services.UserService),
+		GroupController:        *controller.NewGroupController(services.GroupService),
 		NotificationController: *controller.NewNotificationController(services.NotificationService),
 		WebSocketController:    *controller.NewWebSocketController(wsHub),
 		ChannelController:      *controller.NewChannelController(services.ChannelService),
@@ -83,6 +90,7 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 
 	userroute.RegisterAuthRoutes(api, &controllers.AuthController)
 	userroute.RegisterUserRoutes(api, &controllers.UserController)
+	userroute.RegisterGroupRoutes(api, &controllers.GroupController)
 	userroute.RegisterNotificationRoutes(api, &controllers.NotificationController)
 	userroute.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
 	userroute.RegisterChannelRoutes(api, &controllers.ChannelController)

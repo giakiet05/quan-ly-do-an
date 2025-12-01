@@ -174,7 +174,7 @@ func (m *messageRepo) Delete(ctx context.Context, messageID string) error {
 	}
 
 	if result.MatchedCount == 0 {
-		return apperror.ErrCommentNotFound
+		return apperror.ErrMessageNotFound
 	}
 
 	return nil
