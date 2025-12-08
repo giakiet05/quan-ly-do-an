@@ -3,15 +3,15 @@ package bootstrap
 import (
 	"log"
 
-	"github.com/giakiet05/lkforum/internal/auth"
-	"github.com/giakiet05/lkforum/internal/config"
-	"github.com/giakiet05/lkforum/internal/controller"
-	"github.com/giakiet05/lkforum/internal/email"
-	"github.com/giakiet05/lkforum/internal/platform/bus"
-	"github.com/giakiet05/lkforum/internal/platform/ws"
-	"github.com/giakiet05/lkforum/internal/repo"
-	userroute "github.com/giakiet05/lkforum/internal/route/user"
-	"github.com/giakiet05/lkforum/internal/service"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/controller"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/email"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/ws"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/route"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,6 +22,7 @@ type Repos struct {
 	repo.NotificationRepo
 	repo.ChannelRepo
 	repo.MessageRepo
+	repo.EmailVerificationRepo
 }
 
 type Services struct {
@@ -43,17 +44,18 @@ type Controllers struct {
 
 func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 	return &Repos{
-		UserRepo:         repo.NewUserRepo(db),
-		NotificationRepo: repo.NewNotificationRepo(db),
-		ChannelRepo:      repo.NewChannelRepo(db),
-		MessageRepo:      repo.NewMessageRepo(db),
+		UserRepo:              repo.NewUserRepo(db),
+		NotificationRepo:      repo.NewNotificationRepo(db),
+		ChannelRepo:           repo.NewChannelRepo(db),
+		MessageRepo:           repo.NewMessageRepo(db),
+		EmailVerificationRepo: repo.NewEmailVerificationRepo(db),
 	}
 }
 
 func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus) *Services {
 	return &Services{
-		AuthService:         service.NewAuthService(repos.UserRepo, emailSender),
-		UserService:         service.NewUserService(repos.UserRepo, eventBus),
+		AuthService:         service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, emailSender, redisClient),
+		UserService:         service.NewUserService(repos.UserRepo, eventBus, redisClient),
 		NotificationService: service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
 		ChannelService:      service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
 		MessageService:      service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
@@ -81,12 +83,12 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 		c.JSON(200, gin.H{"message": "Welcome to LKForum API!"})
 	})
 
-	userroute.RegisterAuthRoutes(api, &controllers.AuthController)
-	userroute.RegisterUserRoutes(api, &controllers.UserController)
-	userroute.RegisterNotificationRoutes(api, &controllers.NotificationController)
-	userroute.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
-	userroute.RegisterChannelRoutes(api, &controllers.ChannelController)
-	userroute.RegisterMessageRoutes(api, &controllers.MessageController)
+	route.RegisterAuthRoutes(api, &controllers.AuthController, &controllers.UserController)
+	route.RegisterUserRoutes(api, &controllers.UserController)
+	route.RegisterNotificationRoutes(api, &controllers.NotificationController)
+	route.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
+	route.RegisterChannelRoutes(api, &controllers.ChannelController)
+	route.RegisterMessageRoutes(api, &controllers.MessageController)
 }
 
 func Init() (*gin.Engine, error) {
@@ -94,9 +96,6 @@ func Init() (*gin.Engine, error) {
 	auth.InitGoogleOAuthConfig()
 
 	redisClient := config.NewRedisClient()
-
-	config.ResetRedisAppKeys(redisClient)
-	log.Println("Redis app keys reset complete")
 
 	if err := InitializeTokenService(redisClient); err != nil {
 		log.Printf("Warning: Token invalidation service not available: %v\n", err)

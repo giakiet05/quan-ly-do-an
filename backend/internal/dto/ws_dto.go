@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/giakiet05/lkforum/internal/model"
+import "github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 
 type WebSocketMessageType string
 

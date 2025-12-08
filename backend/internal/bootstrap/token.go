@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	"github.com/giakiet05/lkforum/internal/auth"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
 	"github.com/redis/go-redis/v9"
 )
 

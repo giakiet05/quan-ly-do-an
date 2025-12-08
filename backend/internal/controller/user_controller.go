@@ -2,12 +2,12 @@ package controller
 
 import (
 	"net/http"
-	"strconv"
 
-	"github.com/giakiet05/lkforum/internal/apperror"
-	"github.com/giakiet05/lkforum/internal/auth"
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/service"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/cloudinary"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,23 +21,15 @@ func NewUserController(service service.UserService) *UserController {
 	return &UserController{service: service}
 }
 
+// GetUsers retrieves a paginated list of users with optional username search.
 func (c *UserController) GetUsers(ctx *gin.Context) {
-	page := 1
-	pageSize := 10
-
-	if pageStr := ctx.Query("page"); pageStr != "" {
-		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
-			page = parsedPage
-		}
+	var query dto.GetUsersQuery
+	if err := ctx.ShouldBindQuery(&query); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, "Invalid query parameters", apperror.ErrBadRequest.Code)
+		return
 	}
 
-	if pageSizeStr := ctx.Query("pageSize"); pageSizeStr != "" {
-		if parsedPageSize, err := strconv.Atoi(pageSizeStr); err == nil && parsedPageSize > 0 && parsedPageSize <= 100 {
-			pageSize = parsedPageSize
-		}
-	}
-
-	response, err := c.service.GetUsers(page, pageSize)
+	response, err := c.service.GetUsers(&query)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -45,87 +37,94 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Users retrieved successfully", response)
 }
 
-func (c *UserController) UpdateUser(ctx *gin.Context) {
-	userID := ctx.Param("id")
-	if !auth.IsOwner(ctx, userID) && !auth.IsAdmin(ctx) {
-		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
-		return
-	}
-
-	var req dto.UserUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
-	}
-
-	currentUser, err := c.service.GetUserByID(userID)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	if req.Username != "" {
-		currentUser.Username = req.Username
-	}
-	if req.Email != "" {
-		// In a real app, changing email should trigger a re-verification process.
-		currentUser.Email = req.Email
-	}
-
-	updatedUser, err := c.service.UpdateUser(currentUser)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "User updated successfully", dto.FromUser(updatedUser))
-}
-
-func (c *UserController) DeleteUser(ctx *gin.Context) {
-	userID := ctx.Param("id")
-	if !auth.IsOwner(ctx, userID) && !auth.IsAdmin(ctx) {
-		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
-		return
-	}
-
-	err := c.service.DeleteUser(userID)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "User deleted successfully", gin.H{"id": userID})
-}
-
-func (c *UserController) GetUserByID(ctx *gin.Context) {
-	userID := ctx.Param("id")
-
-	user, err := c.service.GetUserByID(userID)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "User retrieved successfully", dto.FromUser(user))
-}
-
+// GetUserByUsername retrieves a user's public profile by their username.
 func (c *UserController) GetUserByUsername(ctx *gin.Context) {
 	username := ctx.Param("username")
 
-	user, err := c.service.GetUserByUsername(username)
+	// Get requester ID (may be empty for unauthenticated requests)
+	requesterID, _ := ctx.Get("user_id")
+	requesterIDStr := ""
+	if id, ok := requesterID.(string); ok {
+		requesterIDStr = id
+	}
+
+	user, err := c.service.GetUserByUsername(username, requesterIDStr)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
-	dto.SendSuccess(ctx, http.StatusOK, "User retrieved successfully", dto.FromUser(user))
+	user.Email = "" // Hide email for public profile
+	dto.SendSuccess(ctx, http.StatusOK, "User profile retrieved successfully", user)
+}
+
+// GetMyProfile retrieves the profile of the currently authenticated user.
+func (c *UserController) GetMyProfile(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	user, err := c.service.GetUserByID(authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Profile retrieved successfully", user)
+}
+
+// UploadAvatar handles avatar image uploads.
+func (c *UserController) UploadAvatar(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, "Invalid form data", "INVALID_FORM")
+		return
+	}
+
+	images, err := cloudinary.UploadImages(form.File["avatar"])
+	if err != nil {
+		dto.SendError(ctx, http.StatusInternalServerError, "Failed to upload image", "UPLOAD_FAILED")
+		return
+	}
+
+	updatedUser, err := c.service.UpdateAvatar(authUser.(auth.AuthUser).ID, images[0].URL, images[0].PublicID)
+	if err != nil {
+		dto.SendError(ctx, http.StatusInternalServerError, "Failed to update avatar", "DB_UPDATE_FAILED")
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Avatar updated successfully", updatedUser)
+}
+
+// DeleteAvatar removes the user's avatar.
+func (c *UserController) DeleteAvatar(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	updatedUser, err := c.service.DeleteAvatar(authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Avatar deleted successfully", updatedUser)
 }
 
 func (c *UserController) ChangePassword(ctx *gin.Context) {
-	userID := ctx.Param("id")
 	authUser, exists := ctx.Get("authUser")
-	if !exists || authUser.(auth.AuthUser).ID != userID {
-		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
 		return
 	}
 
@@ -135,11 +134,45 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	err := c.service.ChangePassword(userID, req.OldPassword, req.NewPassword)
+	err := c.service.ChangePassword(authUser.(auth.AuthUser).ID, req.OldPassword, req.NewPassword)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
 	dto.SendSuccess(ctx, http.StatusOK, "Password changed successfully", nil)
+}
+
+// CheckUsername checks if a username is available for registration.
+// This is a public endpoint for real-time username availability checking.
+func (c *UserController) CheckUsername(ctx *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required,min=3,max=20"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	available, err := c.service.CheckUsernameAvailability(req.Username)
+	if err != nil {
+		dto.SendError(ctx, http.StatusInternalServerError, apperror.Message(apperror.ErrInternal), apperror.ErrInternal.Code)
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "", gin.H{"available": available})
+}
+
+// --- Admin-only actions ---
+
+func (c *UserController) DeleteUser(ctx *gin.Context) {
+	userID := ctx.Param("id")
+	err := c.service.DeleteUser(userID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "User deleted successfully", gin.H{"id": userID})
 }

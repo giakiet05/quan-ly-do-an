@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 )
 
 // NotificationResponse defines the structure for a notification returned to the client.
