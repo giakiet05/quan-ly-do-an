@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/smtp"
 
-	"github.com/giakiet05/lkforum/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
 )
 
 // Sender defines the interface for an email sender.

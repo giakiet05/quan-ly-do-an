@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/giakiet05/lkforum/internal/apperror"
-	"github.com/giakiet05/lkforum/internal/auth"
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/service"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
 

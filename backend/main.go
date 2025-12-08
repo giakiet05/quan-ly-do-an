@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/giakiet05/lkforum/internal/bootstrap"
-	"github.com/giakiet05/lkforum/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/bootstrap"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
 )
 
 func main() {

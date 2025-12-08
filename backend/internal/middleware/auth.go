@@ -1,14 +1,15 @@
 package middleware
 
 import (
-	"github.com/giakiet05/lkforum/internal/auth"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
+	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware parse access token và nhét AuthUser vào context
-func AuthMiddleware() gin.HandlerFunc {
+// RequireAuth parse access token và nhét AuthUser vào context
+func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -27,12 +28,39 @@ func AuthMiddleware() gin.HandlerFunc {
 		token := parts[1]
 		user, err := auth.ParseAccessToken(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid token",
+				"debug": err.Error(), // TEMP: Debug info
+			})
+			c.Abort()
+			return
+		} // Load user settings from DB once per request
+
+		// Nhét user vào context with settings cached
+		c.Set("authUser", user)
+		c.Next()
+	}
+}
+
+func RequireAuthSocket() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Query("token")
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token in query parameter"})
 			c.Abort()
 			return
 		}
 
-		// Nhét user vào context
+		user, err := auth.ParseAccessToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid token",
+				"debug": err.Error(),
+			})
+			c.Abort()
+			return
+		}
+
 		c.Set("authUser", user)
 		c.Next()
 	}

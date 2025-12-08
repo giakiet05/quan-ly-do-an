@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 )
 
 type CreateChannelRequest struct {
@@ -50,7 +50,11 @@ type ChannelSettingResponse struct {
 	TypingIndicator bool    `json:"typing_indicator"`
 }
 
-func FromChannel(channel *model.Channel, unreadCount *int64) *ChannelResponse {
+func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
+	if channel == nil {
+		return ChannelResponse{}
+	}
+
 	members := make([]ChannelMemberResponse, len(channel.Members))
 	for i, m := range channel.Members {
 		members[i] = ChannelMemberResponse{
@@ -69,10 +73,11 @@ func FromChannel(channel *model.Channel, unreadCount *int64) *ChannelResponse {
 		}
 	}
 
-	return &ChannelResponse{
+	return ChannelResponse{
 		ID:                 channel.ID.Hex(),
 		Members:            members,
 		Settings:           settings,
+		Background:         channel.Background,
 		Status:             channel.Status,
 		UnreadMessageCount: unreadCount,
 		CreatedAt:          channel.CreatedAt,
@@ -87,7 +92,7 @@ func FromChannels(channels []model.Channel, unreadCounts []*int64) ([]ChannelRes
 
 	responses := make([]ChannelResponse, len(channels))
 	for i, ch := range channels {
-		responses[i] = *FromChannel(&ch, unreadCounts[i])
+		responses[i] = FromChannel(&ch, unreadCounts[i])
 	}
 	return responses, nil
 }

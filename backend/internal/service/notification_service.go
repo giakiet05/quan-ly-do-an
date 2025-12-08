@@ -5,12 +5,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/config"
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/model"
-	"github.com/giakiet05/lkforum/internal/platform/bus"
-	"github.com/giakiet05/lkforum/internal/repo"
-	"github.com/giakiet05/lkforum/internal/util"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -88,7 +88,7 @@ func (s *notificationService) handleBroadcast(event bus.Event) {
 			if rid == messageData.SenderID {
 				continue
 			}
-			
+
 			// Check if user is currently active in this chat
 			rctx, rcancel := util.NewDefaultDBContext()
 			isInChat, err := s.redisClient.SIsMember(rctx, key, rid).Result()
