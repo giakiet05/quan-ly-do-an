@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/giakiet05/lkforum/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )

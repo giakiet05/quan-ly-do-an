@@ -2,12 +2,14 @@ package repo
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/config"
-	"github.com/giakiet05/lkforum/internal/model"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -16,13 +18,12 @@ type UserRepo interface {
 	Create(ctx context.Context, user *model.User) (*model.User, error)
 	Update(ctx context.Context, user *model.User) (*model.User, error)
 	Delete(ctx context.Context, id string) error
-	UpdateReputation(ctx context.Context, userID string, points int) error
 
 	GetByID(ctx context.Context, id string) (*model.User, error)
+	GetByIDs(ctx context.Context, ids []string) ([]*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
-	GetAll(ctx context.Context) ([]*model.User, error)
-	GetPaginated(ctx context.Context, page, pageSize int) ([]*model.User, int64, error)
+	Find(ctx context.Context, filter Filter, opts *FindOptions) ([]*model.User, int64, error)
 }
 
 type userRepo struct {
@@ -33,20 +34,29 @@ func NewUserRepo(db *mongo.Database) UserRepo {
 	return &userRepo{userCollection: db.Collection(config.UserColName)}
 }
 
-func (r *userRepo) GetAll(ctx context.Context) ([]*model.User, error) {
-	cursor, err := r.userCollection.Find(ctx, bson.M{"deleted_at": bson.M{"$exists": false}})
+func (r *userRepo) GetByIDs(ctx context.Context, ids []string) ([]*model.User, error) {
+	if len(ids) == 0 {
+		return []*model.User{}, nil
+	}
+
+	objIDs := make([]primitive.ObjectID, 0, len(ids))
+	for _, id := range ids {
+		if objID, err := primitive.ObjectIDFromHex(id); err == nil {
+			objIDs = append(objIDs, objID)
+		}
+	}
+
+	filter := bson.M{"_id": bson.M{"$in": objIDs}}
+	cursor, err := r.userCollection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = cursor.Close(ctx)
-	}()
+	defer cursor.Close(ctx)
 
 	var users []*model.User
 	if err := cursor.All(ctx, &users); err != nil {
 		return nil, err
 	}
-
 	return users, nil
 }
 
@@ -80,7 +90,7 @@ func (r *userRepo) Update(ctx context.Context, user *model.User) (*model.User, e
 func (r *userRepo) Delete(ctx context.Context, id string) error {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return err
+		return apperror.ErrInvalidID
 	}
 	filter := bson.M{"_id": objectID, "deleted_at": bson.M{"$exists": false}}
 	update := bson.M{"$set": bson.M{"deleted_at": time.Now()}}
@@ -94,33 +104,10 @@ func (r *userRepo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *userRepo) UpdateReputation(ctx context.Context, userID string, points int) error {
-	objectID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return err // Invalid ID format
-	}
-
-	filter := bson.M{"_id": objectID}
-	update := bson.M{
-		"$inc": bson.M{"reputation": points},
-	}
-
-	result, err := r.userCollection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
-
-	if result.MatchedCount == 0 {
-		return mongo.ErrNoDocuments // User not found
-	}
-
-	return nil
-}
-
 func (r *userRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		return nil, apperror.ErrInvalidID
 	}
 	filter := bson.M{"_id": objectID, "deleted_at": bson.M{"$exists": false}}
 	var user model.User
@@ -151,26 +138,63 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (*model.User, e
 	return &user, nil
 }
 
-func (r *userRepo) GetPaginated(ctx context.Context, page, pageSize int) ([]*model.User, int64, error) {
-	skip := (page - 1) * pageSize
-	filter := bson.M{"deleted_at": bson.M{"$exists": false}}
-	cursor, err := r.userCollection.Find(ctx, filter, options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)))
+// Find fetches users with filter and pagination options
+func (r *userRepo) Find(ctx context.Context, filter Filter, opts *FindOptions) ([]*model.User, int64, error) {
+	// Get total count
+	countPipeline := mongo.Pipeline{
+		{{"$match", bson.M(filter)}},
+		{{"$count", "total"}},
+	}
+	cursor, err := r.userCollection.Aggregate(ctx, countPipeline)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() {
-		_ = cursor.Close(ctx)
-	}()
+
+	var countResult []struct {
+		Total int64 `bson:"total"`
+	}
+	if err = cursor.All(ctx, &countResult); err != nil {
+		return nil, 0, err
+	}
+
+	var total int64
+	if len(countResult) > 0 {
+		total = countResult[0].Total
+	}
+
+	// If no documents, return early
+	if total == 0 {
+		return []*model.User{}, 0, nil
+	}
+
+	// Get paginated data
+	findOptions := options.Find()
+	if opts != nil {
+		if opts.Sort != nil {
+			sortDoc := bson.D{}
+			for key, value := range opts.Sort {
+				sortDoc = append(sortDoc, bson.E{Key: key, Value: value})
+			}
+			findOptions.SetSort(sortDoc)
+		}
+		if opts.Skip > 0 {
+			findOptions.SetSkip(opts.Skip)
+		}
+		if opts.Limit > 0 {
+			findOptions.SetLimit(opts.Limit)
+		}
+	}
+
+	cursor, err = r.userCollection.Find(ctx, bson.M(filter), findOptions)
+	if err != nil {
+		return nil, total, err
+	}
+	defer cursor.Close(ctx)
 
 	var users []*model.User
 	if err := cursor.All(ctx, &users); err != nil {
 		return nil, 0, err
 	}
 
-	count, err := r.userCollection.CountDocuments(ctx, filter)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return users, count, nil
+	return users, total, nil
 }

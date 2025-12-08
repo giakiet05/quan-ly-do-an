@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/apperror"
-	"github.com/giakiet05/lkforum/internal/config"
-	"github.com/giakiet05/lkforum/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

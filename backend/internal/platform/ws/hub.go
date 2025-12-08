@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/platform/bus"
-	"github.com/giakiet05/lkforum/internal/util"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to them.

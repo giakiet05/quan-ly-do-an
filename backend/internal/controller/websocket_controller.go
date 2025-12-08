@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/giakiet05/lkforum/internal/auth"
-	"github.com/giakiet05/lkforum/internal/platform/ws"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
