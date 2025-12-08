@@ -127,4 +127,9 @@ var (
 	// Messaging-related
 	ErrChannelNotFound = AppError{Code: "CHANNEL_NOT_FOUND", Message: "Channel not found"}
 	ErrNoMessageFound  = AppError{Code: "NO_MESSAGE_FOUND", Message: "No message found"}
+
+	//Classroom-related
+	ErrClassroomNotFound = AppError{Code: "CLASSROOM_NOT_FOUND", Message: "Classroom not found"}
+	ErrRoundNotFound     = AppError{Code: "ROUND_NOT_FOUND", Message: "Round not found"}
+	ErrProjectNotFound   = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
 )

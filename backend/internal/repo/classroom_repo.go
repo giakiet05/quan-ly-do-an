@@ -1,0 +1,291 @@
+package repo
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+type ClassroomRepo interface {
+	// Classroom
+	Create(ctx context.Context, classroom *model.Classroom) (*model.Classroom, error)
+	GetByID(ctx context.Context, classroomID string) (*model.Classroom, error)
+	GetByUniversity(ctx context.Context, universityID string, page, pageSize int) ([]model.Classroom, int64, error)
+	GetByLecturer(ctx context.Context, lecturerID string, page, pageSize int) ([]model.Classroom, int64, error)
+
+	// Rounds
+	CreateRound(ctx context.Context, classroomID string, round *model.RegistrationRound) error
+	GetRound(ctx context.Context, classroomID, roundID string) (*model.RegistrationRound, error)
+	UpdateRoundStatus(ctx context.Context, classroomID, roundID string, status model.RoundStatus) error
+	ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.RegistrationRound, int64, error)
+
+	// Projects
+	//CreateProject(ctx context.Context, classroomID, roundID string, project *model.RoundProject) error
+	//GetProject(ctx context.Context, classroomID, roundID, projectID string) (*model.RoundProject, error)
+	//UpdateProject(ctx context.Context, classroomID, roundID, projectID string, project *model.RoundProject) error
+	//ListProjects(ctx context.Context, classroomID, roundID string) ([]model.RoundProject, error)
+	//
+	//// Group Formation
+	//CreateGroupFormation(ctx context.Context, classroomID, roundID, projectID string, formation *model.GroupFormationRequest) error
+	//ConfirmFormationMember(ctx context.Context, classroomID, roundID, projectID, formationID, userID string, status model.FormationStatus) error
+	//CreateTeamFromFormation(ctx context.Context, classroomID, roundID, projectID, formationID string) (*model.Team, error)
+	//RejectFormation(ctx context.Context, classroomID, roundID, projectID, formationID string) error
+	//
+	//// Teams
+	//GetTeam(ctx context.Context, classroomID, roundID, projectID, teamID string) (*model.Team, error)
+	//AddJoinRequest(ctx context.Context, classroomID, roundID, projectID, teamID string, request *model.JoinRequest) error
+	//ApproveJoinRequest(ctx context.Context, classroomID, roundID, projectID, teamID, requestID string) error
+	//RejectJoinRequest(ctx context.Context, classroomID, roundID, projectID, teamID, requestID string) error
+	//MemberLeave(ctx context.Context, classroomID, roundID, projectID, teamID, userID string) error
+	//KickMember(ctx context.Context, classroomID, roundID, projectID, teamID, targetUserID string) error
+	//TransferLeadership(ctx context.Context, classroomID, roundID, projectID, teamID, newLeaderID string) error
+	//UpdateTeamSettings(ctx context.Context, classroomID, roundID, projectID, teamID string, settings model.TeamSettings) error
+
+	// Stats
+	//GetProjectStats(ctx context.Context, classroomID, roundID, projectID string) (*model.ProjectStats, error)
+	//GetRoundStats(ctx context.Context, classroomID, roundID string) (*model.RoundStats, error)
+}
+
+type classroomRepo struct {
+	collection *mongo.Collection
+}
+
+func NewClassroomRepo(db *mongo.Database) ClassroomRepo {
+	return &classroomRepo{collection: db.Collection(config.ClassroomColName)}
+}
+
+// ==================== CLASSROOM ====================
+func (c *classroomRepo) Create(ctx context.Context, classroom *model.Classroom) (*model.Classroom, error) {
+	classroom.CreatedAt = time.Now()
+	result, err := c.collection.InsertOne(ctx, classroom)
+	if err != nil {
+		return nil, err
+	}
+
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		classroom.ID = oid
+	}
+	return classroom, nil
+}
+
+func (c *classroomRepo) GetByID(ctx context.Context, classroomID string) (*model.Classroom, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return nil, err
+	}
+
+	var classroom model.Classroom
+	err = c.collection.FindOne(ctx, bson.M{"_id": classroomObjectID}).Decode(&classroom)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, apperror.ErrClassroomNotFound
+		}
+		return nil, err
+	}
+	return &classroom, nil
+}
+
+func (c *classroomRepo) GetByUniversity(ctx context.Context, universityID string, page, pageSize int) ([]model.Classroom, int64, error) {
+	universityObjectID, err := primitive.ObjectIDFromHex(universityID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	filter := bson.M{"university_id": universityObjectID}
+	skip := (page - 1) * pageSize
+
+	// Count total
+	total, err := c.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Paginated results
+	opts := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}}).
+		SetSkip(int64(skip)).
+		SetLimit(int64(pageSize))
+
+	cursor, err := c.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var classrooms []model.Classroom
+	if err := cursor.All(ctx, &classrooms); err != nil {
+		return nil, 0, err
+	}
+
+	return classrooms, total, nil
+}
+
+func (c *classroomRepo) GetByLecturer(ctx context.Context, lecturerID string, page, pageSize int) ([]model.Classroom, int64, error) {
+	lecturerObjectID, err := primitive.ObjectIDFromHex(lecturerID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	filter := bson.M{
+		"lecturer._id": lecturerObjectID,
+	}
+
+	skip := int64((page - 1) * pageSize)
+
+	total, err := c.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}}).
+		SetSkip(skip).
+		SetLimit(int64(pageSize))
+
+	cursor, err := c.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var classrooms []model.Classroom
+	cursor.All(ctx, &classrooms)
+
+	return classrooms, total, nil
+}
+
+// ==================== ROUNDS ====================
+func (c *classroomRepo) CreateRound(ctx context.Context, classroomID string, round *model.RegistrationRound) error {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return err
+	}
+
+	round.ID = primitive.NewObjectID()
+	round.CreatedAt = time.Now()
+	round.Status = model.RoundOpen
+
+	filter := bson.M{"_id": classroomObjectID}
+	update := bson.M{"$push": bson.M{"rounds": round}}
+
+	_, err = c.collection.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (c *classroomRepo) GetRound(ctx context.Context, classroomID, roundID string) (*model.RegistrationRound, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return nil, err
+	}
+	roundObjectID, err := primitive.ObjectIDFromHex(roundID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aggregation pipeline để lấy round cụ thể
+	pipeline := []bson.M{
+		{"$match": bson.M{"_id": classroomObjectID}},
+		{"$unwind": "$rounds"},
+		{"$match": bson.M{"rounds._id": roundObjectID}},
+		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
+	}
+
+	cursor, err := c.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var round model.RegistrationRound
+	if !cursor.Next(ctx) {
+		return nil, apperror.ErrRoundNotFound
+	}
+	cursor.Decode(&round)
+	return &round, nil
+}
+func (c *classroomRepo) ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.RegistrationRound, int64, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	skip := (page - 1) * pageSize
+
+	pipeline := []bson.M{
+		{"$match": bson.M{"_id": classroomObjectID}},
+		{"$unwind": "$rounds"},
+		{"$sort": bson.D{{Key: "rounds.created_at", Value: -1}}},
+		{"$skip": skip},
+		{"$limit": pageSize},
+		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
+	}
+
+	cursor, err := c.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var rounds []model.RegistrationRound
+	if err := cursor.All(ctx, &rounds); err != nil {
+		return nil, 0, err
+	}
+
+	// COUNT TOTAL (pipeline riêng KHÔNG có skip/limit)
+	countPipeline := []bson.M{
+		{"$match": bson.M{"_id": classroomObjectID}},
+		{"$unwind": "$rounds"},
+		{"$count": "total"},
+	}
+
+	countCursor, err := c.collection.Aggregate(ctx, countPipeline)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer countCursor.Close(ctx)
+
+	var countResult []bson.M
+	if err := countCursor.All(ctx, &countResult); err != nil {
+		return nil, 0, err
+	}
+	total := int64(0)
+	if len(countResult) > 0 {
+		total = countResult[0]["total"].(int64)
+	}
+
+	return rounds, total, nil
+}
+
+func (c *classroomRepo) UpdateRoundStatus(ctx context.Context, classroomID, roundID string, status model.RoundStatus) error {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return err
+	}
+	roundObjectID, err := primitive.ObjectIDFromHex(roundID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": classroomObjectID}
+	update := bson.M{
+		"$set": bson.M{
+			"rounds.$[round].status":     status,
+			"rounds.$[round].updated_at": time.Now(),
+		},
+	}
+	arrayFilter := options.ArrayFilters{Filters: []interface{}{
+		bson.M{"round._id": roundObjectID},
+	}}
+
+	opts := options.Update().SetArrayFilters(arrayFilter)
+	_, err = c.collection.UpdateOne(ctx, filter, update, opts)
+	return err
+}
