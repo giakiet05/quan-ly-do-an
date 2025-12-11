@@ -95,6 +95,7 @@ var (
 	ErrInvalidOTP           = AppError{Code: "INVALID_OTP", Message: "Invalid verification code"}
 	ErrOTPExpired           = AppError{Code: "OTP_EXPIRED", Message: "Verification code has expired"}
 	ErrLoginMethodMismatch  = AppError{Code: "LOGIN_METHOD_MISMATCH", Message: "This email is registered with a different login method. Please use the original method."}
+	ErrEmailNotRegistered   = AppError{Code: "EMAIL_NOT_REGISTERED", Message: "Email chưa được đăng ký"}
 
 	// Generic
 	ErrInternal          = AppError{Code: "INTERNAL_ERROR", Message: "Internal server error"}
