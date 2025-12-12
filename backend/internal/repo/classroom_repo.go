@@ -20,6 +20,9 @@ type ClassroomRepo interface {
 	GetByID(ctx context.Context, classroomID string) (*model.Classroom, error)
 	GetByUniversity(ctx context.Context, universityID string, page, pageSize int) ([]model.Classroom, int64, error)
 	GetByLecturer(ctx context.Context, lecturerID string, page, pageSize int) ([]model.Classroom, int64, error)
+	AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error
+	RemoveStudent(ctx context.Context, classroomID, studentID string) error
+	IsStudentInClassroom(ctx context.Context, classroomID, studentID string) (bool, error)
 
 	// Rounds
 	CreateRound(ctx context.Context, classroomID string, round *model.RegistrationRound) error
@@ -288,4 +291,76 @@ func (c *classroomRepo) UpdateRoundStatus(ctx context.Context, classroomID, roun
 	opts := options.Update().SetArrayFilters(arrayFilter)
 	_, err = c.collection.UpdateOne(ctx, filter, update, opts)
 	return err
+}
+
+// ==================== STUDENTS ====================
+func (c *classroomRepo) AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	filter := bson.M{"_id": classroomObjectID}
+	update := bson.M{"$addToSet": bson.M{"students": student}}
+
+	result, err := c.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return apperror.ErrClassroomNotFound
+	}
+
+	return nil
+}
+
+func (c *classroomRepo) RemoveStudent(ctx context.Context, classroomID, studentID string) error {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	studentObjectID, err := primitive.ObjectIDFromHex(studentID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	filter := bson.M{"_id": classroomObjectID}
+	update := bson.M{"$pull": bson.M{"students": bson.M{"_id": studentObjectID}}}
+
+	result, err := c.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return apperror.ErrClassroomNotFound
+	}
+
+	return nil
+}
+
+func (c *classroomRepo) IsStudentInClassroom(ctx context.Context, classroomID, studentID string) (bool, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return false, apperror.ErrInvalidID
+	}
+
+	studentObjectID, err := primitive.ObjectIDFromHex(studentID)
+	if err != nil {
+		return false, apperror.ErrInvalidID
+	}
+
+	filter := bson.M{
+		"_id":          classroomObjectID,
+		"students._id": studentObjectID,
+	}
+
+	count, err := c.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }

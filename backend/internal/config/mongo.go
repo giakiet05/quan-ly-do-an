@@ -68,7 +68,6 @@ func verifyCollections(ctx context.Context, db *mongo.Database) error {
 		ChannelColName,
 		MessageColName,
 		NotificationColName,
-		MembershipColName,
 	}
 
 	existing := make(map[string]bool, len(collections))
