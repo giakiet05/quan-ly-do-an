@@ -16,18 +16,6 @@ var (
 	db     *mongo.Database
 )
 
-const (
-	UserColName              = "users"
-	ClassroomColName         = "classrooms"
-	GroupColName             = "groups"
-	UniversityColName        = "universities"
-	ChannelColName           = "channels"
-	MessageColName           = "messages"
-	NotificationColName      = "notifications"
-	MembershipColName        = "memberships"
-	EmailVerificationColName = "email_verifications"
-)
-
 // NewMongoClient creates and returns a new MongoDB client
 func NewMongoClient() *mongo.Client {
 	uri := os.Getenv("MONGO_URI") // e.g. mongodb://user:pass@localhost:27017
@@ -80,7 +68,6 @@ func verifyCollections(ctx context.Context, db *mongo.Database) error {
 		ChannelColName,
 		MessageColName,
 		NotificationColName,
-		MembershipColName,
 	}
 
 	existing := make(map[string]bool, len(collections))

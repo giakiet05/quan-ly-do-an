@@ -6,8 +6,8 @@ import (
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/controller"
-	"github.com/giakiet05/quan-ly-do-an/backend/internal/email"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/email"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/ws"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/route"
@@ -23,6 +23,9 @@ type Repos struct {
 	repo.ChannelRepo
 	repo.MessageRepo
 	repo.EmailVerificationRepo
+	repo.PasswordResetRepo
+	repo.ClassroomRepo
+	repo.ClassroomInvitationRepo
 }
 
 type Services struct {
@@ -31,6 +34,7 @@ type Services struct {
 	service.NotificationService
 	service.ChannelService
 	service.MessageService
+	service.ClassroomInvitationService
 }
 
 type Controllers struct {
@@ -40,36 +44,42 @@ type Controllers struct {
 	controller.WebSocketController
 	controller.ChannelController
 	controller.MessageController
+	controller.ClassroomInvitationController
 }
 
 func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 	return &Repos{
-		UserRepo:              repo.NewUserRepo(db),
-		NotificationRepo:      repo.NewNotificationRepo(db),
-		ChannelRepo:           repo.NewChannelRepo(db),
-		MessageRepo:           repo.NewMessageRepo(db),
-		EmailVerificationRepo: repo.NewEmailVerificationRepo(db),
+		UserRepo:                 repo.NewUserRepo(db),
+		NotificationRepo:         repo.NewNotificationRepo(db),
+		ChannelRepo:              repo.NewChannelRepo(db),
+		MessageRepo:              repo.NewMessageRepo(db),
+		EmailVerificationRepo:    repo.NewEmailVerificationRepo(db),
+		PasswordResetRepo:        repo.NewPasswordResetRepo(db),
+		ClassroomRepo:            repo.NewClassroomRepo(db),
+		ClassroomInvitationRepo:  repo.NewClassroomInvitationRepo(db),
 	}
 }
 
-func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus) *Services {
+func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus, tokenService *auth.TokenService) *Services {
 	return &Services{
-		AuthService:         service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, emailSender, redisClient),
-		UserService:         service.NewUserService(repos.UserRepo, eventBus, redisClient),
-		NotificationService: service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
-		ChannelService:      service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
-		MessageService:      service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
+		AuthService:                service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
+		UserService:                service.NewUserService(repos.UserRepo, eventBus, redisClient),
+		NotificationService:        service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
+		ChannelService:             service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
+		MessageService:             service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
+		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, emailSender),
 	}
 }
 
 func initControllers(services *Services, wsHub *ws.Hub) *Controllers {
 	return &Controllers{
-		AuthController:         *controller.NewAuthController(services.AuthService),
-		UserController:         *controller.NewUserController(services.UserService),
-		NotificationController: *controller.NewNotificationController(services.NotificationService),
-		WebSocketController:    *controller.NewWebSocketController(wsHub),
-		ChannelController:      *controller.NewChannelController(services.ChannelService),
-		MessageController:      *controller.NewMessageController(services.MessageService),
+		AuthController:                *controller.NewAuthController(services.AuthService),
+		UserController:                *controller.NewUserController(services.UserService),
+		NotificationController:        *controller.NewNotificationController(services.NotificationService),
+		WebSocketController:           *controller.NewWebSocketController(wsHub),
+		ChannelController:             *controller.NewChannelController(services.ChannelService),
+		MessageController:             *controller.NewMessageController(services.MessageService),
+		ClassroomInvitationController: *controller.NewClassroomInvitationController(services.ClassroomInvitationService),
 	}
 }
 
@@ -89,6 +99,7 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 	route.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
 	route.RegisterChannelRoutes(api, &controllers.ChannelController)
 	route.RegisterMessageRoutes(api, &controllers.MessageController)
+	route.SetupClassroomInvitationRoutes(r, &controllers.ClassroomInvitationController)
 }
 
 func Init() (*gin.Engine, error) {
@@ -97,7 +108,8 @@ func Init() (*gin.Engine, error) {
 
 	redisClient := config.NewRedisClient()
 
-	if err := InitializeTokenService(redisClient); err != nil {
+	tokenService, err := InitializeTokenService(redisClient)
+	if err != nil {
 		log.Printf("Warning: Token invalidation service not available: %v\n", err)
 	}
 
@@ -122,7 +134,7 @@ func Init() (*gin.Engine, error) {
 	emailSender := email.NewSMTPSender()
 
 	repos := initRepos(mongoClient, db)
-	services := initServices(repos, redisClient, emailSender, eventBus)
+	services := initServices(repos, redisClient, emailSender, eventBus, tokenService)
 	controllers := initControllers(services, wsHub)
 	initRoutes(controllers, router)
 

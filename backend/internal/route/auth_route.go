@@ -11,7 +11,7 @@ func RegisterAuthRoutes(rg *gin.RouterGroup, authCtrl *controller.AuthController
 
 	auth.POST("/refresh", authCtrl.RefreshToken)
 	auth.POST("/logout", authCtrl.Logout)
-	//auth.POST("/check-username", userCtrl.CheckUsername) // Public endpoint for username availability check
+	auth.POST("/check-username", userCtrl.CheckUsername) // Public endpoint for username availability check
 
 	// Local Authentication - New Flow (Verify Email First)
 	local := auth.Group("/local")
@@ -21,6 +21,11 @@ func RegisterAuthRoutes(rg *gin.RouterGroup, authCtrl *controller.AuthController
 		local.POST("/complete-registration", authCtrl.CompleteRegistration)
 		local.POST("/resend-otp", authCtrl.ResendOTP)
 		local.POST("/login", authCtrl.Login)
+
+		// Forgot Password Flow (only for local auth)
+		local.POST("/forgot-password", authCtrl.ForgotPassword)
+		local.POST("/verify-reset-otp", authCtrl.VerifyResetPasswordOTP)
+		local.POST("/reset-password", authCtrl.ResetPassword)
 	}
 
 	// Google OAuth2
