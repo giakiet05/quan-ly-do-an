@@ -8,35 +8,50 @@
   import Footer from "./components/Footer.svelte"; 
   import { authStore, setAuth } from "./stores/auth-store";
 
-  authStore.subscribe((state) => {
-  if (state.user) {
-    topbarUser = { ... }
-  } else topbarUser = undefined;
-});
-    
-  const sidebarItems = [ /* ... */ ];
-  let isSidebarCompact = false; 
   let topbarUser: any = undefined;
-  $: topbarUser = $authStore.user;
-  // ... (Logic giữ nguyên)
-  onMount(() => {
-    // Gọi service kiểm tra URL xem có token do Google trả về không
-    const result = authService.handleLoginCallback();
+  let isSidebarCompact = false;
 
+  $: topbarUser = $authStore.user;
+
+  authStore.subscribe((state) => {
+    if (state.user) {
+      topbarUser = {
+        name: state.user.username || state.user.email || "User",
+        avatar: state.user.avatar || undefined
+      };
+    } else {
+      topbarUser = undefined;
+    }
+  });
+
+  const sidebarItems = [
+    { id: "home", label: "Home", to: "/" },
+    { id: "popular", label: "Popular", to: "/popular" },
+    { id: "explore", label: "Explore", to: "/explore" },
+    { id: "all", label: "All", to: "/all" }
+  ];
+
+  onMount(() => {
+    const result = authService.handleLoginCallback();
     if (result.success) {
       setAuth(result.user, result.accessToken);
-      replace('/'); 
-      
+      replace("/");
       console.log("✅ Đã login Google và cập nhật Auth Store");
     }
   });
-  function handleLogout() { /* ... */ }
-  function handleNavigate(item: any) { push(item.to); }
+
+  function handleLogout() {
+    console.log("Logout triggered");
+  }
+
+  function handleNavigate(item: any) {
+    push(item.to);
+  }
 </script>
 
 <div class="app-layout">
   <div class="layout-topbar" data-compact={isSidebarCompact}>
-      <Topbar user={topbarUser} onLogout={handleLogout} />
+    <Topbar user={topbarUser} onLogout={handleLogout} />
   </div>
 
   <Sidebar
@@ -47,7 +62,7 @@
 
   <main class="main-content" data-compact={isSidebarCompact}>
     <div class="page-content">
-        <Router {routes} />
+      <Router {routes} />
     </div>
     <Footer />
   </main>
@@ -58,7 +73,7 @@
     --sidebar-width: 256px;
     --sidebar-compact-width: 64px;
     --topbar-height: 56px;
-    --transition-speed: 0.2s; /* Thêm biến này cho đồng bộ chuyển động */
+    --transition-speed: 0.2s;
   }
 
   .app-layout {
@@ -71,32 +86,20 @@
     position: fixed;
     top: 0;
     right: 0;
-    z-index: 50; 
-    
-    /* Mấu chốt: Bắt đầu từ vị trí kết thúc của Sidebar */
-    left: var(--sidebar-width); 
-    
-    /* Chiều cao cố định */
+    z-index: 50;
+    left: var(--sidebar-width);
     height: var(--topbar-height);
-    
-    /* Hiệu ứng trượt mượt mà khi Sidebar co giãn */
     transition: left var(--transition-speed) ease;
   }
 
-  /* Khi Sidebar thu nhỏ -> Topbar giãn ra sang trái */
   .layout-topbar[data-compact="true"] {
     left: var(--sidebar-compact-width);
+  }
 
   .main-content {
-    /* Đẩy sang phải né Sidebar */
     margin-left: var(--sidebar-width);
-    
-    /* Đẩy xuống dưới né Topbar */
     padding-top: var(--topbar-height);
-    
     transition: margin-left var(--transition-speed) ease;
-    
-
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -104,24 +107,20 @@
   }
 
   .page-content {
-      flex: 1;
-      width: 100%;
+    flex: 1;
+    width: 100%;
   }
 
   .main-content[data-compact="true"] {
     margin-left: var(--sidebar-compact-width);
   }
 
-  /* --- RESPONSIVE (MOBILE) --- */
   @media (max-width: 768px) {
-    /* Trên mobile, Sidebar thường ẩn đi (left: -100%) */
-    
     .layout-topbar {
-      left: 0; /* Topbar về full màn hình */
+      left: 0;
     }
-    
     .main-content {
-      margin-left: 0; /* Nội dung về full màn hình */
+      margin-left: 0;
     }
   }
 </style>
