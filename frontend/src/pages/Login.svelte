@@ -1,332 +1,260 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
+  import AuthLayout from '../layouts/AuthLayout.svelte'; 
+  import { link, push } from "svelte-spa-router";
   import Button from "../components/Button.svelte";
-  import type { RegisterDto } from "../dtos/auth-dto";
+  
+  // Import service object
+  import { authService } from "../services/auth-service";
+  
+  // Chỉ cần import setAuth để cập nhật UI state (Store), không cần import storage-service nữa
+  import { setAuth } from "../stores/auth-store";
 
-  export type LoginData = {
-    identifier: string;
-    password: string;
-  };
+  let Email = "";
+  let password = "";
+  let showPassword = false;
+  let loading = false;
+  let error = "";
 
-  export type Props = {
-    mode?: "login" | "register";
-    onSubmit: (data: LoginData | RegisterDto) => void;
-    isLoading?: boolean;
-    error?: string;
-  };
-
-  let {
-    mode = "login",
-    onSubmit,
-    isLoading = false,
-    error = "",
-  }: Props = $props();
-
-  const dispatch = createEventDispatcher();
-
-  // form fields
-  let identifier = $state(""); // username hoặc email tuỳ backend
-  let email = $state(""); // email field cho register mode
-  let password = $state("");
-  let showPassword = $state(false);
-
-  // Validator đơn giản
-  function validate() {
-    if (!identifier || !password) {
-      error = "Vui lòng nhập tên đăng nhập và mật khẩu";
-      return false;
-    }
-    if (mode === "register" && !email) {
-      error = "Vui lòng nhập email";
-      return false;
-    }
-    return true;
-  }
-
-  // Chuyển đổi hiển thị mật khẩu
-  function toggleShowPasswordVisibility() {
+  const togglePassword = () => {
     showPassword = !showPassword;
+  };
+
+  const clearError = () => {
+    if(error) error = "";
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggleShowPasswordVisibility();
+  const handleGoogleLogin = () => {
+    authService.loginWithGoogle();
+  };
+
+  const handleSubmit = async () => {
+    error = "";
+    if (!Email || !password) {
+      error = "Vui lòng điền đầy đủ thông tin.";
+      return;
     }
-  }
-
-  // Xử lý submit form
-  async function handleSubmit() {
-    if (!validate()) return;
-
-    if (mode === "register") {
-      onSubmit({
-        username: identifier,
-        email: email,
+    
+    loading = true;
+    
+    try {
+      // 1. Gọi API Login
+      const res = await authService.login({
+        identifier: Email,
         password: password,
       });
-    } else {
-      onSubmit({
-        identifier: identifier,
-        password: password,
-      });
-    }
-  }
 
-  function handleGoogleLogin() {
-    // Google để sau
-    alert("Google login sẽ làm sau");
-  }
+      console.log("Login thành công:", res);
+
+      // 2. Cập nhật Store (để Header/Sidebar cập nhật giao diện ngay lập tức)
+      // res.user và res.accessToken lấy từ kết quả trả về của API
+      setAuth(res.user, res.accessToken);
+
+      // 3. Chuyển hướng
+      push("/"); 
+
+    } catch (err: any) {
+      console.error("Lỗi đăng nhập:", err);
+      
+      // Xử lý hiển thị lỗi linh hoạt tùy theo backend trả về format gì
+      if (err?.message) {
+        error = err.message;
+      } else if (err?.error?.message) {
+        error = err.error.message; // Strapi format thường gặp
+      } else if (typeof err === "string") {
+        error = err;
+      } else {
+        error = "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
+      }
+    } finally {
+      loading = false;
+    }
+  };
 </script>
 
-<form
-  onsubmit={(e) => {
-    e.preventDefault();
-    handleSubmit();
-  }}
-  class="login-form"
->
-  <div class="input-group">
-    <label for="identifier"
-      >{mode === "register" ? "Username" : "Tên đăng nhập"}</label
-    >
-    <input
-      id="identifier"
-      type="text"
-      bind:value={identifier}
-      placeholder={mode === "register"
-        ? "Choose a username"
-        : "Enter your username"}
-    />
-  </div>
-
-  {#if mode === "register"}
-    <div class="input-group">
-      <label for="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        bind:value={email}
-        placeholder="Enter your email"
-      />
+<AuthLayout>
+  <div class="auth-header">
+    <div class="icon-wrapper">
+       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="hat-icon">
+          <path d="M11.7 2.805a.75.75 0 0 1 .6 0l9.75 4.2a.75.75 0 0 1 0 1.39l-9.75 4.2a.75.75 0 0 1-.6 0l-9.75-4.2a.75.75 0 0 1 0-1.39l9.75-4.2ZM4.32 7.5 12 10.8l7.68-3.3-7.68-3.3-7.68 3.3ZM12 13.2l5.556-2.393a3.75 3.75 0 0 1 1.694 3.332v3.181a.75.75 0 0 1-1.5 0v-3.181c0-.725-.43-1.382-1.096-1.668L12 14.587l-4.654-2.017a1.875 1.875 0 0 0-2.192.334L3.75 15.086v.756a3.75 3.75 0 1 0 7.5 0v-.756l-1.404-2.106c-.366-.548-1.058-.78-1.654-.522L12 13.2Z" />
+       </svg>            
     </div>
-  {/if}
+    <h2 class="title">Chào mừng trở lại</h2>
+    <p class="subtitle">Đăng nhập hệ thống quản lý đồ án</p>
+  </div>
 
-  <div class="input-group password-group">
-    <label for="password">Mật khẩu</label>
-    <input
-      id="password"
-      type={showPassword ? "text" : "password"}
-      bind:value={password}
-      placeholder="Mật khẩu"
-    />
-    <button
-      type="button"
-      class="password-toggle-icon"
-      onclick={toggleShowPasswordVisibility}
-      onkeydown={handleKeydown}
-      aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+  <form on:submit|preventDefault={handleSubmit} class="auth-form">
+    
+    {#if error}
+      <div class="error-alert">{error}</div>
+    {/if}
+
+    <div class="form-group">
+      <label for="identity">Email <span class="required">*</span></label>
+      <input
+        id="identity"
+        type="email"
+        bind:value={Email}
+        placeholder="Nhập email của bạn"
+        disabled={loading}
+        on:input={clearError} 
+      />
+      </div>
+
+    <div class="form-group">
+      <label for="password">Mật khẩu <span class="required">*</span></label>
+      <div class="input-wrapper-with-icon">
+        <input
+          id="password"
+          type="text" 
+          hidden={!showPassword}
+          value={password}
+          disabled={loading}
+          class="has-icon-right"
+          on:input={(e) => { password = e.currentTarget.value; clearError(); }}
+        />
+        <input
+          id="password-field"
+          type={showPassword ? "text" : "password"}
+          bind:value={password}
+          placeholder="Nhập mật khẩu"
+          disabled={loading}
+          class="has-icon-right"
+          on:input={clearError}
+        />
+        
+        <div class="toggle-password-wrapper">
+            <Button 
+                variant="icon" 
+                type="button" 
+                onclick={togglePassword} 
+                title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                tabindex="-1"
+            >
+                {#if showPassword}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                {/if}
+            </Button>
+        </div>
+      </div>
+    </div>
+
+    <div class="forgot-password-link">
+        <a href="/forgot-password" use:link>Quên mật khẩu?</a>
+    </div>
+
+    <Button 
+        variant="primary" 
+        type="submit" 
+        disabled={loading} 
+        class="w-full"
     >
-      {#if showPassword}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
+      {#if loading}
+        <span class="loader"></span> Đang xử lý...
       {:else}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-          <path
-            d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
-          />
-          <path
-            d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
-          />
-          <line x1="2" x2="22" y1="2" y2="22" />
-        </svg>
+        Đăng nhập
       {/if}
-    </button>
+    </Button>
+
+  </form>
+  
+  <div class="divider">
+    <span>hoặc</span>
   </div>
 
-  {#if error}
-    <div class="error" role="alert">{error}</div>
-  {/if}
+  <Button 
+      variant="google" 
+      type="button" 
+      onclick={handleGoogleLogin} 
+      disabled={loading}
+      class="w-full"
+  >
+    Đăng nhập bằng Google
+  </Button>
 
-  <Button
-    type="submit"
-    label={isLoading
-      ? "Đang xử lý..."
-      : mode === "register"
-        ? "Đăng Ký"
-        : "Đăng Nhập"}
-    variant="primary"
-    disabled={isLoading}
-  />
-
-  <div class="separator">
-    <span>HOẶC</span>
+  <div class="auth-footer">
+      Chưa có tài khoản? 
+      <a href="/register" class="link-text" use:link>Đăng ký ngay</a>
   </div>
-
-  <Button
-    label="Đăng nhập với Google"
-    variant="google"
-    onclick={handleGoogleLogin}
-  />
-
-  <div class="signup-link">
-    {mode === "register" ? "Đã có tài khoản?" : "Chưa có tài khoản?"}
-    <button
-      type="button"
-      class="text-button"
-      onclick={() =>
-        dispatch("switchMode", {
-          mode: mode === "register" ? "login" : "register",
-        })}
-    >
-      {mode === "register" ? "Đăng nhập" : "Đăng ký ngay"}
-    </button>
-  </div>
-</form>
+</AuthLayout>
 
 <style>
-  .login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  /* --- Variables & Base Styles --- */
+  :root {
+    --primary-blue: #1a56db;
+    --text-dark: #111827;
+    --text-gray: #6b7280;
+    --input-bg: #f3f5f7;
   }
 
-  .input-group {
-    margin-bottom: 1rem;
+  /* --- MỚI: Style cho dấu sao bắt buộc --- */
+  .required {
+    color: #ef4444; /* Màu đỏ */
+    margin-left: 4px;
+    font-weight: bold;
   }
 
-  .input-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #1a1a1b;
-  }
+  .auth-header { margin-bottom: 32px; }
+  .icon-wrapper { display: inline-flex; justify-content: center; align-items: center; margin-bottom: 16px; }
+  .hat-icon { width: 48px; height: 48px; color: var(--primary-blue); }
+  .title { font-size: 28px; font-weight: 700; color: var(--text-dark); margin: 0 0 8px 0; }
+  .subtitle { font-size: 16px; color: var(--text-gray); margin: 0; }
 
-  .input-group input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #edeff1;
-    border-radius: 4px;
-    font-size: 14px;
-    background: white;
-    transition: border-color 0.2s;
-  }
+  .auth-form { text-align: left; }
+  .form-group { margin-bottom: 24px; }
+  label { display: block; font-size: 16px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; }
 
-  .input-group input:focus {
-    outline: none;
-    border-color: var(--primary-color);
+  input {
+    width: 100%; padding: 14px 16px; background-color: var(--input-bg);
+    border: 2px solid transparent; border-radius: 12px; font-size: 16px;
+    color: var(--text-dark); transition: all 0.2s; box-sizing: border-box;
   }
+  input::placeholder { color: #9ca3af; }
+  input:focus { outline: none; background-color: #fff; border-color: var(--primary-blue); }
 
-  .password-group {
-    position: relative;
-    margin-bottom: 1rem;
-  }
+  .input-wrapper-with-icon { position: relative; }
+  input.has-icon-right { padding-right: 48px; }
 
-  .password-toggle-icon {
-    position: absolute;
-    top: 50%;
-    right: 8px;
+  .toggle-password-wrapper {
+    position: absolute; 
+    right: 8px; 
+    top: 50%; 
     transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #878a8c;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin-top: 10px; /* Điều chỉnh vị trí so với input */
+    z-index: 10;
+  }
+  .eye-icon { width: 20px; height: 20px; }
+
+  .forgot-password-link { text-align: right; margin-top: -16px; margin-bottom: 24px; }
+  .forgot-password-link a { color: var(--primary-blue); font-weight: 600; text-decoration: none; font-size: 14px; }
+
+  /* Utility class cho Button full width */
+  :global(.w-full) {
+    width: 100% !important;
+    display: flex !important; /* Đảm bảo flex để căn giữa nội dung */
   }
 
-  .password-toggle-icon:hover {
-    color: #666;
+  .auth-footer { margin-top: 32px; font-size: 16px; color: var(--text-dark); }
+  .link-text { color: var(--primary-blue); font-weight: 700; margin-left: 4px; text-decoration: none; }
+  .link-text:hover { text-decoration: underline; }
+
+  .error-alert { background-color: #fee2e2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; text-align: left; }
+
+  .loader {
+    width: 20px; height: 20px; border: 3px solid #fff; border-bottom-color: transparent;
+    border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite;
+  }
+  @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  .divider {
+    display: flex; align-items: center; margin: 24px 0; color: #6b7280; font-size: 14px;
+  }
+  
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background-color: #e5e7eb;
   }
 
-  .password-toggle-icon svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .password-group input {
-    padding-right: 40px;
-    height: 44px;
-  }
-
-  .separator {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: #787c7e;
-    margin: 1rem 0;
-  }
-
-  .separator::before,
-  .separator::after {
-    content: "";
-    flex: 1;
-    border-bottom: 1px solid #edeff1;
-  }
-
-  .separator:not(:empty)::before {
-    margin-right: 1rem;
-  }
-
-  .separator:not(:empty)::after {
-    margin-left: 1rem;
-  }
-
-  .signup-link {
-    text-align: center;
-    margin-top: 1rem;
-    color: #787c7e;
-    font-size: 12px;
-  }
-
-  .text-button {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--primary-color);
-    font-weight: 600;
-    cursor: pointer;
-    font-size: inherit;
-  }
-
-  .text-button:hover {
-    text-decoration: underline;
-  }
-
-  .error {
-    color: #ff4500;
-    font-size: 12px;
-    margin-bottom: 1rem;
-    padding: 8px 12px;
-    background: rgba(255, 69, 0, 0.1);
-    border-radius: 4px;
+  .divider span {
+    padding: 0 12px; font-weight: 500; color: #9ca3af; text-transform: lowercase;
   }
 </style>

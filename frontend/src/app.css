@@ -1,8 +1,3 @@
-/* =========================
-   app.css (global) - replace the old global block with this
-   ========================= */
-
-/* ===== Global variables & reset ===== */
 :root {
   /* layout sizes */
   --topbar-height: 56px;
@@ -10,8 +5,8 @@
   --sidebar-compact-width: 64px;
 
   /* fonts */
-  --font-primary: 'Nunito Sans', sans-serif;
-  --font-secondary: 'Roboto', sans-serif;
+  --font-primary: 'Lexend', sans-serif;
+  --font-secondary: 'Lexend', sans-serif;
 
   /* colors (valid syntax) */
   --primary-color: #646cff;
@@ -69,21 +64,28 @@ html, body {
   font-family: var(--font-primary);
   box-sizing: border-box;
 }
-*, *::before, *::after { box-sizing: inherit; }
 
-/* typography */
-h1,h2,h3,h4,h5,h6 { font-family: var(--font-secondary); }
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
 
-/* app wrapper example */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-secondary);
+}
+
 #app {
   max-width: 100%;
   margin: 0;
   padding: 0;
 }
 
-/* =========================
-   Topbar / Search styles
-   ========================= */
 .topbar {
   position: fixed;
   top: 0;
@@ -105,8 +107,15 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-secondary); }
   gap: 16px;
 }
 
-.topbar-search { flex: 1; max-width: 600px; }
-.search-wrapper { position: relative; width: 100%; }
+.topbar-search {
+  flex: 1;
+  max-width: 600px;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 100%;
+}
 
 .search-icon {
   position: absolute;
@@ -129,17 +138,21 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-secondary); }
   color: var(--topbar-foreground);
   outline: none;
   transition: all 0.15s ease;
-  -webkit-appearance: none; /* remove default browser decoration */
 }
+
 .search-input:focus {
-  background: var(--surface-color); /* white */
+  background: var(--surface-color);
   border-color: var(--topbar-accent);
 }
-.search-input::placeholder { color: var(--muted-foreground); }
 
-/* small responsiveness */
-@media (min-width: 640px) {
-  .topbar-container { padding: 0 24px; gap: 24px; }
+.search-input::placeholder {
+  color: var(--muted-foreground);
 }
 
-/* (Optional) sidebar and other global styles follow... */
+/* Responsiveness */
+@media (min-width: 640px) {
+  .topbar-container {
+    padding: 0 24px;
+    gap: 24px;
+  }
+}

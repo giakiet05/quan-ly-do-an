@@ -1,544 +1,270 @@
 <script lang="ts">
+  import AuthLayout from '../layouts/AuthLayout.svelte';  
+  import { link, replace } from "svelte-spa-router";
+  import OtpVerification from '../components/OtpVerification.svelte';
   import Button from "../components/Button.svelte";
-  import { push } from "svelte-spa-router";
-  import { setAuth } from "../stores/auth-store";
+  import { authService, sendEmailVerification, completeRegistration } from "../services/auth-service";
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
-  // Các biến cho form đăng ký
+
+  // --- STATE ---
+  let fullname = "";
   let email = "";
-  let username = "";
   let password = "";
   let confirmPassword = "";
+  let step = 'register';
+  
+  // UI States
   let showPassword = false;
-  let otp = "";
-
-  // UI state
+  let showConfirmPassword = false;
   let loading = false;
-  let error: string | null = null;
-  let step: "register" | "verify" = "register"; // Step 1: register → Step 2: verify OTP
+  let error = "";
+  let verificationToken = "";
 
-  function togglePasswordVisibility() {
-    showPassword = !showPassword;
+
+  const togglePassword = () => (showPassword = !showPassword);
+  const toggleConfirmPassword = () => (showConfirmPassword = !showConfirmPassword);
+
+  // THÊM: Hàm xóa lỗi khi người dùng nhập lại (cho mượt)
+  const clearError = () => {
+    if(error) error = "";
   }
 
-  // Step 1: Đăng ký - nhập email, username, password → backend gửi OTP
-  async function handleRegisterSubmit() {
-    // validate cơ bản
-    if (!email || !username || !password || !confirmPassword) {
-      error = "Vui lòng điền đầy đủ thông tin";
+  const handleGoogleRegister = () => {
+    authService.loginWithGoogle();
+  };
+
+  const handleOtpSuccess = async (event: CustomEvent<{ verificationToken: string }>) => {
+    loading = true;
+    error = "";
+
+    try {
+      verificationToken = event.detail.verificationToken;
+
+      await completeRegistration({
+        verificationToken,
+        username: fullname,
+        password,
+      });
+      replace("/"); 
+    } catch (e: any) {
+      error = e?.message || "Đăng ký thất bại";
+      // Có thể không cần reset step về register nếu muốn cho user nhập lại OTP
+    } finally {
+      loading = false;
+    }
+  };
+
+
+  const handleSubmit = async () => {
+    error = "";
+
+    if (!fullname || !email || !password || !confirmPassword) {
+      error = "Vui lòng điền đầy đủ các trường bắt buộc.";
       return;
     }
+
     if (password !== confirmPassword) {
-      error = "Mật khẩu xác nhận không khớp!";
+      error = "Mật khẩu xác nhận không khớp.";
+      return;
+    }
+
+    if (password.length < 6) {
+      error = "Mật khẩu phải có ít nhất 6 ký tự.";
       return;
     }
 
     loading = true;
-    error = null;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
-      });
-
-      if (!res.ok) {
-        let errObj: any = {};
-        try {
-          errObj = await res.json();
-        } catch {
-          try {
-            const text = await res.text();
-            errObj = { error: text || `HTTP ${res.status}` };
-          } catch {
-            errObj = { error: `HTTP ${res.status}` };
-          }
-        }
-        throw errObj.error || errObj.message || "Lỗi đăng ký";
-      }
-
-      const data = await res.json();
-      console.log("Register response:", data);
-
-      // Chuyển sang step verify OTP
-      step = "verify";
-      error = null;
-    } catch (err: any) {
-      console.error("Register error:", err);
-      if (typeof err === "string") error = err;
-      else if (err && (err.message || err.error))
-        error = err.message || err.error;
-      else error = "Lỗi khi đăng ký. Vui lòng thử lại.";
+      await sendEmailVerification({ email });
+      step = "verify"; 
+    } catch (e: any) {
+      error = e?.message || "Không thể gửi mã xác thực";
     } finally {
       loading = false;
     }
-  }
+  };
 
-  // Step 2: Verify OTP
-  async function handleVerifyOTP() {
-    if (!otp || otp.length !== 6) {
-      error = "Vui lòng nhập mã OTP 6 chữ số";
-      return;
-    }
-
-    loading = true;
-    error = null;
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify-email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
-      });
-
-      if (!res.ok) {
-        let errObj: any = {};
-        try {
-          errObj = await res.json();
-        } catch {
-          try {
-            const text = await res.text();
-            errObj = { error: text || `HTTP ${res.status}` };
-          } catch {
-            errObj = { error: `HTTP ${res.status}` };
-          }
-        }
-        throw errObj.error || errObj.message || "Mã OTP không đúng";
-      }
-
-      const data = await res.json();
-      console.log("Verify OTP response:", data);
-
-      // Lưu tokens và user vào localStorage
-      if (data.access_token) {
-        localStorage.setItem("access_token", data.access_token);
-      }
-      if (data.refresh_token) {
-        localStorage.setItem("refresh_token", data.refresh_token);
-      }
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-      }
-
-      // Update authStore để UI hiển thị avatar ngay lập tức
-      if (data.user && data.access_token) {
-        setAuth(data.user, data.access_token);
-      }
-
-      // Redirect về trang chính
-      alert("Đăng ký thành công! Chào mừng bạn đến với LKForum.");
-      push("/");
-    } catch (err: any) {
-      console.error("Register error:", err);
-      if (typeof err === "string") error = err;
-      else if (err && (err.message || err.error))
-        error = err.message || err.error;
-      else error = "Lỗi khi đăng ký. Vui lòng thử lại.";
-    } finally {
-      loading = false;
-    }
-  }
-
-  async function handleResendOTP() {
-    loading = true;
-    error = null;
-
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/auth/resend-verification-email`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }
-      );
-
-      if (!res.ok) {
-        throw new Error("Không thể gửi lại mã OTP");
-      }
-
-      alert("Mã OTP mới đã được gửi đến email của bạn!");
-      error = null;
-    } catch (err: any) {
-      console.error("Resend OTP error:", err);
-      error = "Không thể gửi lại mã OTP. Vui lòng thử lại sau.";
-    } finally {
-      loading = false;
-    }
-  }
-
-  function handleBackToRegister() {
-    step = "register";
-    otp = "";
-    error = null;
-  }
 </script>
 
-<div class="register-page">
-  <div class="center-image-container">
-    <img src="/discuss.jpg" alt="Brand Logo" class="center-image" />
-  </div>
-
-  <div class="form-section">
-    <a href="/" class="brand-logo">
-      <img src="/LKlogo.jpg" alt="LKForum Logo" />
-      <span>LKForum</span>
-    </a>
-    <div class="form-wrapper">
-      {#if step === "register"}
-        <h2 style="color:black;">Tạo tài khoản mới</h2>
-        <p>Tham gia cộng đồng LKForum ngay hôm nay.</p>
-
-        <form
-          on:submit|preventDefault={handleRegisterSubmit}
-          class="register-form"
-        >
-          <div class="input-group">
-            <label for="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              bind:value={email}
-              placeholder="Nhập email của bạn"
-            />
-          </div>
-
-          <div class="input-group">
-            <label for="username">Tên đăng nhập</label>
-            <input
-              type="text"
-              id="username"
-              bind:value={username}
-              placeholder="Chọn một tên đăng nhập"
-            />
-          </div>
-
-          <div class="input-group password-group">
-            <label for="password">Mật khẩu</label>
-            <input
-              type={showPassword ? "text" : "password"}
-              id="password"
-              bind:value={password}
-              placeholder="Tạo mật khẩu"
-            />
-            <span
-              class="password-toggle-icon"
-              on:click={togglePasswordVisibility}
-            >
-              {#if showPassword}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"
-                  /><circle cx="12" cy="12" r="3" /></svg
-                >
-              {:else}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path
-                    d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
-                  /><path
-                    d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
-                  /><line x1="2" x2="22" y1="2" y2="22" /></svg
-                >
-              {/if}
-            </span>
-          </div>
-
-          <div class="input-group">
-            <label for="confirmPassword">Xác nhận mật khẩu</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              bind:value={confirmPassword}
-              placeholder="Nhập lại mật khẩu"
-            />
-          </div>
-
-          {#if error}
-            <div class="error" role="alert">{error}</div>
-          {/if}
-
-          <Button
-            type="submit"
-            label={loading ? "Đang đăng ký..." : "Đăng Ký"}
-            variant="primary"
-            disabled={loading}
-          />
-        </form>
-
-        <p class="login-link">
-          Đã có tài khoản? <a href="/#/login">Đăng nhập</a>
-        </p>
-      {:else}
-        <!-- Step 2: Verify OTP -->
-        <h2 style="color:black;">Xác thực Email</h2>
-        <p>Chúng tôi đã gửi mã OTP đến <strong>{email}</strong></p>
-        <p class="otp-hint">
-          Vui lòng kiểm tra hộp thư và nhập mã gồm 6 chữ số
-        </p>
-
-        <form on:submit|preventDefault={handleVerifyOTP} class="verify-form">
-          <div class="input-group">
-            <label for="otp">Mã OTP</label>
-            <input
-              type="text"
-              id="otp"
-              bind:value={otp}
-              placeholder="Nhập 6 chữ số"
-              maxlength="6"
-              class="otp-input"
-            />
-          </div>
-
-          {#if error}
-            <div class="error" role="alert">{error}</div>
-          {/if}
-
-          <Button
-            type="submit"
-            label={loading ? "Đang xác thực..." : "Xác Nhận"}
-            variant="primary"
-            disabled={loading}
-          />
-        </form>
-
-        <div class="otp-actions">
-          <button
-            type="button"
-            class="link-btn"
-            on:click={handleResendOTP}
-            disabled={loading}
-          >
-            Gửi lại mã OTP
-          </button>
-          <button
-            type="button"
-            class="link-btn"
-            on:click={handleBackToRegister}
-            disabled={loading}
-          >
-            Quay lại
-          </button>
+<AuthLayout>
+    {#if step === 'register'}
+        <div class="auth-header">
+            <div class="icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="hat-icon">
+                    <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
+                </svg>
+            </div>
+            <h2 class="title">Tạo tài khoản mới</h2>
+            <p class="subtitle">Tham gia hệ thống quản lý đồ án ngay hôm nay</p>
         </div>
 
-        <p class="login-link">
-          Đã có tài khoản? <a href="/#/login">Đăng nhập</a>
-        </p>
-      {/if}
-    </div>
-  </div>
-</div>
+        <form on:submit|preventDefault={handleSubmit} class="auth-form">
+            {#if error}
+                <div class="error-alert">{error}</div>
+            {/if}
+
+            <div class="form-group">
+                <label for="fullname">Tên hiển thị <span class="required">*</span></label>
+                <input
+                    id="fullname"
+                    type="text"
+                    bind:value={fullname}
+                    placeholder="Ví dụ: Nguyễn Văn A"
+                    disabled={loading}
+                    on:input={clearError} 
+                />
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email <span class="required">*</span></label>
+                <input
+                    id="email"
+                    type="email"
+                    bind:value={email}
+                    placeholder="name@example.com"
+                    disabled={loading}
+                    on:input={clearError}
+                />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mật khẩu <span class="required">*</span></label>
+                <div class="input-wrapper-with-icon">
+                    <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        bind:value={password}
+                        placeholder="Nhập mật khẩu"
+                        disabled={loading}
+                        class="has-icon-right"
+                        on:input={clearError}
+                    />
+                    <div class="toggle-password-wrapper">
+                        <Button variant="icon" type="button" onclick={togglePassword} tabindex="-1">
+                            {#if showPassword}
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                            {:else}
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                            {/if}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Xác nhận mật khẩu <span class="required">*</span></label>
+                <div class="input-wrapper-with-icon">
+                    <input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        bind:value={confirmPassword}
+                        placeholder="Nhập lại mật khẩu"
+                        disabled={loading}
+                        class="has-icon-right"
+                        on:input={clearError}
+                    />
+                    <div class="toggle-password-wrapper">
+                        <Button variant="icon" type="button" onclick={toggleConfirmPassword} tabindex="-1">
+                            {#if showConfirmPassword}
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                            {:else}
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                            {/if}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <Button variant="primary" type="submit" disabled={loading} class="w-full mt-4">
+                {#if loading}
+                    <span class="loader"></span> Đang tạo tài khoản...
+                {:else}
+                    Đăng ký
+                {/if}
+            </Button>
+        </form>
+
+        <div class="divider">
+            <span>hoặc</span>
+        </div>
+
+        <Button variant="google" type="button" onclick={handleGoogleRegister} disabled={loading} class="w-full">
+            Đăng ký bằng Google
+        </Button>
+
+        <div class="auth-footer">
+            Đã có tài khoản? 
+            <a href="/login" class="link-text" use:link>Đăng nhập</a>
+        </div>
+    
+    {:else}
+        <OtpVerification 
+            email={email} 
+            on:success={handleOtpSuccess} 
+            on:back={() => step = 'register'} 
+        />
+        {/if}
+</AuthLayout>
 
 <style>
-  /* Gần như toàn bộ style được sao chép từ trang Login để đồng nhất */
-  /* Đổi tên class để tránh xung đột nếu cần, nhưng ở đây chúng ta giữ nguyên */
-  .register-page {
-    display: flex;
-    width: 100vw;
-    height: 100vh;
-    font-family: var(--font-primary);
-    position: relative;
-    overflow: hidden;
-  }
-  .center-image-container {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-  }
-  .center-image {
-    display: block;
-    /* Sửa lại: Dùng vw (viewport width) để ảnh co dãn theo màn hình */
-    width: 25vw; /* Chiếm khoảng 25% chiều rộng màn hình */
-    max-width: 450px; /* Nhưng không bao giờ to quá 450px */
-    min-width: 250px; /* Và không bao giờ nhỏ hơn 250px */
-
-    height: auto;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    object-fit: cover;
-  }
-  .form-section {
-    /* Đổi tên từ login-form-section */
-    flex: 0 0 50%;
-    display: flex;
-    flex-direction: column; /* Xếp dọc */
-    justify-content: center; /* Căn giữa theo chiều dọc */
-    align-items: flex-start; /* Căn trái */
-    background-color: white;
-    padding: 2rem 4rem; /* Tăng padding để đẹp hơn */
-    box-sizing: border-box; /* Thêm vào để padding không làm vỡ layout */
-  }
-  .form-wrapper {
-    width: 100%;
-    max-width: 450px;
-    padding-right: 12%; /* Sửa lại: Dùng % để nó co dãn theo */
-  }
-  .form-wrapper h2 {
-    font-family: var(--font-secondary);
-    font-size: 2.5em;
-    font-weight: 700;
-    color: var(--text-color);
-    margin-bottom: 0.5rem;
-  }
-  .form-wrapper p {
-    color: #666;
-    margin-bottom: 2.5rem;
-  }
-  .input-group {
-    margin-bottom: 1.5rem;
-  }
-  .input-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-  }
-  .input-group input {
-    width: 100%;
-    padding: 1rem 0.2rem;
-    border: none;
-    border-radius: 0;
-    border-bottom: 2px solid var(--border-color);
-    font-size: 1em;
-    box-sizing: border-box;
-    background-color: transparent;
-    transition: border-color 0.3s ease;
-  }
-  .input-group input:focus {
-    outline: none;
-    border-bottom-color: var(--primary-color);
-  }
-  .signin-link {
-    /* Đổi tên từ signup-link */
-    text-align: center;
-    margin-top: 2rem;
-    color: #555;
-  }
-  .signin-link a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 600;
+  :root {
+    --primary-blue: #1a56db;
+    --text-dark: #111827;
+    --text-gray: #6b7280;
+    --input-bg: #f3f5f7;
   }
 
-  /* OTP Step styles */
-  .otp-hint {
-    font-size: 0.9em;
-    color: #888;
-    margin-bottom: 1.5rem;
-    margin-top: -1rem;
+  /* Style cho dấu sao bắt buộc */
+  .required {
+    color: #ef4444; /* Màu đỏ */
+    margin-left: 4px;
+    font-weight: bold;
   }
 
-  .otp-input {
-    text-align: center;
-    font-size: 1.5em;
-    letter-spacing: 0.5em;
-    font-weight: 600;
-  }
+  .auth-header { margin-bottom: 28px; }
+  .icon-wrapper { display: inline-flex; justify-content: center; align-items: center; margin-bottom: 16px; }
+  .hat-icon { width: 48px; height: 48px; color: var(--primary-blue); }
+  .title { font-size: 28px; font-weight: 700; color: var(--text-dark); margin: 0 0 8px 0; }
+  .subtitle { font-size: 16px; color: var(--text-gray); margin: 0; }
 
-  .otp-actions {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 1.5rem;
-  }
+  .auth-form { text-align: left; }
+  .form-group { margin-bottom: 20px; }
+  label { display: block; font-size: 15px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
 
-  .link-btn {
-    background: none;
-    border: none;
-    color: var(--primary-color);
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: underline;
-    font-size: 0.95em;
+  input {
+    width: 100%; padding: 14px 16px; background-color: var(--input-bg);
+    border: 2px solid transparent; border-radius: 12px; font-size: 16px;
+    color: var(--text-dark); transition: all 0.2s; box-sizing: border-box;
   }
+  input::placeholder { color: #9ca3af; }
+  input:focus { outline: none; background-color: #fff; border-color: var(--primary-blue); }
 
-  .link-btn:hover {
-    color: var(--primary-color-hover);
-  }
+  .input-wrapper-with-icon { position: relative; }
+  input.has-icon-right { padding-right: 48px; }
 
-  .link-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .toggle-password-wrapper {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%); z-index: 10;
   }
+  .eye-icon { width: 20px; height: 20px; }
 
-  .decorative-section {
-    flex: 0 0 50%;
-    background-image: url("/background.png");
-    background-size: cover;
-    background-position: center;
-  }
-  .password-group {
-    position: relative;
-  }
-  .password-toggle-icon {
-    position: absolute;
-    top: 55%;
-    right: 10px;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #888;
-  }
-  .brand-logo {
-    /* Bỏ position: absolute */
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    text-decoration: none;
-    margin-bottom: 5rem; /* Tạo khoảng cách với form */
-  }
-  .brand-logo img {
-    width: 80px;
-    height: 80px;
-  }
-  .brand-logo span {
-    font-size: 1.5em;
-    font-weight: 700;
-    color: #213547;
-    font-family: var(--font-secondary);
-  }
+  :global(.w-full) { width: 100% !important; display: flex !important; }
+  :global(.mt-4) { margin-top: 16px !important; }
 
-  @media (max-width: 900px) {
-    /* Ẩn tấm ảnh ở giữa và phần nền trang trí */
-    .center-image-container,
-    .decorative-section {
-      display: none;
-    }
+  .auth-footer { margin-top: 24px; font-size: 16px; color: var(--text-dark); }
+  .link-text { color: var(--primary-blue); font-weight: 700; margin-left: 4px; text-decoration: none; }
+  .link-text:hover { text-decoration: underline; }
 
-    /* Cho form chiếm toàn bộ chiều rộng màn hình */
-    .form-section {
-      flex: 1; /* Hoặc flex: 0 0 100%; */
-      justify-content: center;
-      padding: 2rem;
-    }
+  .error-alert { background-color: #fee2e2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; text-align: left; }
 
-    /* Điều chỉnh lại padding cho form để cân đối hơn */
-    .form-wrapper {
-      padding-right: 0;
-      max-width: 100%;
-    }
-
-    /* Căn giữa lại link đăng nhập */
-    .signin-link {
-      text-align: center;
-    }
+  .loader {
+    width: 20px; height: 20px; border: 3px solid #fff; border-bottom-color: transparent;
+    border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite;
   }
+  @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  .divider { display: flex; align-items: center; margin: 20px 0; color: #6b7280; font-size: 14px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background-color: #e5e7eb; }
+  .divider span { padding: 0 12px; font-weight: 500; color: #9ca3af; text-transform: lowercase; }
 </style>
