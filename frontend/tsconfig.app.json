@@ -16,7 +16,14 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "composite": true,
-    "typeRoots": ["src/types", "node_modules/@types"]
+    "typeRoots": [
+      "src/types",
+      "node_modules/@types"
+    ]
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte"
+  ]
 }

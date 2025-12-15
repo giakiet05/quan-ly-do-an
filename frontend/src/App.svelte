@@ -8,8 +8,14 @@
   import Footer from "./components/Footer.svelte"; 
   import { authStore, setAuth } from "./stores/auth-store";
 
+  authStore.subscribe((state) => {
+  if (state.user) {
+    topbarUser = { ... }
+  } else topbarUser = undefined;
+});
+    
   const sidebarItems = [ /* ... */ ];
-  let isSidebarCompact = false; // Biến này đang điều khiển độ rộng Sidebar
+  let isSidebarCompact = false; 
   let topbarUser: any = undefined;
   $: topbarUser = $authStore.user;
   // ... (Logic giữ nguyên)
@@ -18,10 +24,7 @@
     const result = authService.handleLoginCallback();
 
     if (result.success) {
-      // 1. Cập nhật Store (lúc này biến $authStore thay đổi -> topbarUser tự cập nhật)
       setAuth(result.user, result.accessToken);
-
-      // 2. Xóa token trên URL cho sạch sẽ (quan trọng)
       replace('/'); 
       
       console.log("✅ Đã login Google và cập nhật Auth Store");
@@ -64,12 +67,11 @@
     background-color: white;
   }
 
-  /* --- 2. CSS CHO TOPBAR WRAPPER (PHẦN QUAN TRỌNG NHẤT) --- */
   .layout-topbar {
     position: fixed;
     top: 0;
     right: 0;
-    z-index: 50; /* Thấp hơn Sidebar (thường là 100) nhưng cao hơn nội dung */
+    z-index: 50; 
     
     /* Mấu chốt: Bắt đầu từ vị trí kết thúc của Sidebar */
     left: var(--sidebar-width); 
@@ -84,9 +86,7 @@
   /* Khi Sidebar thu nhỏ -> Topbar giãn ra sang trái */
   .layout-topbar[data-compact="true"] {
     left: var(--sidebar-compact-width);
-  }
 
-  /* --- 3. CSS CHO MAIN CONTENT (Giữ nguyên logic cũ của bạn, chỉnh lại chút) --- */
   .main-content {
     /* Đẩy sang phải né Sidebar */
     margin-left: var(--sidebar-width);
@@ -96,7 +96,7 @@
     
     transition: margin-left var(--transition-speed) ease;
     
-    /* Flexbox cho Footer */
+
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -112,7 +112,7 @@
     margin-left: var(--sidebar-compact-width);
   }
 
-  /* --- 4. RESPONSIVE (MOBILE) --- */
+  /* --- RESPONSIVE (MOBILE) --- */
   @media (max-width: 768px) {
     /* Trên mobile, Sidebar thường ẩn đi (left: -100%) */
     

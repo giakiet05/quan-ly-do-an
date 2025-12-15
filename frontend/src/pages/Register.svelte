@@ -1,5 +1,4 @@
 <script lang="ts">
-  // BỎ: import { createEventDispatcher } from "svelte"; (Không dùng)
   import AuthLayout from '../layouts/AuthLayout.svelte';  
   import { link, replace } from "svelte-spa-router";
   import OtpVerification from '../components/OtpVerification.svelte';

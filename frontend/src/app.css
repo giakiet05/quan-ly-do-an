@@ -1,78 +1,61 @@
-/* =========================
-   app.css (global)
-   ========================= */
-
-/* ===== Global variables & reset ===== */
 :root {
-  /* --- 1. Layout sizes --- */
+  /* layout sizes */
   --topbar-height: 56px;
   --sidebar-width: 256px;
   --sidebar-compact-width: 64px;
 
-  /* --- 2. Fonts --- */
+  /* fonts */
   --font-primary: 'Lexend', sans-serif;
   --font-secondary: 'Lexend', sans-serif;
 
-  /* --- 3. Colors (System) --- */
+  /* colors (valid syntax) */
   --primary-color: #646cff;
   --primary-color-hover: #535bf2;
 
   --text-color: #121213;
   --text-color-secondary: #6b7280;
 
-  /* Global background */
+  /* global background (use this name consistently) */
   --background: #f0f2f5;
   --surface-color: #ffffff;
   --border-color: #e6e9ee;
 
-  /* --- 4. Sidebar Theme --- */
+  /* Sidebar theme */
   --sidebar-background: #ffffff;
   --sidebar-foreground: #0b1f2b;
   --sidebar-border: #e6e9ee;
   --sidebar-accent: #f5f7fb;
 
-  /* --- 5. Topbar Theme --- */
-  --topbar-background: #ffffff;
+  /* Topbar theme */
+  --topbar-background: #ffffff;                 /* white topbar */
   --topbar-foreground: #213547;
   --topbar-border: #e6e9ee;
   --topbar-hover: #f6f7f9;
   --topbar-accent: #ff8a00;
   --topbar-accent-hover: #ff7a00;
 
-  /* Topbar Search */
-  --topbar-search-background: rgba(33, 37, 41, 0.04);
-  --topbar-search-border: rgba(33, 37, 41, 0.08);
+  /* search input */
+  --topbar-search-background: rgba(33,37,41,0.04); /* subtle grey - valid */
+  --topbar-search-border: rgba(33,37,41,0.08);
 
-  /* --- 6. Helpers --- */
+  /* small helpers */
   --muted-foreground: #9aa4b2;
   --button-secondary-background: #D6D8DE;
   --button-secondary-background-hover: #B5B7BD;
-
-  /* --- 7. Generic Colors (Existing) --- */
-  --blue--: #043873;
-  /* Màu nền Footer */
-  --darkblue--: #1a56db;
-  --error--: #F2451C;
+  /* ... add more as needed ... */
+  --blue--:#153060;
+  --darkblue--:#154D71;
+  --lightblue--:#1C6EA4;
+  --error--:#F2451C;
   --table-bg: rgba(214, 216, 222, 0.2);
   --grayfont: #8A8A8A;
   --button-secondary-bg: rgba(214, 216, 222, 0.4);
   --lightgray--: #D1D5DB;
   --select-bg: #999999;
-
-  /* Màu nút CTA "Start today" (Sáng hơn màu lightblue-- gốc) */
-  --cta-blue: #4F9CF9;
-  --cta-blue-hover: #3b8bdd;
-
-  /* Màu text highlight (vàng) khi hover ở footer */
-  --text-highlight: #FFE492;
-
-  /* Màu đường kẻ mờ ở footer (tiệp với nền xanh đậm) */
-  --footer-divider: #2E4E73;
 }
 
 /* Basic reset */
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -88,7 +71,6 @@ body {
   box-sizing: inherit;
 }
 
-/* Typography */
 h1,
 h2,
 h3,
@@ -98,16 +80,12 @@ h6 {
   font-family: var(--font-secondary);
 }
 
-/* App wrapper */
 #app {
   max-width: 100%;
   margin: 0;
   padding: 0;
 }
 
-/* =========================
-   Topbar / Search styles
-   ========================= */
 .topbar {
   position: fixed;
   top: 0;
@@ -117,7 +95,7 @@ h6 {
   background: var(--topbar-background);
   border-bottom: 1px solid var(--topbar-border);
   z-index: 200;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .topbar-container {
@@ -148,6 +126,7 @@ h6 {
   pointer-events: none;
 }
 
+/* IMPORTANT: use var(...) directly */
 .search-input {
   width: 100%;
   padding: 8px 16px 8px 40px;
@@ -158,7 +137,7 @@ h6 {
   font-size: 14px;
   color: var(--topbar-foreground);
   outline: none;
-  transition: all 0.15s ease
+  transition: all 0.15s ease;
 }
 
 .search-input:focus {
