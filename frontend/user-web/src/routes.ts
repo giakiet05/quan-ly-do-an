@@ -1,6 +1,7 @@
 import Home from './pages/Home.svelte';
 import Login from './pages/Login.svelte';
 import Register from './pages/Register.svelte';
+import ForgotPassword from './pages/ForgotPassword.svelte';
 import Profile from './pages/Profile.svelte';
 import Settings from './pages/Settings.svelte';
 import PostDetail from './pages/PostDetail.svelte';
@@ -18,6 +19,7 @@ const routes = {
     '/lk/:name': Community,
     '/lk/:name/mod': ModTools,
     '/communities/manage': ManageCommunities,
+    '/forgot-password': ForgotPassword,
 };
 
 export default routes;
