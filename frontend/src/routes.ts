@@ -11,15 +11,15 @@ import ModTools from './pages/ModTools.svelte';
 
 const routes = {
     '/': Home,
-    '/login': Login,
-    '/register': Register,
+    '/auth/login': Login,
+    '/auth/register': Register,
+    '/auth/forgot-password': ForgotPassword,
     '/profile': Profile,
     '/settings': Settings,
     '/post/:id': PostDetail,
-    '/lk/:name': Community,
-    '/lk/:name/mod': ModTools,
-    '/communities/manage': ManageCommunities,
-    '/forgot-password': ForgotPassword,
+    '/community/:id': Community,
+    '/manage-communities': ManageCommunities,
+    '/mod-tools': ModTools
 };
 
 export default routes;

@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
   import { onMount } from "svelte";
   import Router, { push, replace } from "svelte-spa-router";
   import { authService } from "./services/auth-service";
@@ -123,4 +123,25 @@
       margin-left: 0;
     }
   }
-</style>
+</style> -->
+
+<script>
+  import Router from "svelte-spa-router";
+  import { location } from "svelte-spa-router";
+
+  import MainLayout from "./layouts/MainLayout.svelte";
+  import AuthLayout from "./layouts/AuthLayout.svelte";
+  import Home from "./pages/Home.svelte";
+  import Login from "./pages/Login.svelte";
+  import routes from "./routes";
+</script>
+
+{#if $location.startsWith("/auth")}
+  <AuthLayout>
+    <Router {routes} />
+  </AuthLayout>
+{:else}
+  <MainLayout>
+    <Router {routes} />
+  </MainLayout>
+{/if}
