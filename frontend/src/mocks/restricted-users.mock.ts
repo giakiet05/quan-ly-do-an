@@ -11,7 +11,10 @@ export interface RestrictedUser {
   ruleViolated?: string;
 }
 
-export const mockRestrictedUsers: RestrictedUser[] = [
+// Mock data cleared - kept for reference
+export const mockRestrictedUsers: any[] = [];
+
+// Original data archived: RestrictedUser[] = [
   {
     id: 1,
     username: "user1",

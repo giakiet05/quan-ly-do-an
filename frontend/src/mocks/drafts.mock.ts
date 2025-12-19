@@ -13,29 +13,10 @@ export interface DraftDetail {
   tab: "text" | "images" | "link";
 }
 
-// List of drafts (for DraftsModal)
-export const mockDraftsList: Draft[] = [
-  { id: 1, title: "Sample1", editedTime: "edited 3 hrs ago" },
-  { id: 2, title: "Sample2", editedTime: "edited 2 hrs ago" },
-];
+// Mock data cleared - kept for reference
+export const mockDraftsList: Draft[] = [];
 
-export const totalDrafts = 20;
+export const totalDrafts = 0;
 
-// Draft details (for editing in CreatePostModal)
-export const mockDraftsDetails: Record<number, DraftDetail> = {
-  1: {
-    title: "Sample1 - Amazing Discovery",
-    community: "anime",
-    bodyText:
-      "This is the draft content for Sample1. I was watching anime and...",
-    tags: ["discussion", "anime"],
-    tab: "text",
-  },
-  2: {
-    title: "Sample2 - Check this link",
-    community: "3amjokes",
-    linkUrl: "https://example.com/funny-joke",
-    tags: ["link"],
-    tab: "link",
-  },
-};
+// Original data archived
+export const mockDraftsDetails: Record<number, DraftDetail> = {};

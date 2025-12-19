@@ -6,7 +6,10 @@ export interface CommunityRule {
   createdAt: string;
 }
 
-export const mockCommunityRules: CommunityRule[] = [
+// Mock data cleared - kept for reference
+export const mockCommunityRules: any[] = [];
+
+// Original data archived: CommunityRule[] = [
   {
     id: 1,
     name: "rule1",

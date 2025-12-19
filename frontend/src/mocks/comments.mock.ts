@@ -14,7 +14,10 @@ export interface Comment {
   updatedAt?: string;
 }
 
-export const mockComments: Comment[] = [
+// Mock data cleared - kept for reference
+export const mockComments: any[] = [];
+
+// Original data archived: Comment[] = [
   {
     id: 'comment1',
     postId: '1',
