@@ -131,7 +131,6 @@
 
   import MainLayout from "./layouts/MainLayout.svelte";
   import AuthLayout from "./layouts/AuthLayout.svelte";
-  import Home from "./pages/Home.svelte";
   import Login from "./pages/Login.svelte";
   import routes from "./routes";
 </script>

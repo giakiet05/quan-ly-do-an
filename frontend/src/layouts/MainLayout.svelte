@@ -2,14 +2,19 @@
     import { link } from "svelte-spa-router";
     import active from "svelte-spa-router/active";
     import type { SidebarItem } from "../types/sidebar";
-    import { Icons } from "../assets/icons/icons";
     import { Roles } from "../types/role";
+    import { authStore } from "../stores/auth-store";
+    import { push } from "svelte-spa-router";
 
     let { children } = $props();
     let isCollapsed = $state(false);
 
     function toggleSidebar() {
         isCollapsed = !isCollapsed;
+    }
+
+    function goToMyProfile() {
+        push("/my-profile");
     }
 
     // menu item có thuoccj tính role để dựa vào ai đang đăng nhập sẽ hiện menu item đó
@@ -19,35 +24,35 @@
             id: "dashboard",
             label: "Tổng quan",
             route: "/dashboard",
-            icon: Icons.dashboard,
+            icon: "/layout-dashboard.svg",
             roles: [Roles.LECTURER, Roles.STUDENT],
         },
         {
             id: "classes",
             label: "Lớp học",
             route: "/classes",
-            icon: Icons.class,
+            icon: "/book-open-text.svg",
             roles: [Roles.STUDENT, Roles.LECTURER],
         },
         {
             id: "students",
             label: "Sinh viên",
             route: "/students",
-            icon: Icons.students,
+            icon: "/users.svg",
             roles: [Roles.STUDENT, Roles.LECTURER],
         },
         {
             id: "notifications",
             label: "Thông báo",
             route: "/notifications",
-            icon: Icons.notification,
+            icon: "/bell.svg",
             roles: [Roles.STUDENT, Roles.LECTURER],
         },
         {
             id: "messages",
             label: "Tin nhắn",
             route: "/messages",
-            icon: Icons.message,
+            icon: "/message-circle.svg",
             roles: [Roles.STUDENT, Roles.LECTURER],
         },
     ];
@@ -72,7 +77,14 @@
                 class="toggle-btn"
                 aria-label="Toggle Sidebar"
             >
-                <svelte:component this={Icons.resize} size={16} />
+                <span class="icon">
+                    <img
+                        src={"/arrow-left-right.svg"}
+                        alt={"resize"}
+                        width="22"
+                        height="22"
+                    />
+                </span>
             </button>
         </div>
 
@@ -90,10 +102,11 @@
                             title={isCollapsed ? item.label : ""}
                         >
                             <span class="icon">
-                                <svelte:component
-                                    this={item.icon}
-                                    size={22}
-                                    strokeWidth={2}
+                                <img
+                                    src={item.icon}
+                                    alt={item.label}
+                                    width="22"
+                                    height="22"
                                 />
                             </span>
                             <span class="label" class:hidden={isCollapsed}
@@ -105,19 +118,34 @@
             </ul>
         </nav>
         <div class="sidebar-footer">
-            <a href="/auth/login" use:link>
-                <span class="icon">
-                    <svelte:component
-                        this={Icons.logout}
-                        size={22}
-                        strokeWidth={2}
-                    />
-                </span>
-
+            <button class="user-profile" onclick={goToMyProfile}>
+                <div class="avatar">
+                    {#if $authStore.user?.avatar}
+                        <img src={$authStore.user.avatar} alt="User" />
+                    {:else}
+                        <div class="avatar-placeholder">
+                            <span class="icon">
+                                <img
+                                    src={"/user.svg"}
+                                    alt={"user"}
+                                    width="22"
+                                    height="22"
+                                />
+                            </span>
+                        </div>
+                    {/if}
+                </div>
                 {#if !isCollapsed}
-                    <span class="label">Logout</span>
+                    <div class="user-info">
+                        <span class="username"
+                            >{$authStore.user?.fullname || "User"}</span
+                        >
+                        <span class="role"
+                            >{$authStore.user?.role || "Member"}</span
+                        >
+                    </div>
                 {/if}
-            </a>
+            </button>
         </div>
     </aside>
 
@@ -137,16 +165,72 @@
     :root {
         --sidebar-width: 260px;
         --sidebar-collapsed-width: 80px;
-        --primary-bg: #1e293b;
-        --active-bg: #3b82f6;
+        --active-text: #3b82f6;
+        --active-item: #b5d3fa;
+        --hover-item: #cccccc;
         --transition-speed: 0.3s;
     }
     .sidebar-footer {
-        height: 50px;
+        padding: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid #e2e8f0;
+    }
+    .sidebar:not(.collapsed) .sidebar-footer {
+        justify-content: flex-start;
+    }
+    .user-profile {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 8px;
+        border-radius: 10px;
+        border: 0;
+        background: none;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .user-profile:hover {
+        background: var(--hover-item);
+    }
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        background-color: var(--active-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .user-info {
+        margin-left: 12px;
+        display: flex;
+        flex-direction: column;
+    }
+    .username {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #1e293b;
+    }
+    .role {
+        font-size: 0.75rem;
+        color: #64748b;
     }
     .main-layout {
         display: flex;
@@ -156,8 +240,6 @@
 
     .sidebar {
         width: var(--sidebar-width);
-        background: var(--primary-bg);
-        color: #cbd5e1;
         display: flex;
         flex-direction: column;
         transition: width var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
@@ -185,14 +267,12 @@
 
     .logo {
         font-weight: 700;
-        color: white;
         letter-spacing: 1px;
     }
 
     .toggle-btn {
         background: rgba(255, 255, 255, 0.1);
         border: none;
-        color: white;
         cursor: pointer;
         width: 30px;
         height: 30px;
@@ -204,7 +284,7 @@
     }
 
     .toggle-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: var(--hover-item);
     }
 
     .sidebar-nav {
@@ -222,7 +302,7 @@
         align-items: center;
         padding: 12px;
         margin-bottom: 8px;
-        color: #94a3b8;
+        color: rgb(0, 0, 0);
         text-decoration: none;
         border-radius: 10px;
         transition: all 0.2s;
@@ -230,8 +310,7 @@
     }
 
     .sidebar-nav a:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: white;
+        background: var(--hover-item);
     }
 
     .icon {
@@ -259,9 +338,9 @@
 
     /* Active Link Style */
     :global(.active-link) {
-        background: var(--active-bg) !important;
-        color: white !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        background: var(--active-item) !important;
+        color: var(--active-text) !important;
+        box-shadow: 0 4px 12px var(--active-item);
     }
 
     .content {
