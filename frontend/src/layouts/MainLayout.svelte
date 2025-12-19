@@ -1,10 +1,9 @@
 <script lang="ts">
-    import { link } from "svelte-spa-router";
+    import { link, location, push } from "svelte-spa-router";
     import active from "svelte-spa-router/active";
     import type { SidebarItem } from "../types/sidebar";
     import { Roles } from "../types/role";
     import { authStore } from "../stores/auth-store";
-    import { push } from "svelte-spa-router";
 
     let { children } = $props();
     let isCollapsed = $state(false);
@@ -61,6 +60,11 @@
         menuItems.filter((item) =>
             item.roles.includes(currentRole as keyof typeof Roles),
         ),
+    );
+
+    const currentBreadcrumb = $derived(
+        menuItems.find((item) => item.route === $location)?.label ||
+            "Trang chủ",
     );
 </script>
 
@@ -152,7 +156,13 @@
     <main class="content">
         <header class="top-bar">
             <div class="header-left">
-                <h2>Dashboard Section</h2>
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item">Trang chủ</span>
+                    <span class="separator">/</span>
+                    <span class="breadcrumb-item active"
+                        >{currentBreadcrumb}</span
+                    >
+                </div>
             </div>
         </header>
         <div class="page-body">
@@ -162,7 +172,7 @@
 </div>
 
 <style>
-    :root {
+    .main-layout {
         --sidebar-width: 260px;
         --sidebar-collapsed-width: 80px;
         --active-text: #3b82f6;
@@ -364,5 +374,20 @@
         flex: 1;
         padding: 30px;
         overflow-y: auto;
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        font-size: 0.95rem;
+        color: #64748b;
+    }
+    .breadcrumb-item.active {
+        color: #1e293b;
+        font-weight: 600;
+    }
+    .separator {
+        margin: 0 10px;
+        color: #cbd5e1;
     }
 </style>

@@ -314,7 +314,7 @@
   }
 
   /* Utility class cho Button full width */
-  :global(.w-full) {
+  .w-full {
     width: 100% !important;
     display: flex !important; /* Đảm bảo flex để căn giữa nội dung */
   }
