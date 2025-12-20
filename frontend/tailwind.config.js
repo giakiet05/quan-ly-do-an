@@ -4,6 +4,7 @@ export default {
     './index.html',
     './src/**/*.{svelte,js,ts,jsx,tsx}',
   ],
+  darkMode: 'class', // Disable automatic dark mode, only use when 'dark' class is added manually
   theme: {
     extend: {
       colors: {

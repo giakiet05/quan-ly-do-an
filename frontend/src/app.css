@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 
-@import '@skeletonlabs/skeleton';
-@import '@skeletonlabs/skeleton-svelte';
-@import '@skeletonlabs/skeleton/themes/cerberus';
+/* Removed Skeleton UI imports to prevent automatic dark mode switching */
+/* @import '@skeletonlabs/skeleton'; */
+/* @import '@skeletonlabs/skeleton-svelte'; */
+/* @import '@skeletonlabs/skeleton/themes/cerberus'; */
