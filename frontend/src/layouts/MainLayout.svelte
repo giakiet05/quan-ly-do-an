@@ -16,9 +16,7 @@
         push("/my-profile");
     }
 
-    // menu item có thuoccj tính role để dựa vào ai đang đăng nhập sẽ hiện menu item đó
     const menuItems: SidebarItem[] = [
-        /* ... mảng menuItems của bạn ... */
         {
             id: "dashboard",
             label: "Tổng quan",
