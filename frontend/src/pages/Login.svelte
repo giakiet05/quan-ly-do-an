@@ -48,8 +48,8 @@
       // res.user và res.accessToken lấy từ kết quả trả về của API
       setAuth(res.user, res.accessToken);
 
-      // 3. Chuyển hướng
-      push("/");
+      // 3. Chuyển hướng sang trang chủ sau khi login thành công
+      push("/home");
     } catch (err: any) {
       console.error("Lỗi đăng nhập:", err);
 
@@ -175,7 +175,7 @@
   </div>
 
   <div class="forgot-password-link">
-    <a href="/forgot-password" use:link>Quên mật khẩu?</a>
+    <a href="/auth/forgot-password" use:link>Quên mật khẩu?</a>
   </div>
 
   <Button variant="primary" type="submit" disabled={loading} class="w-full">
@@ -203,7 +203,7 @@
 
 <div class="auth-footer">
   Chưa có tài khoản?
-  <a href="/register" class="link-text" use:link>Đăng ký ngay</a>
+  <a href="/auth/register" class="link-text" use:link>Đăng ký ngay</a>
 </div>
 
 <style>

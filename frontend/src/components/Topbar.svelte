@@ -22,13 +22,13 @@
   let avatarLetter = $derived(
     user?.username?.charAt(0).toUpperCase() ||
       user?.email?.charAt(0).toUpperCase() ||
-      "?",
+      "?"
   );
 
   function handleLogout() {
     if (confirm("Bạn muốn đăng xuất?")) {
       clearAuth();
-      push("/login");
+      push("/auth/login");
     }
   }
 
@@ -72,12 +72,21 @@
       <div class="user-profile">
         <Button
           variant="avatar"
-          onclick={handleLogout}
-          title="Click để đăng xuất"
+          onclick={() => push("/my-profile")}
+          title="Hồ sơ cá nhân"
         >
           {avatarLetter}
         </Button>
       </div>
+
+      <Button
+        variant="icon"
+        onclick={handleLogout}
+        title="Đăng xuất"
+        class="logout-btn"
+      >
+        <img src="/logout_icon.svg" alt="Logout" width="20" height="20" />
+      </Button>
     {:else}
       <Button variant="primary" size="sm" onclick={goToLogin}>Đăng nhập</Button>
     {/if}
