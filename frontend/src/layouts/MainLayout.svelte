@@ -6,6 +6,7 @@
   let { children } = $props();
   let isCollapsed = $state(false);
   let currentRole = $state<"LECTURER" | "STUDENT">("LECTURER");
+  let isLoadingRole = $state(false);
 
   function toggleSidebar() {
     isCollapsed = !isCollapsed;
@@ -29,13 +30,27 @@
   }
 
   function switchRole(role: "LECTURER" | "STUDENT") {
+    isLoadingRole = true;
     currentRole = role;
+    setTimeout(() => {
+      push("/home");
+      setTimeout(() => {
+        isLoadingRole = false;
+      }, 300);
+    }, 200);
   }
 
   const currentBreadcrumb = $derived("Trang chủ");
 </script>
 
 <div class="main-layout">
+  {#if isLoadingRole}
+    <div class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Đang chuyển đổi vai trò...</p>
+    </div>
+  {/if}
+
   <SidebarNav
     bind:collapsed={isCollapsed}
     role={currentRole}
@@ -83,6 +98,52 @@
     display: flex;
     height: 100vh;
     background-color: #f1f5f9;
+    position: relative;
+  }
+
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-text {
+    margin-top: 16px;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
   }
 
   .content {
