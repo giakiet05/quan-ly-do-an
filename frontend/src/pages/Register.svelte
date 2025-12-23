@@ -1,5 +1,4 @@
 <script lang="ts">
-  // BỎ: import { createEventDispatcher } from "svelte"; (Không dùng)
   import AuthLayout from '../layouts/AuthLayout.svelte';  
   import { link, replace } from "svelte-spa-router";
   import OtpVerification from '../components/OtpVerification.svelte';
@@ -20,13 +19,12 @@
   let showConfirmPassword = false;
   let loading = false;
   let error = "";
-  let verificationToken = "";
+  let verification_token = "";
 
 
   const togglePassword = () => (showPassword = !showPassword);
   const toggleConfirmPassword = () => (showConfirmPassword = !showConfirmPassword);
 
-  // THÊM: Hàm xóa lỗi khi người dùng nhập lại (cho mượt)
   const clearError = () => {
     if(error) error = "";
   }
@@ -35,22 +33,23 @@
     authService.loginWithGoogle();
   };
 
-  const handleOtpSuccess = async (event: CustomEvent<{ verificationToken: string }>) => {
+  const handleOtpSuccess = async (event: CustomEvent<{ verification_token: string }>) => {
     loading = true;
     error = "";
 
     try {
-      verificationToken = event.detail.verificationToken;
-
+      const input_token = event.detail.verification_token;
+      const res = await authService.verifyEmail({ email, OTP: input_token });
+      const verification_token = res.verification_token || input_token; 
       await completeRegistration({
-        verificationToken,
+        verification_token,
         username: fullname,
         password,
       });
-      replace("/"); 
+      replace("/login"); 
     } catch (e: any) {
       error = e?.message || "Đăng ký thất bại";
-      // Có thể không cần reset step về register nếu muốn cho user nhập lại OTP
+      step = "verify"
     } finally {
       loading = false;
     }
@@ -79,7 +78,7 @@
 
     try {
       await sendEmailVerification({ email });
-      step = "verify"; 
+      step = "verify";
     } catch (e: any) {
       error = e?.message || "Không thể gửi mã xác thực";
     } finally {
@@ -203,10 +202,12 @@
     {:else}
         <OtpVerification 
             email={email} 
+            bind:error={error} 
             on:success={handleOtpSuccess} 
             on:back={() => step = 'register'} 
         />
-        {/if}
+        
+    {/if}
 </AuthLayout>
 
 <style>

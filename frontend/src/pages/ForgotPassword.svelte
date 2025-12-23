@@ -4,11 +4,10 @@
   import Button from "../components/Button.svelte";
   import OtpVerification from "../components/OtpVerification.svelte";
 
-  // --- STATE ---
   let step = 'email'; // Các bước: 'email' -> 'otp' -> 'reset'
   let email = "";
   
-  // State cho form Reset Password
+  let resetToken = "";
   let newPassword = "";
   let confirmNewPassword = "";
   let showPassword = false;
@@ -32,18 +31,48 @@
     }
 
     loading = true;
-    // Giả lập API gửi mail
-    setTimeout(() => {
-        console.log("Sending OTP to:", email);
+    try {
+        await authService.forgotPassword({ email: email });
+        step = 'otp';
+    } catch (err: any) {
+        console.error("Lỗi gửi mail:", err);
+        error = err?.message || err?.error?.message || "Không thể gửi mã xác nhận. Vui lòng thử lại.";
+    } finally {
         loading = false;
-        step = 'otp'; // Chuyển sang bước nhập OTP
-    }, 1500);
+    }
   };
 
   // BƯỚC 2: Xử lý khi OTP thành công (nhận sự kiện từ component con)
-  const handleOtpSuccess = (e) => {
-      console.log("OTP Verified code:", e.detail.code);
-      step = 'reset'; // Chuyển sang bước đặt lại mật khẩu
+  const handleOtpSuccess = (e: CustomEvent) => {
+      const code = e.detail.code;
+      loading = true;
+      error = "";
+
+      try {
+        // Gọi API để kiểm tra mã OTP và lấy resetToken
+        const response = await authService.verifyResetOtp({ 
+            email: email, 
+            code: code 
+        });
+
+        // Bạn cần kiểm tra DTO thực tế, ở đây mình lấy theo chuẩn thường gặp
+        resetToken = response.reset_token || (response as any).token; 
+        
+        if (!resetToken) {
+            throw new Error("Không nhận được token đặt lại mật khẩu từ server.");
+        }
+
+        console.log("Verify thành công, Token:", resetToken);
+        step = 'reset'; // Chuyển sang bước nhập pass mới
+
+      } catch (err: any) {
+        console.error("Lỗi verify OTP:", err);
+        error = err?.message || "Mã xác nhận không đúng hoặc đã hết hạn.";
+        // Nếu lỗi, component OtpVerification có thể cần reset input, 
+        // ở đây ta hiển thị lỗi lên màn hình chính
+      } finally {
+        loading = false;
+      }
   }
 
   // BƯỚC 3: Đổi mật khẩu mới

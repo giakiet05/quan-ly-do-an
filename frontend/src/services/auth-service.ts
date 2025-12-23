@@ -120,6 +120,7 @@ export async function completeRegistration(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+  console.log("Response from completeRegistration:", payload, res);
   const json = await safeJson(res);
   throwIfError(res, json);
 

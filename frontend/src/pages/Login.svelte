@@ -6,7 +6,7 @@
   // Import service object
   import { authService } from "../services/auth-service";
   
-  // Chỉ cần import setAuth để cập nhật UI state (Store), không cần import storage-service nữa
+  // Chỉ cần import setAuth để cập nhật UI state (Store)
   import { setAuth } from "../stores/auth-store";
 
   let Email = "";
@@ -46,7 +46,6 @@
       console.log("Login thành công:", res);
 
       // 2. Cập nhật Store (để Header/Sidebar cập nhật giao diện ngay lập tức)
-      // res.user và res.accessToken lấy từ kết quả trả về của API
       setAuth(res.user, res.accessToken);
 
       // 3. Chuyển hướng
@@ -55,11 +54,10 @@
     } catch (err: any) {
       console.error("Lỗi đăng nhập:", err);
       
-      // Xử lý hiển thị lỗi linh hoạt tùy theo backend trả về format gì
       if (err?.message) {
         error = err.message;
       } else if (err?.error?.message) {
-        error = err.error.message; // Strapi format thường gặp
+        error = err.error.message;
       } else if (typeof err === "string") {
         error = err;
       } else {
@@ -98,57 +96,55 @@
         disabled={loading}
         on:input={clearError} 
       />
-      </div>
+    </div>
 
     <div class="form-group">
       <label for="password">Mật khẩu <span class="required">*</span></label>
       <div class="input-wrapper-with-icon">
         <input
           id="password"
-          type="text" 
-          hidden={!showPassword}
-          value={password}
-          disabled={loading}
-          class="has-icon-right"
-          on:input={(e) => { password = e.currentTarget.value; clearError(); }}
-        />
-        <input
-          id="password-field"
           type={showPassword ? "text" : "password"}
           bind:value={password}
-          placeholder="Nhập mật khẩu"
+          placeholder="Nhập mật khẩu của bạn"
           disabled={loading}
           class="has-icon-right"
-          on:input={clearError}
+          on:input={clearError} 
         />
-        
+
+        <!-- <--- CHỈNH: dùng native button để toggle, tránh Button component tạo layout thừa -->
         <div class="toggle-password-wrapper">
-            <Button 
-                variant="icon" 
-                type="button" 
-                onclick={togglePassword} 
-                title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                tabindex="-1"
-            >
-                {#if showPassword}
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                {:else}
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
-                {/if}
-            </Button>
+          <button
+            type="button"
+            on:click={togglePassword}
+            title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            tabindex="-1"
+            class="icon-button"
+            aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+          >
+            {#if showPassword}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+              </svg>
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="eye-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/>
+              </svg>
+            {/if}
+          </button>
         </div>
       </div>
     </div>
 
     <div class="forgot-password-link">
-        <a href="/forgot-password" use:link>Quên mật khẩu?</a>
+      <a href="/forgot-password" use:link>Quên mật khẩu?</a>
     </div>
 
     <Button 
-        variant="primary" 
-        type="submit" 
-        disabled={loading} 
-        class="w-full"
+      variant="primary" 
+      type="submit" 
+      disabled={loading} 
+      class="w-full"
     >
       {#if loading}
         <span class="loader"></span> Đang xử lý...
@@ -180,7 +176,6 @@
 </AuthLayout>
 
 <style>
-  /* --- Variables & Base Styles --- */
   :root {
     --primary-blue: #1a56db;
     --text-dark: #111827;
@@ -188,9 +183,8 @@
     --input-bg: #f3f5f7;
   }
 
-  /* --- MỚI: Style cho dấu sao bắt buộc --- */
   .required {
-    color: #ef4444; /* Màu đỏ */
+    color: #ef4444;
     margin-left: 4px;
     font-weight: bold;
   }
@@ -223,15 +217,29 @@
     transform: translateY(-50%);
     z-index: 10;
   }
+
+  /* NEW: native icon button (no padding/margin) */
+  .icon-button {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+  }
+
   .eye-icon { width: 20px; height: 20px; }
 
   .forgot-password-link { text-align: right; margin-top: -16px; margin-bottom: 24px; }
   .forgot-password-link a { color: var(--primary-blue); font-weight: 600; text-decoration: none; font-size: 14px; }
 
-  /* Utility class cho Button full width */
   :global(.w-full) {
     width: 100% !important;
-    display: flex !important; /* Đảm bảo flex để căn giữa nội dung */
+    display: flex !important;
   }
 
   .auth-footer { margin-top: 32px; font-size: 16px; color: var(--text-dark); }
@@ -249,12 +257,6 @@
   .divider {
     display: flex; align-items: center; margin: 24px 0; color: #6b7280; font-size: 14px;
   }
-  
-  .divider::before, .divider::after {
-    content: ''; flex: 1; height: 1px; background-color: #e5e7eb;
-  }
-
-  .divider span {
-    padding: 0 12px; font-weight: 500; color: #9ca3af; text-transform: lowercase;
-  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background-color: #e5e7eb; }
+  .divider span { padding: 0 12px; font-weight: 500; color: #9ca3af; text-transform: lowercase; }
 </style>

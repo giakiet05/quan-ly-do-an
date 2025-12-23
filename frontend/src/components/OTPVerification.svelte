@@ -12,7 +12,7 @@
   let timeLeft = 60; 
   let timerInterval: any;
   let loading = false;
-  let error = ""; 
+  export let error = ""; 
 
   const startTimer = () => {
     clearInterval(timerInterval);
@@ -37,6 +37,7 @@
 
   // --- HANDLERS ---
   const handleInput = (index: number, e: Event) => {
+    error = "";
     const target = e.target as HTMLInputElement;
     const val = target.value;
     
@@ -87,8 +88,7 @@
     const token = values.join("");
     if (token.length < 6) return;
     
-    // Lưu ý: key là 'verificationToken' để khớp với code ở Register.svelte
-    dispatch("success", { verificationToken: token }); 
+    dispatch("success", { verification_token: token }); 
   };
 
   const handleResend = async () => {
@@ -139,6 +139,15 @@
       />
     {/each}
   </div>
+
+  {#if error}
+    <div class="error-message">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="error-icon">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <span>{error}</span>
+    </div>
+  {/if}
 
   <div class="timer-wrapper">
     {#if timeLeft > 0}
@@ -257,5 +266,31 @@
   }
   .resend-btn:hover:not(:disabled) {
     text-decoration: underline;
+  }
+
+  .error-message {
+    background-color: #fef2f2;
+    color: #991b1b;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 16px; /* Cách timer ra một chút */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Căn giữa nội dung */
+    gap: 8px;
+    border: 1px solid #fee2e2;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .error-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 </style>
