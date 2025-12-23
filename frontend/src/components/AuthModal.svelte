@@ -95,7 +95,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailAddress }),
-      }
+      },
     );
 
     if (!res.ok) {
@@ -149,7 +149,7 @@
         } else {
           // Nếu là username, thử lấy email từ localStorage
           const savedEmail = localStorage.getItem(
-            `user_email_${data.identifier}`
+            `user_email_${data.identifier}`,
           );
           if (savedEmail) {
             email = savedEmail;
@@ -332,7 +332,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Không thể gửi lại mã OTP");
@@ -582,7 +582,7 @@
 </Modal>
 
 <style>
-  :global(.modal-container) {
+  .modal-container {
     width: 420px !important;
     padding: 32px !important;
   }

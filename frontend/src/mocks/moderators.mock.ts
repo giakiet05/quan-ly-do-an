@@ -14,7 +14,10 @@ export interface ApprovedUser {
   joinedDate: string;
 }
 
-export const mockModerators: Moderator[] = [
+// Mock data cleared - kept for reference
+export const mockModerators: any[] = [];
+
+// Original data archived: Moderator[] = [
   {
     id: 1,
     username: "u/DrinkConsistent9498",

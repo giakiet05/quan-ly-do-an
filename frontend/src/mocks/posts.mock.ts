@@ -39,7 +39,10 @@ export interface Post {
   updatedAt?: string;
 }
 
-export const mockPosts: Post[] = [
+// Mock data cleared - kept for reference
+export const mockPosts: any[] = [];
+
+// Original data archived: Post[] = [
   {
     id: '1',
     authorId: 'user1',

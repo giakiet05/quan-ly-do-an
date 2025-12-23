@@ -26,7 +26,10 @@ export interface Community {
   createdByAvatar?: string;
 }
 
-export const mockCommunities: Community[] = [
+// Mock data cleared - kept for reference
+export const mockCommunities: any[] = [];
+
+// Original data archived: Community[] = [
   {
     id: 'tech',
     name: 'Technology',

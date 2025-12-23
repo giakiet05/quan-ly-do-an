@@ -7,7 +7,10 @@ export interface SidebarCommunity {
 }
 
 // Mock data for sidebar communities list
-export const mockSidebarCommunities: SidebarCommunity[] = [
+// Mock data cleared - kept for reference
+export const mockSidebarCommunities: any[] = [];
+
+// Original data archived: SidebarCommunity[] = [
   {
     id: "1",
     name: "3amjokes",

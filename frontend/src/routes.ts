@@ -1,25 +1,27 @@
-import Home from './pages/Home.svelte';
 import Login from './pages/Login.svelte';
 import Register from './pages/Register.svelte';
 import ForgotPassword from './pages/ForgotPassword.svelte';
-import Profile from './pages/Profile.svelte';
-import Settings from './pages/Settings.svelte';
-import PostDetail from './pages/PostDetail.svelte';
-import Community from './pages/Community.svelte';
-import ManageCommunities from './pages/ManageCommunities.svelte';
-import ModTools from './pages/ModTools.svelte';
+import MyProfile from './pages/MyProfile.svelte';
+import Chat from './pages/Chat.svelte';
+import MyProjects from './pages/MyProjects.svelte';
+import MyProjectDetail from './pages/MyProjectDetail.svelte';
+
+// Archived pages available in src/_archived/pages for reference:
+// Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
 
 const routes = {
-    '/': Home,
-    '/login': Login,
-    '/register': Register,
-    '/profile': Profile,
-    '/settings': Settings,
-    '/post/:id': PostDetail,
-    '/lk/:name': Community,
-    '/lk/:name/mod': ModTools,
-    '/communities/manage': ManageCommunities,
-    '/forgot-password': ForgotPassword,
+    '/': Login,
+    '/auth': Login,
+    '/auth/': Login,
+    '/auth/login': Login,
+    '/auth/register': Register,
+    '/auth/forgot-password': ForgotPassword,
+    '/home': MyProfile, // Trang chủ sau khi login
+    '/my-profile': MyProfile,
+    '/chats': Chat,
+    '/my-projects': MyProjects,
+    '/my-projects/:id': MyProjectDetail,
+
 };
 
 export default routes;

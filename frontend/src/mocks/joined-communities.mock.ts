@@ -6,7 +6,10 @@ export interface JoinedCommunity {
 }
 
 // Mock data cho các community đã join (for CreatePostModal community selector)
-export const mockJoinedCommunities: JoinedCommunity[] = [
+// Mock data cleared - kept for reference
+export const mockJoinedCommunities: any[] = [];
+
+// Original data archived: JoinedCommunity[] = [
   {
     name: "3amjokes",
     members: "2,349,727 members",
