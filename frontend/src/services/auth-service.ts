@@ -120,6 +120,7 @@ export async function completeRegistration(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+  console.log("Response from completeRegistration:", payload, res);
   const json = await safeJson(res);
   throwIfError(res, json);
 
@@ -207,7 +208,7 @@ export async function forgotPassword(payload: ForgotPasswordRequestDto): Promise
 export async function verifyResetOtp(
   payload: VerifyResetOtpRequestDto
 ): Promise<VerifyResetOtpResponseDto> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/reset-password/verify`, {
+  const res = await fetch(`${API_BASE_URL}/api/auth/local/verify-reset-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
