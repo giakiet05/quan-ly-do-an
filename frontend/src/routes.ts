@@ -5,6 +5,7 @@ import MyProfile from './pages/MyProfile.svelte';
 import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
 import MyProjectDetail from './pages/MyProjectDetail.svelte';
+import ClassLecture from './pages/lecture/ClassLecture.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
@@ -21,7 +22,7 @@ const routes = {
     '/chats': Chat,
     '/my-projects': MyProjects,
     '/my-projects/:id': MyProjectDetail,
-
+    '/lecture/my-classes': ClassLecture,
 };
 
 export default routes;
