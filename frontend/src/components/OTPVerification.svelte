@@ -11,11 +11,7 @@
   let timeLeft = 60;
   let timerInterval: any;
   let loading = false;
-<<<<<<< HEAD
-  export let error = ""; 
-=======
-  let error = "";
->>>>>>> dev
+  export let error = "";
 
   const startTimer = () => {
     clearInterval(timerInterval);
@@ -91,8 +87,8 @@
   const handleVerify = () => {
     const token = values.join("");
     if (token.length < 6) return;
-    
-    dispatch("success", { verification_token: token }); 
+
+    dispatch("success", { verification_token: token });
   };
 
   const handleResend = async () => {

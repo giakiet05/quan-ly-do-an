@@ -1,11 +1,8 @@
 <script lang="ts">
   import { link, push } from "svelte-spa-router";
   import Button from "../components/Button.svelte";
-
-  // Import service object
+  import AuthModel from "../layouts/AuthLayout.svelte";
   import { authService } from "../services/auth-service";
-
-  // Chỉ cần import setAuth để cập nhật UI state (Store), không cần import storage-service nữa
   import { setAuth } from "../stores/auth-store";
 
   let Email = "";
@@ -36,23 +33,17 @@
     loading = true;
 
     try {
-      // 1. Gọi API Login
       const res = await authService.login({
         identifier: Email,
         password: password,
       });
 
       console.log("Login thành công:", res);
-
-      // 2. Cập nhật Store (để Header/Sidebar cập nhật giao diện ngay lập tức)
       setAuth(res.user, res.access_token, res.refresh_token);
-
-      // 3. Chuyển hướng sang trang chủ sau khi login thành công
       push("/home");
     } catch (err: any) {
       console.error("Lỗi đăng nhập:", err);
 
-      // Xử lý hiển thị lỗi linh hoạt tùy theo backend trả về format gì
       if (err?.message) {
         error = err.message;
       } else if (err?.error?.message) {
@@ -85,6 +76,7 @@
   <p class="subtitle">Đăng nhập hệ thống quản lý đồ án</p>
 </div>
 
+<!-- Form đăng nhập -->
 <form on:submit|preventDefault={handleSubmit} class="auth-form">
   {#if error}
     <div class="error-alert">{error}</div>
@@ -107,18 +99,6 @@
     <div class="input-wrapper-with-icon">
       <input
         id="password"
-        type="text"
-        hidden={!showPassword}
-        value={password}
-        disabled={loading}
-        class="has-icon-right"
-        on:input={(e) => {
-          password = e.currentTarget.value;
-          clearError();
-        }}
-      />
-      <input
-        id="password-field"
         type={showPassword ? "text" : "password"}
         bind:value={password}
         placeholder="Nhập mật khẩu"
@@ -127,49 +107,49 @@
         on:input={clearError}
       />
 
-      <div class="toggle-password-wrapper">
-        <Button
-          variant="icon"
-          type="button"
-          onclick={togglePassword}
-          title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-          tabindex="-1"
-        >
-          {#if showPassword}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="eye-icon"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-              /><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-              /></svg
-            >
-          {:else}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="1.5"
-              stroke="currentColor"
-              class="eye-icon"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
-              /></svg
-            >
-          {/if}
-        </Button>
-      </div>
+      <button
+        type="button"
+        class="icon-button"
+        on:click|preventDefault={togglePassword}
+        tabindex="-1"
+      >
+        {#if showPassword}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="eye-icon"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+            />
+          </svg>
+        {:else}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="eye-icon"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+            />
+          </svg>
+        {/if}
+      </button>
     </div>
   </div>
 
@@ -206,96 +186,101 @@
 </div>
 
 <style>
-  :root {
-    --primary-blue: #1a56db;
-    --text-dark: #111827;
-    --text-gray: #6b7280;
-    --input-bg: #f3f5f7;
-  }
-
-  .required {
-    color: #ef4444;
-    margin-left: 4px;
-    font-weight: bold;
-  }
-
+  /* Header section */
   .auth-header {
     margin-bottom: 32px;
+    text-align: center;
   }
+
   .icon-wrapper {
     display: inline-flex;
     justify-content: center;
     align-items: center;
     margin-bottom: 16px;
   }
+
   .hat-icon {
-    width: 48px;
-    height: 48px;
-    color: var(--primary-blue);
+    width: 56px;
+    height: 56px;
+    color: #1a56db;
   }
+
   .title {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-dark);
+    color: #111827;
     margin: 0 0 8px 0;
   }
+
   .subtitle {
     font-size: 16px;
-    color: var(--text-gray);
+    color: #6b7280;
     margin: 0;
   }
 
+  /* Form styles */
   .auth-form {
     text-align: left;
   }
+
   .form-group {
     margin-bottom: 24px;
   }
+
   label {
     display: block;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #111827;
     margin-bottom: 8px;
+  }
+
+  .required {
+    color: #ef4444;
+    margin-left: 2px;
   }
 
   input {
     width: 100%;
     padding: 14px 16px;
-    background-color: var(--input-bg);
-    border: 2px solid transparent;
+    background-color: #f9fafb;
+    border: 2px solid #e5e7eb;
     border-radius: 12px;
-    font-size: 16px;
-    color: var(--text-dark);
+    font-size: 15px;
+    color: #111827;
     transition: all 0.2s;
     box-sizing: border-box;
   }
+
   input::placeholder {
     color: #9ca3af;
   }
+
   input:focus {
     outline: none;
     background-color: #fff;
-    border-color: var(--primary-blue);
+    border-color: #1a56db;
   }
 
+  input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Password toggle */
   .input-wrapper-with-icon {
     position: relative;
   }
+
   input.has-icon-right {
     padding-right: 48px;
   }
 
-  .toggle-password-wrapper {
+  .icon-button {
     position: absolute;
-    right: 8px;
+    right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 10;
-  }
-
-  /* NEW: native icon button (no padding/margin) */
-  .icon-button {
     background: transparent;
     border: none;
     padding: 0;
@@ -306,6 +291,12 @@
     cursor: pointer;
     width: 32px;
     height: 32px;
+    color: #6b7280;
+    transition: color 0.2s;
+  }
+
+  .icon-button:hover {
+    color: #1a56db;
   }
 
   .eye-icon {
@@ -313,58 +304,49 @@
     height: 20px;
   }
 
+  /* Forgot password */
   .forgot-password-link {
     text-align: right;
-    margin-top: -16px;
+    margin-top: -12px;
     margin-bottom: 24px;
   }
+
   .forgot-password-link a {
-    color: var(--primary-blue);
+    color: #1a56db;
     font-weight: 600;
     text-decoration: none;
     font-size: 14px;
+    transition: color 0.2s;
   }
 
-  /* Utility class cho Button full width */
-  .w-full {
-    width: 100% !important;
-    display: flex !important;
-  }
-
-  .auth-footer {
-    margin-top: 32px;
-    font-size: 16px;
-    color: var(--text-dark);
-  }
-  .link-text {
-    color: var(--primary-blue);
-    font-weight: 700;
-    margin-left: 4px;
-    text-decoration: none;
-  }
-  .link-text:hover {
+  .forgot-password-link a:hover {
+    color: #1e40af;
     text-decoration: underline;
   }
 
+  /* Error alert */
   .error-alert {
     background-color: #fee2e2;
     color: #991b1b;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 12px 16px;
+    border-radius: 10px;
     margin-bottom: 20px;
     font-size: 14px;
-    text-align: left;
+    border-left: 4px solid #ef4444;
   }
 
+  /* Loader */
   .loader {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border: 3px solid #fff;
     border-bottom-color: transparent;
     border-radius: 50%;
     display: inline-block;
     animation: rotation 1s linear infinite;
+    margin-right: 8px;
   }
+
   @keyframes rotation {
     0% {
       transform: rotate(0deg);
@@ -374,10 +356,11 @@
     }
   }
 
+  /* Divider */
   .divider {
     display: flex;
     align-items: center;
-    margin: 24px 0;
+    margin: 28px 0;
     color: #6b7280;
     font-size: 14px;
   }
@@ -391,9 +374,33 @@
   }
 
   .divider span {
-    padding: 0 12px;
+    padding: 0 16px;
     font-weight: 500;
     color: #9ca3af;
-    text-transform: lowercase;
+  }
+
+  /* Footer */
+  .auth-footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 15px;
+    color: #6b7280;
+  }
+
+  .link-text {
+    color: #1a56db;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .link-text:hover {
+    color: #1e40af;
+    text-decoration: underline;
+  }
+
+  /* Utility */
+  :global(.w-full) {
+    width: 100% !important;
   }
 </style>
