@@ -1,4 +1,7 @@
 <script lang="ts">
+    /* =======================
+     * Imports
+     * ======================= */
     import {
         Plus,
         X,
@@ -7,24 +10,44 @@
         Download,
         Upload,
     } from "../../libs/Icons";
-    import type { CreateClassRequest, StudentInfo } from "../../types/class";
+    import { mockStudents } from "../../mocks/classes.mock";
+    import type { CreateClassRequest } from "../../types/class";
+    import { z } from "zod";
 
-    export let onClose: () => void;
-    export let onSubmit: (classData: CreateClassRequest) => void;
+    /* =======================
+     * Props
+     * ======================= */
+    const { onClose, onSubmit } = $props<{
+        onClose: () => void;
+        onSubmit: (data: CreateClassRequest) => void;
+    }>();
 
+    /* =======================
+     * Types & Constants
+     * ======================= */
     type ActiveTab = "list" | "excel" | "upload";
 
-    interface StudentInModal {
-        id: string;
-        studentCode: string;
-        name: string;
-        email: string;
-        selected?: boolean;
-    }
+    /* =======================
+     * Validation schema
+     * ======================= */
+    const ClassSchema = z.object({
+        name: z.string().min(1, "Tên lớp học là bắt buộc"),
+        semester: z.string().min(1, "Học kỳ là bắt buộc"),
+        school: z.string().min(1, "Trường là bắt buộc"),
+        description: z.string().optional(),
+    });
 
-    let activeTab: ActiveTab = "list";
-    let searchTerm = "";
+    /* =======================
+     * State: UI
+     * ======================= */
+    let activeTab = $state<ActiveTab>("list");
+    let searchTerm = $state("");
+    let selectAll = $state(false);
+    let errors = $state<Record<string, string>>({});
 
+    /* =======================
+     * State: Form
+     * ======================= */
     let formData: CreateClassRequest = {
         name: "",
         semester: "",
@@ -33,69 +56,66 @@
         students: [],
     };
 
-    let students: StudentInfo[] = [
-        {
-            fullName: "Nguyễn Văn A",
-            studentCode: "SV001",
-            email: "nguyenvana@student.edu.vn",
-        },
-        {
-            fullName: "Trần Thị B",
-            studentCode: "SV002",
-            email: "tranthib@student.edu.vn",
-        },
-        {
-            fullName: "Lê Văn C",
-            studentCode: "SV003",
-            email: "levanc@student.edu.vn",
-        },
-        {
-            fullName: "Phạm Thị D",
-            studentCode: "SV004",
-            email: "phamthid@student.edu.vn",
-        },
-        {
-            fullName: "Hoàng Văn E",
-            studentCode: "SV005",
-            email: "hoangvane@student.edu.vn",
-        },
-    ];
-
-    let errors: Record<string, string> = {};
-
-    function handleSubmit() {
-        errors = {};
-
-        if (!formData.name.trim()) errors.name = "Vui lòng nhập tên lớp học";
-        if (!formData.semester) errors.semester = "Vui lòng chọn học kỳ";
-        if (!formData.school) errors.school = "Vui lòng chọn trường đại học";
-
-        if (Object.keys(errors).length) return;
-
-        onSubmit({
-            ...formData,
-        });
-    }
-
-    let filteredStudents = students.filter(
-        (s) =>
-            s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.studentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.email.toLowerCase().includes(searchTerm.toLowerCase()),
+    /* =======================
+     * State: Students
+     * ======================= */
+    const students = $state(
+        mockStudents.map((s) => ({
+            ...s,
+            selected: false,
+        })),
     );
 
-    function toggleStudent(student: StudentInfo) {
-        student.selected = !student.selected;
-    }
-    function toggleAllStudents() {
-        const allSelected = students.every((s) => s.selected);
-        students = students.map((s) => ({ ...s, selected: !allSelected }));
+    /* =======================
+     * Derived
+     * ======================= */
+    const filteredStudents = $derived(
+        students.filter((s) =>
+            s.fullName.toLowerCase().includes(searchTerm.toLowerCase()),
+        ),
+    );
+
+    /* =======================
+     * Handlers: Form
+     * ======================= */
+    function handleSubmit(
+        event: SubmitEvent & { currentTarget: HTMLFormElement },
+    ) {
+        event.preventDefault();
+        errors = {};
+
+        const result = ClassSchema.safeParse(formData);
+        if (!result.success) {
+            result.error.issues.forEach((issue) => {
+                const field = issue.path[0];
+                if (field) errors[field as string] = issue.message;
+            });
+            return;
+        }
+
+        onSubmit(formData);
     }
 
-    function deleteSelected() {
-        if (confirm("Bạn có chắc chắn muốn xóa các sinh viên đã chọn?")) {
-            students = students.filter((s) => !s.selected);
-        }
+    /* =======================
+     * Handlers: Students
+     * ======================= */
+    function toggleStudent() {
+        syncSelectedStudents();
+    }
+
+    function toggleAllStudents() {
+        students.forEach((s) => (s.selected = selectAll));
+        syncSelectedStudents();
+    }
+
+    function syncSelectedStudents() {
+        formData.students = students
+            .filter((s) => s.selected)
+            .map(({ fullName, studentCode, email }) => ({
+                fullName,
+                studentCode,
+                email,
+            }));
     }
 </script>
 
@@ -116,22 +136,22 @@
                     viên.
                 </p>
             </div>
-            <button on:click={onClose} class="p-2 hover:bg-gray-100 rounded-lg">
+            <button onclick={onClose} class="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
             </button>
         </div>
 
         <!-- Form -->
-        <form
-            on:submit|preventDefault={handleSubmit}
-            class="flex-1 overflow-y-auto"
-        >
+        <form onsubmit={handleSubmit} class="flex-1 overflow-y-auto">
             <div class="p-6 space-y-6">
                 <!-- Basic info -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm mb-2">Tên lớp học</label>
+                        <label for="class-name" class="block text-sm mb-2"
+                            >Tên lớp học</label
+                        >
                         <input
+                            id="class-name"
                             class="w-full px-4 py-2 border rounded-lg"
                             class:border-red-500={errors.name}
                             bind:value={formData.name}
@@ -144,8 +164,11 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm mb-2">Học kỳ</label>
+                        <label for="semester" class="block text-sm mb-2"
+                            >Học kỳ</label
+                        >
                         <input
+                            id="semester"
                             class="w-full px-4 py-2 border rounded-lg"
                             class:border-red-500={errors.semester}
                             bind:value={formData.semester}
@@ -156,6 +179,38 @@
                             </p>
                         {/if}
                     </div>
+                    <div>
+                        <label for="school" class="block text-sm mb-2"
+                            >Trường</label
+                        >
+                        <input
+                            id="school"
+                            class="w-full px-4 py-2 border rounded-lg"
+                            class:border-red-500={errors.school}
+                            bind:value={formData.school}
+                        />
+                        {#if errors.school}
+                            <p class="text-red-500 text-sm mt-1">
+                                {errors.school}
+                            </p>
+                        {/if}
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm mb-2"
+                            >Mô tả</label
+                        >
+                        <input
+                            id="description"
+                            class="w-full px-4 py-2 border rounded-lg"
+                            class:border-red-500={errors.description}
+                            bind:value={formData.description}
+                        />
+                        {#if errors.description}
+                            <p class="text-red-500 text-sm mt-1">
+                                {errors.description}
+                            </p>
+                        {/if}
+                    </div>
                 </div>
 
                 <!-- Tabs -->
@@ -163,7 +218,7 @@
                     {#each ["list", "excel", "upload"] as tab}
                         <button
                             type="button"
-                            on:click={() => (activeTab = tab as ActiveTab)}
+                            onclick={() => (activeTab = tab as ActiveTab)}
                             class="px-4 py-2 rounded-lg"
                             class:bg-blue-50={activeTab === tab}
                             class:text-blue-600={activeTab === tab}
@@ -192,11 +247,16 @@
                             />
                         </div>
 
-                        <button class="btn-add">
+                        <button
+                            class="btn-add"
+                            onclick={() => {
+                                alert("Thêm sinh viên");
+                            }}
+                        >
                             <Plus size={16} /> Thêm
                         </button>
 
-                        <button class="btn-delete" on:click={deleteSelected}>
+                        <button class="btn-delete" onclick={() => {}}>
                             <Trash2 size={16} /> Xóa
                         </button>
                     </div>
@@ -204,31 +264,18 @@
                     <table
                         class="w-full border border-gray-200 border-rounded-lg mt-4"
                     >
-                        <thead class="bg-gray-50 border-b border-gray-200">
+                        <thead class="table-header">
                             <tr>
-                                <th
-                                    class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                                    >STT</th
-                                >
-                                <th
-                                    class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                                    >MSSV</th
-                                >
-                                <th
-                                    class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                                    >Tên sinh viên</th
-                                >
-                                <th
-                                    class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                                    >Email</th
-                                >
-                                <th
-                                    class="px-6 py-3 text-center text-sm font-medium text-gray-600"
-                                >
-                                    <!-- <input
+                                <th>STT</th>
+                                <th>MSSV</th>
+                                <th>Tên sinh viên</th>
+                                <th>Email</th>
+                                <th>
+                                    <input
                                         type="checkbox"
-                                        on:change={() => toggleAllStudents()}
-                                    /> -->
+                                        bind:checked={selectAll}
+                                        onchange={() => toggleAllStudents()}
+                                    />
                                 </th>
                             </tr>
                         </thead>
@@ -243,7 +290,7 @@
                                         <input
                                             type="checkbox"
                                             bind:checked={s.selected}
-                                            on:change={() => toggleStudent(s)}
+                                            onchange={() => toggleStudent()}
                                         />
                                     </td>
                                 </tr>
@@ -277,7 +324,7 @@
             <div
                 class="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50"
             >
-                <button type="button" on:click={onClose} class="btn-cancel"
+                <button type="button" onclick={onClose} class="btn-cancel"
                     >Hủy</button
                 >
                 <button type="submit" class="btn-add">Tạo lớp</button>

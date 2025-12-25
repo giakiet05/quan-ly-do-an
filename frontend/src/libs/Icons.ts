@@ -9,4 +9,6 @@ export {
     Upload,
     Download,
     X,
+    ArrowLeft,
+    ArrowRight
 } from 'lucide-svelte';

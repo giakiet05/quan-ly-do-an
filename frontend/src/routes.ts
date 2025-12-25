@@ -6,6 +6,8 @@ import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
 import MyProjectDetail from './pages/MyProjectDetail.svelte';
 import ClassLecture from './pages/lecture/ClassLecture.svelte';
+import ClassDetail from './pages/lecture/ClassDetail.svelte';
+import CreateCategoryModal from './pages/lecture/category/CreateCategoryModal.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
@@ -23,6 +25,8 @@ const routes = {
     '/my-projects': MyProjects,
     '/my-projects/:id': MyProjectDetail,
     '/lecture/my-classes': ClassLecture,
+    '/lecture/my-classes/:id': ClassDetail,
+    '/lecture/my-classes/:id/categories/create': CreateCategoryModal,
 };
 
 export default routes;

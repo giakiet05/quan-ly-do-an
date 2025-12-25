@@ -8,94 +8,49 @@
         ChevronLeft,
         ChevronRight,
     } from "../../libs/Icons";
+    import { onMount } from "svelte";
 
     import CreateClassModal from "./CreateClassModal.svelte";
     import EditClassModal from "./EditClassModal.svelte";
+    import { classStore } from "../../stores/class-store";
+    import { mockClasses } from "../../mocks/classes.mock";
+    import type { ClassItem, CreateClassRequest } from "../../types/class";
+    import { push } from "svelte-spa-router";
 
-    // Props
-    let { onSelectClass } = $props();
+    let {
+        classes,
+        searchTerm,
+        currentPage,
+        itemsPerPage,
 
-    // State
-    let searchTerm = $state("");
-    let showCreateModal = $state(false);
-    let showEditModal = $state(false);
-    let editingClass = $state(null);
-    let currentPage = $state(1);
-    let itemsPerPage = $state(5); // Make itemsPerPage reactive
+        // derived
+        filteredClasses,
+        paginatedClasses,
+        totalPages,
 
-    let classes = $state([
-        {
-            name: "Phát triển ứng dụng Web",
-            school: "Trường Đại học Bách Khoa",
-            description: "Lớp học về phát triển ứng dụng web hiện đại.",
-            studentCount: 45,
-            semester: "HK2 2023-2024",
-            status: "active",
-        },
-        {
-            name: "An toàn và bảo mật thông tin",
-            school: "Trường Đại học Bách Khoa",
-            description: "Lớp học về bảo mật thông tin và an toàn mạng.",
-            studentCount: 58,
-            semester: "HK2 2023-2024",
-            status: "inactive",
-        },
-        {
-            name: "Lập trình hướng đối tượng",
-            school: "Trường Đại học Bách Khoa",
-            description: "Lớp học về các nguyên lý lập trình hướng đối tượng.",
-            studentCount: 55,
-            semester: "HK1 2023-2024",
-            status: "active",
-        },
-        {
-            name: "Đồ án tốt nghiệp",
-            school: "Trường Đại học Bách Khoa",
-            description:
-                "Lớp học dành cho sinh viên thực hiện đồ án tốt nghiệp.",
-            studentCount: 15,
-            semester: "HK2 2023-2024",
-            status: "inactive",
-        },
-        {
-            name: "Trí tuệ nhân tạo",
-            school: "Trường Đại học Bách Khoa",
-            description: "Lớp học về các khái niệm và ứng dụng của AI.",
-            studentCount: 40,
-            semester: "HK1 2023-2024",
-            status: "active",
-        },
-    ]);
+        // actions
+        setData,
+        setSearch,
+        changePage,
+        changePageSize,
+        addClass,
+        updateClass,
+        removeClass,
+    } = classStore;
 
-    // Computed (Derived state)
-    let filteredClasses = $derived(
-        classes.filter(
-            (cls) =>
-                cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                cls.semester.toLowerCase().includes(searchTerm.toLowerCase()),
-        ),
-    );
+    onMount(() => {
+        setData(mockClasses);
+    });
 
-    let totalPages = $derived(Math.ceil(filteredClasses.length / itemsPerPage));
-    let startIndex = $derived((currentPage - 1) * itemsPerPage);
-    let endIndex = $derived(startIndex + itemsPerPage);
-    let currentClasses = $derived(filteredClasses.slice(startIndex, endIndex));
+    let showCreateModal = false;
+    let showEditModal = false;
+    let editingClass: ClassItem | null = null;
 
-    // Methods
-    function handleCreateClass(newClass) {
+    function handleCreateClass(classData: CreateClassRequest): void {
         showCreateModal = false;
     }
 
-    function handleEditClass(updatedClass) {
-        showEditModal = false;
-        editingClass = null;
-    }
-
-    function handleDeleteClass(classId) {
-        confirm("Bạn có chắc chắn muốn xóa lớp học này?");
-    }
-
-    function openEditModal(cls) {
+    function openEditModal(cls: ClassItem): void {
         editingClass = cls;
         showEditModal = true;
     }
@@ -117,49 +72,29 @@
             </div>
             <input
                 type="text"
-                bind:value={searchTerm}
-                oninput={() => (currentPage = 1)}
-                placeholder="Tìm kiếm theo mã học - tên lớp..."
+                bind:value={$searchTerm}
+                oninput={(e) =>
+                    setSearch((e.target as HTMLInputElement).value || "")}
+                placeholder="Tìm kiếm theo mã lớp - tên lớp..."
             />
         </div>
     </div>
 
     <div class="overflow-x-auto">
         <table class="w-full">
-            <thead class="bg-gray-50 border-b border-gray-200">
+            <thead class="table-header">
                 <tr>
-                    <th
-                        class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                        >Tên Lớp học</th
-                    >
-                    <th
-                        class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                        >Trường</th
-                    >
-                    <th
-                        class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                        >Mô tả</th
-                    >
-                    <th
-                        class="px-6 py-3 text-center text-sm font-medium text-gray-600"
-                        >Số lượng SV</th
-                    >
-                    <th
-                        class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                        >Học kỳ</th
-                    >
-                    <th
-                        class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                        >Trạng thái</th
-                    >
-                    <th
-                        class="px-6 py-3 text-left text-sm font-medium text-gray-600"
-                        >Hành động</th
-                    >
+                    <th>Tên Lớp học</th>
+                    <th>Trường</th>
+                    <th>Mô tả</th>
+                    <th>Số lượng SV</th>
+                    <th>Học kỳ</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-                {#each currentClasses as cls (cls.name)}
+                {#each $paginatedClasses as cls (cls.id)}
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4 font-medium">{cls.name}</td>
                         <td class="px-6 py-4">{cls.school}</td>
@@ -183,7 +118,8 @@
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-2">
                                 <button
-                                    onclick={() => onSelectClass(cls)}
+                                    onclick={() =>
+                                        push(`/lecture/my-classes/${cls.id}`)}
                                     class="flex items-center gap-1 text-blue-600 hover:text-blue-800"
                                 >
                                     <Eye size={16} />
@@ -197,7 +133,7 @@
                                 </button>
                                 <span class="text-gray-300">|</span>
                                 <button
-                                    onclick={() => handleDeleteClass(cls.name)}
+                                    onclick={() => removeClass(cls.id)}
                                     class="flex items-center gap-1 text-red-600 hover:text-red-800"
                                 >
                                     <Trash2 size={16} />
@@ -211,7 +147,7 @@
                             colspan="7"
                             class="px-6 py-12 text-center text-gray-500"
                         >
-                            {searchTerm
+                            {$searchTerm
                                 ? "Không tìm thấy lớp học nào"
                                 : "Chưa có lớp học nào"}
                         </td>
@@ -220,22 +156,23 @@
             </tbody>
         </table>
     </div>
-
-    {#if filteredClasses.length > 0}
+    <!-- pagination -->
+    {#if $filteredClasses.length > 0}
         <div
             class="p-6 border-t border-gray-200 flex justify-between items-center"
         >
             <div class="text-sm text-gray-600">
-                Hiển thị {startIndex + 1}-{Math.min(
-                    endIndex,
-                    filteredClasses.length,
-                )} của {filteredClasses.length} lớp
+                Hiển thị {($currentPage - 1) * $itemsPerPage + 1}-{Math.min(
+                    $currentPage * $itemsPerPage,
+                    $filteredClasses.length,
+                )} của {$filteredClasses.length} lớp
             </div>
 
             <div class="flex items-center gap-4">
                 <select
-                    bind:value={itemsPerPage}
-                    onchange={() => (currentPage = 1)}
+                    bind:value={$itemsPerPage}
+                    onchange={(e) =>
+                        changePageSize(+(e.target as HTMLSelectElement).value)}
                     class="px-3 py-1 border border-gray-300 rounded"
                 >
                     <option value={5}>5 hàng</option>
@@ -245,19 +182,18 @@
 
                 <div class="flex items-center gap-2">
                     <button
-                        onclick={() =>
-                            (currentPage = Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
+                        onclick={() => changePage($currentPage - 1)}
+                        disabled={$currentPage === 1}
                         class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
                     >
                         <ChevronLeft size={20} />
                     </button>
 
-                    {#each Array.from({ length: totalPages }, (_, i) => i + 1) as page}
+                    {#each Array.from({ length: $totalPages }, (_, i) => i + 1) as page}
                         <button
-                            onclick={() => (currentPage = page)}
-                            class="px-3 py-1 rounded transition-colors {currentPage ===
-                            page
+                            onclick={() => changePage(page)}
+                            class="px-3 py-1 rounded transition-colors {page ===
+                            $currentPage
                                 ? 'bg-blue-600 text-white'
                                 : 'border border-gray-300 hover:bg-gray-50'}"
                         >
@@ -266,12 +202,8 @@
                     {/each}
 
                     <button
-                        onclick={() =>
-                            (currentPage = Math.min(
-                                totalPages,
-                                currentPage + 1,
-                            ))}
-                        disabled={currentPage === totalPages}
+                        onclick={() => changePage($currentPage + 1)}
+                        disabled={$currentPage === $totalPages}
                         class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
                     >
                         <ChevronRight size={20} />
@@ -281,6 +213,7 @@
         </div>
     {/if}
 </div>
+
 {#if showCreateModal}
     <CreateClassModal
         onClose={() => (showCreateModal = false)}
@@ -288,13 +221,17 @@
     />
 {/if}
 
-{#if showEditModal && editingClass}
+<!-- {#if showEditModal && editingClass}
     <EditClassModal
         classData={editingClass}
         onClose={() => (showEditModal = false)}
-        onSubmit={handleEditClass}
+        onSubmit={(updatedClass) => {
+            updateClass(updatedClass);
+            showEditModal = false;
+            editingClass = null;
+        }}
     />
-{/if}
+{/if} -->
 
 <style>
     .status-tag {

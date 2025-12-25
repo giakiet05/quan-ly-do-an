@@ -1,4 +1,5 @@
 export interface ClassItem {
+    id: string;
     name: string;
     school: string;
     description?: string;
@@ -18,4 +19,19 @@ export interface StudentInfo {
     email: string;
     studentCode: string;
     selected?: boolean;
+}
+export interface ClassInfo {
+    name: string;
+    school: string;
+    description?: string;
+    semester: string;
+}
+export interface ClassData {
+    id: string;
+    name: string;
+    school: string;
+    description?: string;
+    studentCount: number;
+    semester: string;
+    status: "active" | "inactive";
 }
