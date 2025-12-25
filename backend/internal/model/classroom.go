@@ -20,5 +20,7 @@ type Classroom struct {
 }
 
 type ClassroomSetting struct {
-	CanStudentMessage bool `bson:"can_student_message" json:"can_student_message"`
+	CanStudentMessage     bool `bson:"can_student_message" json:"can_student_message"`
+	CanStudentDeleteGroup bool `bson:"can_student_delete_group" json:"can_student_delete_group"`
+	CanGroupChangeProject bool `bson:"can_group_change_project" json:"can_group_change_project"`
 }

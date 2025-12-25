@@ -329,7 +329,7 @@ func (m *messageService) GetMessageByID(
 	message, err := m.messageRepository.GetByID(ctx, messageID)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, apperror.ErrNoMessageFound
+			return nil, apperror.ErrMessageNotFound
 		}
 		return nil, err
 	}

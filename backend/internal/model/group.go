@@ -7,31 +7,35 @@ import (
 )
 
 type Group struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty"`
-	ClassroomID    primitive.ObjectID `bson:"classroom_id,omitempty"`
-	ProjectID      primitive.ObjectID `bson:"project_id,omitempty"`
-	GroupChannelID primitive.ObjectID `bson:"group_channel_id,omitempty"`
-	Members        []UserInfo         `bson:"members" json:"members"`
-	Tasks          []Task             `bson:"tasks" json:"tasks"`
-	Reports        []Report           `bson:"reports" json:"reports"`
-	Setting        GroupSetting       `bson:"setting" json:"setting"`
+	ID             primitive.ObjectID  `bson:"_id,omitempty"`
+	ClassroomID    primitive.ObjectID  `bson:"classroom_id,omitempty"`
+	ProjectID      primitive.ObjectID  `bson:"project_id,omitempty"`
+	GroupChannelID *primitive.ObjectID `bson:"group_channel_id,omitempty"`
+	LeaderID       primitive.ObjectID  `bson:"leader_id,omitempty"`
+	Members        []UserInfo          `bson:"members" json:"members"`
+	Tasks          []Task              `bson:"tasks" json:"tasks"`
+	TaskStatuses   []string            `bson:"task_statuses" json:"task_statuses"`
+	Reports        []Report            `bson:"reports" json:"reports"`
+	Setting        GroupSetting        `bson:"setting" json:"setting"`
 }
 
 type Task struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Title        string             `bson:"title" json:"title"`
-	AssignToID   primitive.ObjectID `bson:"assign_to_id" json:"assign_to_id"`
-	AssignToName string             `bson:"assign_to_name" json:"assign_to_name"`
-	DueDate      time.Time          `bson:"due_date" json:"due_date"`
-	Status       string             `bson:"status" json:"status"`
+	ID          primitive.ObjectID   `bson:"_id,omitempty" json:"id,omitempty"`
+	Title       string               `bson:"title" json:"title"`
+	Details     *string              `bson:"details,omitempty" json:"details,omitempty"`
+	AssignToIDs []primitive.ObjectID `bson:"assign_to_ids" json:"assign_to_ids"`
+	DueDate     time.Time            `bson:"due_date" json:"due_date"`
+	Status      string               `bson:"status" json:"status"`
 }
 
 type Report struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty"`
-	Title    string             `bson:"title" json:"title"`
-	Content  string             `bson:"content" json:"content"`
-	Files    []File             `bson:"files" json:"files"`
-	Feedback ReportFeedback     `bson:"feedback" json:"feedback"`
+	ID        primitive.ObjectID `bson:"_id,omitempty"`
+	Title     string             `bson:"title" json:"title"`
+	Content   string             `bson:"content" json:"content"`
+	Files     []File             `bson:"files" json:"files"`
+	Feedback  ReportFeedback     `bson:"feedback" json:"feedback"`
+	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
 type ReportFeedback struct {
@@ -39,6 +43,7 @@ type ReportFeedback struct {
 	Grade       string             `bson:"grade" json:"grade"`
 	LecturerID  primitive.ObjectID `bson:"lecturer_id" json:"lecturer_id"`
 	CommentedAt time.Time          `bson:"commented_at" json:"commented_at"`
+	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
 type GroupSetting struct{}

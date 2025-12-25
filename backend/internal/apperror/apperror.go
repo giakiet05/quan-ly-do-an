@@ -64,7 +64,7 @@ func StatusFromError(err error) int {
 	case isErrorType(err, ErrInvalidCredentials, ErrInvalidToken, ErrInvalidClaims, ErrInvalidIssuer, ErrInvalidAudience, ErrTokenInvalidated):
 		return http.StatusUnauthorized
 	// 403 Forbidden
-	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrUserNotMember, ErrEmailNotVerified):
+	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
 		return http.StatusForbidden
 	// 404 Not Found
 	case isErrorType(err, ErrUserNotFound, ErrCommunityNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound):
@@ -102,6 +102,7 @@ var (
 	ErrNoFieldsToUpdate  = AppError{Code: "NO_FIELDS_TO_UPDATE", Message: "No fields provided to update"}
 	ErrInvalidID         = AppError{Code: "INVALID_ID", Message: "Invalid ID format"}
 	ErrPaginationInvalid = AppError{Code: "PAGINATION_INVALID", Message: "Page number or page size is invalid. Page size must be smaller than 500."}
+	ErrNotFound          = AppError{Code: "NOT_FOUND", Message: "Resource not found"}
 
 	// User-related
 	ErrUserNotFound   = AppError{Code: "USER_NOT_FOUND", Message: "User not found"}
@@ -109,21 +110,18 @@ var (
 	ErrEmailExists    = AppError{Code: "EMAIL_EXISTS", Message: "Email already exists"}
 	ErrUserInactive   = AppError{Code: "USER_INACTIVE", Message: "User account is inactive"}
 
-	// Community-related
-	ErrCommunityNotFound   = AppError{Code: "COMMUNITY_NOT_FOUND", Message: "Community not found"}
-	ErrCommunityNameExists = AppError{Code: "COMMUNITY_NAME_EXISTS", Message: "Community name already exists"}
-	ErrUserNotMember       = AppError{Code: "USER_NOT_MEMBER", Message: "User is not a member of this community"}
+	// Group-related
+	ErrGroupNotFound        = AppError{Code: "GROUP_NOT_FOUND", Message: "Group not found"}
+	ErrProjectGroupNotFound = AppError{Code: "PROJECT_GROUP_NOT_FOUND", Message: "Project group not found"}
+	ErrProjectNotFound      = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
+	ErrInvalidMemberNumber  = AppError{Code: "INVALID_MEMBER_NUMBER", Message: "Invalid member number"}
 
-	// Membership-related
+	// Class Membership-related
 	ErrMembershipNotFound     = AppError{Code: "MEMBERSHIP_NOT_FOUND", Message: "Membership not found"}
 	ErrAlreadyMember          = AppError{Code: "ALREADY_MEMBER", Message: "User is already a member of this community"}
 	ErrMembershipCreateFailed = AppError{Code: "MEMBERSHIP_CREATE_FAILED", Message: "Failed to create membership"}
 	ErrMembershipDeleteFailed = AppError{Code: "MEMBERSHIP_DELETE_FAILED", Message: "Failed to delete membership"}
 	ErrInvalidMembershipData  = AppError{Code: "INVALID_MEMBERSHIP_DATA", Message: "Invalid membership data"}
-
-	// Comment-related
-	ErrCommentNotFound = AppError{Code: "COMMENT_NOT_FOUND", Message: "Comment not found"}
-	ErrDepthInvalid    = AppError{Code: "DEPTH_TOO_HIGH", Message: "Depth can not be smaller than 0 or larger than 2"}
 
 	// Messaging-related
 	ErrChannelNotFound = AppError{Code: "CHANNEL_NOT_FOUND", Message: "Channel not found"}
