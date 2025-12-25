@@ -1,37 +1,18 @@
 package dto
 
-import "github.com/giakiet05/lkforum/internal/model"
+import (
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+)
 
-// Request DTOs
+// --- Request DTOs ---
 
-type UserRegisterRequest struct {
-	Username string `json:"username" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-}
+// New Registration Flow (Verify Email First)
 
-type UserLoginRequest struct {
-	Identifier string `json:"identifier" binding:"required"` // Username or Email
-	Password   string `json:"password" binding:"required"`
-}
-
-type VerifyEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	OTP   string `json:"otp" binding:"required,len=6"`
-}
-
-type ResendVerificationEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
-type CompleteGoogleSetupRequest struct {
-	SetupToken string `json:"setup_token" binding:"required"`
-	Username   string `json:"username" binding:"required,min=3,max=20"`
-}
-
-type UserUpdateRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
+// GetUsersQuery contains query parameters for searching and paginating users
+type GetUsersQuery struct {
+	Username string `form:"username"`
+	Page     int    `form:"page"`
+	PageSize int    `form:"pageSize"`
 }
 
 type ChangePasswordRequest struct {
@@ -39,64 +20,39 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
+// --- Response DTOs ---
 
-// Response DTOs
-
+// UserResponse is the main user object returned in API responses.
 type UserResponse struct {
-	ID         string             `json:"id"`
-	Username   string             `json:"username"`
-	Email      string             `json:"email,omitempty"`
-	Reputation int                `json:"reputation"`
-	Title      string             `json:"title"`
-	Role       model.Role         `json:"role"`
-	Provider   model.AuthProvider `json:"provider"`
-	IsVerified bool               `json:"is_verified"`
-}
-
-type AuthResponse struct {
-	User         UserResponse `json:"user"`
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
+	ID       string             `json:"id"`
+	Username string             `json:"username"`
+	Email    string             `json:"email,omitempty"`
+	Provider model.AuthProvider `json:"provider"`
+	Avatar   *model.Image       `json:"avatar,omitempty"`
 }
 
 func FromUser(u *model.User) UserResponse {
+	if u == nil {
+		return UserResponse{}
+	}
 	return UserResponse{
-		ID:         u.ID.Hex(),
-		Username:   u.Username,
-		Email:      u.Email,
-		Reputation: u.Reputation,
-		Title:      calculateTitle(u.Reputation),
-		Role:       u.Role,
-		Provider:   u.Provider,
-		IsVerified: u.IsVerified,
+		ID:       u.ID.Hex(),
+		Username: u.Username,
+		Email:    u.Email,
+		Provider: u.Provider,
+		Avatar:   u.Avatar,
 	}
 }
 
 func FromUsers(users []*model.User) []UserResponse {
 	responses := make([]UserResponse, 0, len(users))
 	for _, u := range users {
-		responses = append(responses, FromUser(u))
+		if u == nil {
+			continue // Skip nil users
+		}
+		userResponse := FromUser(u)
+		//userResponse.Email = "" // Hide email in list view
+		responses = append(responses, userResponse)
 	}
 	return responses
-}
-
-// calculateTitle determines the user's title based on their reputation score.
-func calculateTitle(reputation int) string {
-	switch {
-	case reputation >= 10000:
-		return "Huyền thoại"
-	case reputation >= 2000:
-		return "Lão làng"
-	case reputation >= 500:
-		return "Cây bút trẻ"
-	case reputation >= 100:
-		return "Thành viên tích cực"
-	case reputation >= 0:
-		return "Lính mới"
-	default:
-		return "Người qua đường"
-	}
 }

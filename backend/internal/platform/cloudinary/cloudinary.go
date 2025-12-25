@@ -1,101 +1,133 @@
 package cloudinary
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
-	"net/http"
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/config"
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 )
 
-const (
-	apiBaseURL = "https://api.cloudinary.com/v1_1"
-)
-
-// Response is the structure of a successful Cloudinary API response.
-type Response struct {
-	SecureURL string `json:"secure_url"`
-	PublicID  string `json:"public_id"`
+func newCld() (*cloudinary.Cloudinary, error) {
+	return cloudinary.NewFromParams(config.Cfg.Cloudinary.CloudName, config.Cfg.Cloudinary.APIKey, config.Cfg.Cloudinary.APISecret)
 }
 
-// Upload sends a file to Cloudinary and returns the response.
-func Upload(file multipart.File, fileHeader *multipart.FileHeader) (*Response, error) {
-	cloudinaryCfg := config.Cfg.Cloudinary
-
-	var b bytes.Buffer
-	writer := multipart.NewWriter(&b)
-
-	part, err := writer.CreateFormFile("file", fileHeader.Filename)
+func Upload(file multipart.File) (*uploader.UploadResult, error) {
+	cld, err := newCld()
 	if err != nil {
 		return nil, err
 	}
-	if _, err = io.Copy(part, file); err != nil {
-		return nil, err
-	}
 
-	writer.WriteField("folder", cloudinaryCfg.UploadFolder)
-	writer.WriteField("upload_preset", cloudinaryCfg.UploadPreset)
-
-	writer.Close()
-
-	url := fmt.Sprintf("%s/%s/image/upload", apiBaseURL, cloudinaryCfg.CloudName)
-	req, err := http.NewRequest("POST", url, &b)
-	if err != nil {
-		return nil, err
-	}
-	req.SetBasicAuth(cloudinaryCfg.APIKey, cloudinaryCfg.APISecret)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("cloudinary upload error (%d): %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var cloudRes Response
-	if err := json.NewDecoder(resp.Body).Decode(&cloudRes); err != nil {
-		return nil, err
-	}
-
-	return &cloudRes, nil
+	return cld.Upload.Upload(context.Background(), file, uploader.UploadParams{
+		Folder: config.Cfg.Cloudinary.UploadFolder,
+	})
 }
 
-// Delete removes an image from Cloudinary using its public ID.
-func Delete(publicID string) error {
-	cloudinaryCfg := config.Cfg.Cloudinary
-
-	url := fmt.Sprintf("%s/%s/image/destroy", apiBaseURL, cloudinaryCfg.CloudName)
-
-	payload := map[string]string{
-		"public_id": publicID,
-	}
-	body, _ := json.Marshal(payload)
-
-	req, _ := http.NewRequest("POST", url, bytes.NewReader(body))
-	req.SetBasicAuth(cloudinaryCfg.APIKey, cloudinaryCfg.APISecret)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+func UploadVideo(file multipart.File) (*uploader.UploadResult, error) {
+	cld, err := newCld()
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		data, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("cloudinary delete error (%d): %s", resp.StatusCode, data)
+		return nil, err
 	}
 
-	return nil
+	return cld.Upload.Upload(context.Background(), file, uploader.UploadParams{
+		Folder:       config.Cfg.Cloudinary.UploadFolder,
+		ResourceType: "video",
+	})
+}
+
+func Delete(publicID string) (*uploader.DestroyResult, error) {
+	cld, err := newCld()
+	if err != nil {
+		return nil, err
+	}
+
+	return cld.Upload.Destroy(context.Background(), uploader.DestroyParams{PublicID: publicID})
+}
+
+// UploadImages uploads multiple images and returns model.Image slice.
+// This function handles both single and multiple image uploads.
+func UploadImages(files []*multipart.FileHeader) ([]*model.Image, error) {
+	if len(files) == 0 {
+		return nil, errors.New("no images provided")
+	}
+
+	var uploadedImages []*model.Image
+	var lastErr error
+
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		result, err := Upload(file)
+		file.Close() // Close immediately, not defer in loop
+
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		uploadedImages = append(uploadedImages, &model.Image{
+			URL:        result.SecureURL,
+			PublicID:   result.PublicID,
+			UploadedAt: time.Now(),
+		})
+	}
+
+	if len(uploadedImages) == 0 {
+		if lastErr != nil {
+			return nil, fmt.Errorf("all image uploads failed: %w", lastErr)
+		}
+		return nil, errors.New("all image uploads failed")
+	}
+
+	return uploadedImages, nil
+}
+
+// UploadVideos uploads multiple videos and returns model.Video slice.
+func UploadVideos(files []*multipart.FileHeader) ([]*model.Video, error) {
+	if len(files) == 0 {
+		return nil, errors.New("no videos provided")
+	}
+
+	var uploadedVideos []*model.Video
+	var lastErr error
+
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		result, err := UploadVideo(file) // Use UploadVideo
+		file.Close()
+
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		uploadedVideos = append(uploadedVideos, &model.Video{
+			URL:        result.SecureURL,
+			PublicID:   result.PublicID,
+			UploadedAt: time.Now(),
+		})
+	}
+
+	if len(uploadedVideos) == 0 {
+		if lastErr != nil {
+			return nil, fmt.Errorf("all video uploads failed: %w", lastErr)
+		}
+		return nil, errors.New("all video uploads failed")
+	}
+
+	return uploadedVideos, nil
 }

@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+/* Removed Skeleton UI imports to prevent automatic dark mode switching */
+/* @import '@skeletonlabs/skeleton'; */
+/* @import '@skeletonlabs/skeleton-svelte'; */
+/* @import '@skeletonlabs/skeleton/themes/cerberus'; */
+
+:root {
+    --primary-color: #1a56db;
+    --primary-color-hover: #1a56db;
+    --background: #f3f5f7;
+    --surface-color: #ffffff;
+    --border-color: #d1d5db;
+    --text-color: #111827;
+    --text-color-secondary: #6b7280;
+}
+
+@layer components {
+    .card {
+        @apply bg-white border border-gray-200 rounded-lg shadow
+    }
+
+}

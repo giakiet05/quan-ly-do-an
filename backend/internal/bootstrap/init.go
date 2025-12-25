@@ -3,15 +3,15 @@ package bootstrap
 import (
 	"log"
 
-	"github.com/giakiet05/lkforum/internal/auth"
-	"github.com/giakiet05/lkforum/internal/config"
-	"github.com/giakiet05/lkforum/internal/controller"
-	"github.com/giakiet05/lkforum/internal/email"
-	"github.com/giakiet05/lkforum/internal/platform/bus"
-	"github.com/giakiet05/lkforum/internal/platform/ws"
-	"github.com/giakiet05/lkforum/internal/repo"
-	userroute "github.com/giakiet05/lkforum/internal/route/user"
-	"github.com/giakiet05/lkforum/internal/service"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/controller"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/email"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/ws"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/route"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,6 +24,10 @@ type Repos struct {
 	repo.NotificationRepo
 	repo.ChannelRepo
 	repo.MessageRepo
+	repo.EmailVerificationRepo
+	repo.PasswordResetRepo
+	repo.ClassroomRepo
+	repo.ClassroomInvitationRepo
 }
 
 type Services struct {
@@ -33,6 +37,7 @@ type Services struct {
 	service.NotificationService
 	service.ChannelService
 	service.MessageService
+	service.ClassroomInvitationService
 }
 
 type Controllers struct {
@@ -43,6 +48,7 @@ type Controllers struct {
 	controller.ChannelController
 	controller.MessageController
 	controller.GroupController
+	controller.ClassroomInvitationController
 }
 
 func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
@@ -52,29 +58,35 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 		ChannelRepo:      repo.NewChannelRepo(db),
 		MessageRepo:      repo.NewMessageRepo(db),
 		GroupRepo:        repo.NewGroupRepo(db),
+		EmailVerificationRepo:    repo.NewEmailVerificationRepo(db),
+		PasswordResetRepo:        repo.NewPasswordResetRepo(db),
+		ClassroomRepo:            repo.NewClassroomRepo(db),
+		ClassroomInvitationRepo:  repo.NewClassroomInvitationRepo(db),
 	}
 }
 
-func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus) *Services {
+func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus, tokenService *auth.TokenService) *Services {
 	return &Services{
-		AuthService:         service.NewAuthService(repos.UserRepo, emailSender),
-		UserService:         service.NewUserService(repos.UserRepo, eventBus),
 		GroupService:        service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo),
-		NotificationService: service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
-		ChannelService:      service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
-		MessageService:      service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
+		AuthService:                service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
+		UserService:                service.NewUserService(repos.UserRepo, eventBus, redisClient),
+		NotificationService:        service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
+		ChannelService:             service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
+		MessageService:             service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
+		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, emailSender),
 	}
 }
 
 func initControllers(services *Services, wsHub *ws.Hub) *Controllers {
 	return &Controllers{
-		AuthController:         *controller.NewAuthController(services.AuthService),
-		UserController:         *controller.NewUserController(services.UserService),
 		GroupController:        *controller.NewGroupController(services.GroupService),
-		NotificationController: *controller.NewNotificationController(services.NotificationService),
-		WebSocketController:    *controller.NewWebSocketController(wsHub),
-		ChannelController:      *controller.NewChannelController(services.ChannelService),
-		MessageController:      *controller.NewMessageController(services.MessageService),
+		AuthController:                *controller.NewAuthController(services.AuthService),
+		UserController:                *controller.NewUserController(services.UserService),
+		NotificationController:        *controller.NewNotificationController(services.NotificationService),
+		WebSocketController:           *controller.NewWebSocketController(wsHub),
+		ChannelController:             *controller.NewChannelController(services.ChannelService),
+		MessageController:             *controller.NewMessageController(services.MessageService),
+		ClassroomInvitationController: *controller.NewClassroomInvitationController(services.ClassroomInvitationService),
 	}
 }
 
@@ -88,13 +100,13 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 		c.JSON(200, gin.H{"message": "Welcome to LKForum API!"})
 	})
 
-	userroute.RegisterAuthRoutes(api, &controllers.AuthController)
-	userroute.RegisterUserRoutes(api, &controllers.UserController)
-	userroute.RegisterGroupRoutes(api, &controllers.GroupController)
-	userroute.RegisterNotificationRoutes(api, &controllers.NotificationController)
-	userroute.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
-	userroute.RegisterChannelRoutes(api, &controllers.ChannelController)
-	userroute.RegisterMessageRoutes(api, &controllers.MessageController)
+	route.RegisterAuthRoutes(api, &controllers.AuthController, &controllers.UserController)
+	route.RegisterUserRoutes(api, &controllers.UserController)
+	route.RegisterNotificationRoutes(api, &controllers.NotificationController)
+	route.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
+	route.RegisterChannelRoutes(api, &controllers.ChannelController)
+	route.RegisterMessageRoutes(api, &controllers.MessageController)
+	route.SetupClassroomInvitationRoutes(r, &controllers.ClassroomInvitationController)
 }
 
 func Init() (*gin.Engine, error) {
@@ -103,10 +115,8 @@ func Init() (*gin.Engine, error) {
 
 	redisClient := config.NewRedisClient()
 
-	config.ResetRedisAppKeys(redisClient)
-	log.Println("Redis app keys reset complete")
-
-	if err := InitializeTokenService(redisClient); err != nil {
+	tokenService, err := InitializeTokenService(redisClient)
+	if err != nil {
 		log.Printf("Warning: Token invalidation service not available: %v\n", err)
 	}
 
@@ -131,7 +141,7 @@ func Init() (*gin.Engine, error) {
 	emailSender := email.NewSMTPSender()
 
 	repos := initRepos(mongoClient, db)
-	services := initServices(repos, redisClient, emailSender, eventBus)
+	services := initServices(repos, redisClient, emailSender, eventBus, tokenService)
 	controllers := initControllers(services, wsHub)
 	initRoutes(controllers, router)
 

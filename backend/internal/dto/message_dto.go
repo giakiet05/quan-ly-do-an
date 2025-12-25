@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 )
 
 type CreateMessageRequest struct {
@@ -35,7 +35,11 @@ type MessageResponse struct {
 	CreatedAt      time.Time         `json:"created_at"`
 }
 
-func FromMessage(message *model.Message) *MessageResponse {
+func FromMessage(message *model.Message) MessageResponse {
+	if message == nil {
+		return MessageResponse{}
+	}
+
 	var senderID string
 	if message.SenderID != nil {
 		senderID = message.SenderID.Hex()
@@ -46,7 +50,7 @@ func FromMessage(message *model.Message) *MessageResponse {
 		readByString = append(readByString, readBy.Hex())
 	}
 
-	return &MessageResponse{
+	return MessageResponse{
 		ID:             message.ID.Hex(),
 		ChannelID:      message.ChannelID.Hex(),
 		SenderID:       senderID,
@@ -59,9 +63,9 @@ func FromMessage(message *model.Message) *MessageResponse {
 }
 
 func FromMessages(messages []model.Message) []MessageResponse {
-	var messageResponses []MessageResponse
+	messageResponses := make([]MessageResponse, 0, len(messages))
 	for _, msg := range messages {
-		messageResponses = append(messageResponses, *FromMessage(&msg))
+		messageResponses = append(messageResponses, FromMessage(&msg))
 	}
 	return messageResponses
 }

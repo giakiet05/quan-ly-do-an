@@ -7,13 +7,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/apperror"
-	"github.com/giakiet05/lkforum/internal/config"
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/model"
-	"github.com/giakiet05/lkforum/internal/platform/bus"
-	"github.com/giakiet05/lkforum/internal/repo"
-	"github.com/giakiet05/lkforum/internal/util"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -155,7 +155,7 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 		RecipientIDs: recipientIDs,
 		EventType:    bus.BroadcastEventMessageCreated,
 		TempID:       tempMessageID,
-		Data:         *dto.FromMessage(message),
+		Data:         dto.FromMessage(message),
 	}
 
 	m.eventBus.Publish(broadcastEvent)

@@ -67,10 +67,10 @@ func StatusFromError(err error) int {
 	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
 		return http.StatusForbidden
 	// 404 Not Found
-	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound):
+	case isErrorType(err, ErrUserNotFound, ErrCommunityNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound):
 		return http.StatusNotFound
 	// 409 Conflict
-	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch):
+	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrCommunityNameExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed):
 		return http.StatusConflict
 	// 500 Internal Server Error
 	case isErrorType(err, ErrInternal, ErrNoFieldsToUpdate, ErrMembershipCreateFailed, ErrMembershipDeleteFailed):
@@ -95,6 +95,7 @@ var (
 	ErrInvalidOTP           = AppError{Code: "INVALID_OTP", Message: "Invalid verification code"}
 	ErrOTPExpired           = AppError{Code: "OTP_EXPIRED", Message: "Verification code has expired"}
 	ErrLoginMethodMismatch  = AppError{Code: "LOGIN_METHOD_MISMATCH", Message: "This email is registered with a different login method. Please use the original method."}
+	ErrEmailNotRegistered   = AppError{Code: "EMAIL_NOT_REGISTERED", Message: "Email chưa được đăng ký"}
 
 	// Generic
 	ErrInternal          = AppError{Code: "INTERNAL_ERROR", Message: "Internal server error"}
@@ -124,5 +125,18 @@ var (
 
 	// Messaging-related
 	ErrChannelNotFound = AppError{Code: "CHANNEL_NOT_FOUND", Message: "Channel not found"}
-	ErrMessageNotFound = AppError{Code: "MESSAGE_NOT_FOUND", Message: "Message not found"}
+	ErrNoMessageFound  = AppError{Code: "NO_MESSAGE_FOUND", Message: "No message found"}
+
+	// Classroom-related
+	ErrClassroomNotFound = AppError{Code: "CLASSROOM_NOT_FOUND", Message: "Classroom not found"}
+	ErrRoundNotFound     = AppError{Code: "ROUND_NOT_FOUND", Message: "Round not found"}
+	ErrProjectNotFound   = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
+
+	// Invitation-related
+	ErrInvitationNotFound        = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
+	ErrInvitationExpired         = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
+	ErrInvitationAlreadyExists   = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
+	ErrInvitationAlreadyProcessed = AppError{Code: "INVITATION_ALREADY_PROCESSED", Message: "Invitation has already been accepted or rejected"}
+	ErrAlreadyInClassroom        = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
+	ErrEmailMismatch             = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
 )
