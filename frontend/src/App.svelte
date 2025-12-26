@@ -8,10 +8,9 @@
   import Login from "./pages/Login.svelte";
   import routes from "./routes";
 
-  // Redirect root to auth/login
   onMount(() => {
     if ($location === "/") {
-      push("/auth/login");
+      push("/home");
     }
   });
 </script>

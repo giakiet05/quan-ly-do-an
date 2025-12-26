@@ -37,7 +37,7 @@
     {
       id: "classes",
       label: "Lớp học",
-      route: "/classes",
+      route: "/lecture/my-classes",
       icon: "/book-open-text.svg",
     },
     {
@@ -98,7 +98,7 @@
   ];
 
   const menuItems = $derived(
-    role === "LECTURER" ? teacherMenuItems : studentMenuItems
+    role === "LECTURER" ? teacherMenuItems : studentMenuItems,
   );
 </script>
 

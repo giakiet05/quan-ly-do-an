@@ -5,6 +5,9 @@ import MyProfile from './pages/MyProfile.svelte';
 import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
 import MyProjectDetail from './pages/MyProjectDetail.svelte';
+import ClassLecture from './pages/lecture/ClassLecture.svelte';
+import ClassDetail from './pages/lecture/ClassDetail.svelte';
+import CreateCategoryModal from './pages/lecture/category/CreateCategoryModal.svelte';
 import Notification from './pages/Notification.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
@@ -22,6 +25,9 @@ const routes = {
     '/chats': Chat,
     '/my-projects': MyProjects,
     '/my-projects/:id': MyProjectDetail,
+    '/lecture/my-classes': ClassLecture,
+    '/lecture/my-classes/:id': ClassDetail,
+    '/lecture/my-classes/:id/categories/create': CreateCategoryModal,
     '/notifications': Notification,
 
 };

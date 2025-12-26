@@ -20,4 +20,27 @@
         @apply bg-white border border-gray-200 rounded-lg shadow
     }
 
+    .btn-add {
+        @apply flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors
+    }
+
+    .btn-delete {
+        @apply flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors
+    }
+
+    .btn-cancel {
+        @apply flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 transition-colors
+    }
+
+    input {
+        @apply w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
+    }
+
+    .table-header {
+        @apply bg-gray-50 border-b border-gray-200;
+    }
+
+    .table-header th {
+        @apply px-6 py-3 text-left text-sm font-medium text-gray-600;
+    }
 }
