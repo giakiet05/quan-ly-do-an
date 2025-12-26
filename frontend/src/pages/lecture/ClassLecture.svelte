@@ -81,7 +81,7 @@
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full">
+        <table>
             <thead class="table-header">
                 <tr>
                     <th>Tên Lớp học</th>
