@@ -4,7 +4,6 @@
     import { ArrowLeft } from "../../libs/Icons";
     import { fade } from "svelte/transition";
     import CategoryList from "./category/CategoryList.svelte";
-    let { classId } = $params;
     let classData = $state<ClassData>({
         id: "1",
         name: "Phát triển ứng dụng Web",

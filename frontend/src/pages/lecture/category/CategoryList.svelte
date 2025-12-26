@@ -6,6 +6,7 @@
     import type { ClassData } from "../../../types/class";
     import { Users } from "@lucide/svelte";
     import { Calendar } from "@lucide/svelte";
+    import CreateCategoryModal from "./CreateCategoryModal.svelte";
     let { classData } = $props<{
         classData: ClassData;
     }>();
@@ -31,9 +32,7 @@
         <h2 class="text-xl">Danh sách hạng mục đề tài</h2>
 
         <button
-            onclick={push(
-                `/lecture/my-classes/${classData.id}/categories/create`,
-            )}
+            onclick={() => (showCreateModal = true)}
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
             <Plus class="w-5 h-5" />
@@ -133,3 +132,7 @@
         </div>
     {/if}
 </div>
+
+{#if showCreateModal}
+    <CreateCategoryModal />
+{/if}

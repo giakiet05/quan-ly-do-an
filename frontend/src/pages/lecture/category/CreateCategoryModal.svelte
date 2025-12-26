@@ -1,7 +1,4 @@
 <script lang="ts">
-    let { onClose } = $props<{
-        onClose: () => void;
-    }>();
 </script>
 
 <div
