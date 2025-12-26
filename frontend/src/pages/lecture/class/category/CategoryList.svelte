@@ -72,6 +72,10 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <button
+                                onclick={() =>
+                                    push(
+                                        `/lecture/my-classes/${classData.id}/categories/${category.id}`,
+                                    )}
                                 class="flex items-center gap-1 text-blue-600 hover:text-blue-800"
                             >
                                 <Eye size={16} />
