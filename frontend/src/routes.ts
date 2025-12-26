@@ -9,6 +9,7 @@ import ClassLecture from './pages/lecture/class/ClassLecture.svelte';
 import ClassDetail from './pages/lecture/class/ClassDetail.svelte';
 import Notification from './pages/Notification.svelte';
 import CreateCategoryModal from './pages/lecture/class/category/CreateCategoryModal.svelte';
+import CategoryDetail from './pages/lecture/class/category/CategoryDetail.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
@@ -29,7 +30,7 @@ const routes = {
     '/lecture/my-classes/:id': ClassDetail,
     '/lecture/my-classes/:id/categories/create': CreateCategoryModal,
     '/notifications': Notification,
-
+    '/lecture/my-classes/:id/categories/:categoryId': CategoryDetail,
 };
 
 export default routes;
