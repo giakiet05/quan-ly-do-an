@@ -46,3 +46,10 @@ export interface CategoryItem {
     endDate: string;
     registeredCount: number;// số lượng sinh viên đã đăng ký
 }
+export interface ProjectCategory {
+    id: string;
+    name: string;
+    description?: string;
+    startDate: string;
+    endDate: string;
+}
