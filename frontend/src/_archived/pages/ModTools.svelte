@@ -973,7 +973,7 @@
               >Manage Posts & Comments</option
             >
             <option value="Manage Users">Manage Users</option>
-            <option value="Manage Settings">Manage Settings</option>
+            <option value="Manage UserSettings">Manage UserSettings</option>
           </select>
         </div>
 

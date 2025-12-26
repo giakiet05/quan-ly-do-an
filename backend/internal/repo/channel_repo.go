@@ -39,9 +39,9 @@ func (c *channelRepo) Create(ctx context.Context, req *dto.CreateChannelRequest,
 		return nil, apperror.ErrInternal
 	}
 
-	settings := make([]model.ChannelSetting, 0, len(req.Members))
+	settings := make([]model.ChannelUserSetting, 0, len(req.Members))
 	for _, m := range req.Members {
-		settings = append(settings, model.ChannelSetting{
+		settings = append(settings, model.ChannelUserSetting{
 			UserID:          m.ID,
 			Notification:    true,
 			TypingIndicator: true,
@@ -50,12 +50,12 @@ func (c *channelRepo) Create(ctx context.Context, req *dto.CreateChannelRequest,
 	}
 
 	channel := &model.Channel{
-		AdminIDs:  []primitive.ObjectID{requesterObjectID},
-		Members:   req.Members,
-		Settings:  settings,
-		Status:    model.ChannelStatusActive,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		AdminIDs:     []primitive.ObjectID{requesterObjectID},
+		Members:      req.Members,
+		UserSettings: settings,
+		Status:       model.ChannelStatusActive,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	result, err := c.channelCollection.InsertOne(ctx, channel)
@@ -157,7 +157,7 @@ func (c *channelRepo) GetByBothUserID(ctx context.Context, user1ID string, user2
 func (c *channelRepo) Update(ctx context.Context, channel *model.Channel) (*model.Channel, error) {
 	update := bson.M{
 		"$set": bson.M{
-			"settings":   channel.Settings,
+			"settings":   channel.UserSettings,
 			"status":     channel.Status,
 			"updated_at": time.Now(),
 		},

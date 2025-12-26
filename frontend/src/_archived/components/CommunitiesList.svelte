@@ -79,7 +79,7 @@
       <!-- Manage Communities -->
       <button class="action-button" onclick={handleManageCommunities}>
         <span class="action-icon">
-          <img src="/setting_icon.svg" alt="Settings" width="20" height="20" />
+          <img src="/setting_icon.svg" alt="UserSettings" width="20" height="20" />
         </span>
         <span class="action-label">Manage Communities</span>
       </button>

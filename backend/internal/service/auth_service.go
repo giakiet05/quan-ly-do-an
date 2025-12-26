@@ -208,11 +208,11 @@ func (s *authService) CompleteRegistration(verificationToken, username, password
 
 	// Create user (already verified)
 	user := &model.User{
-		Username:  username,
-		Email:     claims.Email,
-		Password:  string(hashedPassword),
-		Provider:  model.ProviderLocal,
-		CreatedAt: time.Now(),
+		Username:     username,
+		Email:        claims.Email,
+		Password:     string(hashedPassword),
+		AuthProvider: model.ProviderLocal,
+		CreatedAt:    time.Now(),
 	}
 
 	createdUser, err := s.userRepo.Create(ctx, user)
@@ -292,7 +292,7 @@ func (s *authService) Login(identifier, password string) (*model.User, string, s
 		return nil, "", "", err
 	}
 
-	if user.Provider != model.ProviderLocal {
+	if user.AuthProvider != model.ProviderLocal {
 		return nil, "", "", apperror.ErrLoginMethodMismatch
 	}
 
@@ -390,7 +390,7 @@ func (s *authService) ProcessGoogleCallback(code string) (*GoogleAuthResult, err
 		return nil, err
 	}
 
-	if user.Provider != model.ProviderGoogle {
+	if user.AuthProvider != model.ProviderGoogle {
 		return nil, apperror.ErrLoginMethodMismatch
 	}
 
@@ -425,11 +425,11 @@ func (s *authService) CompleteGoogleSetup(setupToken, username string) (*model.U
 	}
 
 	newUser := &model.User{
-		Username:   username,
-		Email:      claims.Email,
-		Provider:   model.ProviderGoogle,
-		ProviderID: claims.GoogleID,
-		CreatedAt:  time.Now(),
+		Username:     username,
+		Email:        claims.Email,
+		AuthProvider: model.ProviderGoogle,
+		ProviderID:   claims.GoogleID,
+		CreatedAt:    time.Now(),
 	}
 
 	createdUser, err := s.userRepo.Create(ctx, newUser)
@@ -514,7 +514,7 @@ func (s *authService) ForgotPassword(email string) error {
 	}
 
 	// Only allow password reset for local auth users
-	if user.Provider != model.ProviderLocal {
+	if user.AuthProvider != model.ProviderLocal {
 		return apperror.ErrLoginMethodMismatch
 	}
 

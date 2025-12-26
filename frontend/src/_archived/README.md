@@ -6,7 +6,7 @@ Thư mục này chứa các components và pages cũ để tham khảo UI sau n�
 
 - `Home.svelte` - Trang chủ với feed
 - `Profile.svelte` - Trang profile người dùng
-- `Settings.svelte` - Trang cài đặt
+- `UserSettings.svelte` - Trang cài đặt
 - `PostDetail.svelte` - Chi tiết bài đăng
 - `Community.svelte` - Trang community
 - `ManageCommunities.svelte` - Quản lý communities

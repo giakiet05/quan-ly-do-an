@@ -3,13 +3,13 @@ package dto
 import (
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 )
 
 type CreateGroupRequest struct {
 	ClassroomID    string   `json:"classroom_id"`
-	ProjectGroupID string   `json:"project_group_id"`
 	ProjectID      string   `json:"project_id"`
+	ProjectRoundID string   `json:"project_round_id"`
 	MemberIDs      []string `json:"member_ids"`
 }
 

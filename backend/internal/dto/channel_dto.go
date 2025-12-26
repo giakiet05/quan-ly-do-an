@@ -58,8 +58,8 @@ func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
 		}
 	}
 
-	settings := make([]ChannelSettingResponse, len(channel.Settings))
-	for i, s := range channel.Settings {
+	settings := make([]ChannelSettingResponse, len(channel.UserSettings))
+	for i, s := range channel.UserSettings {
 		settings[i] = ChannelSettingResponse{
 			UserID:          s.UserID.Hex(),
 			Notification:    s.Notification,

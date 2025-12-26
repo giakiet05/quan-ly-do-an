@@ -25,36 +25,15 @@ type ClassroomRepo interface {
 	IsStudentInClassroom(ctx context.Context, classroomID, studentID string) (bool, error)
 
 	// Rounds
-	CreateRound(ctx context.Context, classroomID string, round *model.RegistrationRound) error
-	GetRound(ctx context.Context, classroomID, roundID string) (*model.RegistrationRound, error)
-	UpdateRoundStatus(ctx context.Context, classroomID, roundID string, status model.RoundStatus) error
-	ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.RegistrationRound, int64, error)
-
-	// Projects
-	//CreateProject(ctx context.Context, classroomID, roundID string, project *model.RoundProject) error
-	//GetProject(ctx context.Context, classroomID, roundID, projectID string) (*model.RoundProject, error)
-	//UpdateProject(ctx context.Context, classroomID, roundID, projectID string, project *model.RoundProject) error
-	//ListProjects(ctx context.Context, classroomID, roundID string) ([]model.RoundProject, error)
-	//
-	//// Group Formation
-	//CreateGroupFormation(ctx context.Context, classroomID, roundID, projectID string, formation *model.GroupFormationRequest) error
-	//ConfirmFormationMember(ctx context.Context, classroomID, roundID, projectID, formationID, userID string, status model.FormationStatus) error
-	//CreateTeamFromFormation(ctx context.Context, classroomID, roundID, projectID, formationID string) (*model.Team, error)
-	//RejectFormation(ctx context.Context, classroomID, roundID, projectID, formationID string) error
-	//
-	//// Teams
-	//GetTeam(ctx context.Context, classroomID, roundID, projectID, teamID string) (*model.Team, error)
-	//AddJoinRequest(ctx context.Context, classroomID, roundID, projectID, teamID string, request *model.JoinRequest) error
-	//ApproveJoinRequest(ctx context.Context, classroomID, roundID, projectID, teamID, requestID string) error
-	//RejectJoinRequest(ctx context.Context, classroomID, roundID, projectID, teamID, requestID string) error
-	//MemberLeave(ctx context.Context, classroomID, roundID, projectID, teamID, userID string) error
-	//KickMember(ctx context.Context, classroomID, roundID, projectID, teamID, targetUserID string) error
-	//TransferLeadership(ctx context.Context, classroomID, roundID, projectID, teamID, newLeaderID string) error
-	//UpdateTeamSettings(ctx context.Context, classroomID, roundID, projectID, teamID string, settings model.TeamSettings) error
+	CreateRound(ctx context.Context, classroomID string, round *model.ProjectRound) error
+	GetRound(ctx context.Context, classroomID, roundID string) (*model.ProjectRound, error)
+	ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error)
 
 	// Stats
 	//GetProjectStats(ctx context.Context, classroomID, roundID, projectID string) (*model.ProjectStats, error)
 	//GetRoundStats(ctx context.Context, classroomID, roundID string) (*model.RoundStats, error)
+
+	IsLecturer(ctx context.Context, classroomID, lecturerID string) (bool, error)
 }
 
 type classroomRepo struct {
@@ -166,7 +145,7 @@ func (c *classroomRepo) GetByLecturer(ctx context.Context, lecturerID string, pa
 }
 
 // ==================== ROUNDS ====================
-func (c *classroomRepo) CreateRound(ctx context.Context, classroomID string, round *model.RegistrationRound) error {
+func (c *classroomRepo) CreateRound(ctx context.Context, classroomID string, round *model.ProjectRound) error {
 	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
 		return err
@@ -174,7 +153,6 @@ func (c *classroomRepo) CreateRound(ctx context.Context, classroomID string, rou
 
 	round.ID = primitive.NewObjectID()
 	round.CreatedAt = time.Now()
-	round.Status = model.RoundOpen
 
 	filter := bson.M{"_id": classroomObjectID}
 	update := bson.M{"$push": bson.M{"rounds": round}}
@@ -183,7 +161,7 @@ func (c *classroomRepo) CreateRound(ctx context.Context, classroomID string, rou
 	return err
 }
 
-func (c *classroomRepo) GetRound(ctx context.Context, classroomID, roundID string) (*model.RegistrationRound, error) {
+func (c *classroomRepo) GetRound(ctx context.Context, classroomID, roundID string) (*model.ProjectRound, error) {
 	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
 		return nil, err
@@ -207,14 +185,14 @@ func (c *classroomRepo) GetRound(ctx context.Context, classroomID, roundID strin
 	}
 	defer cursor.Close(ctx)
 
-	var round model.RegistrationRound
+	var round model.ProjectRound
 	if !cursor.Next(ctx) {
 		return nil, apperror.ErrRoundNotFound
 	}
 	cursor.Decode(&round)
 	return &round, nil
 }
-func (c *classroomRepo) ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.RegistrationRound, int64, error) {
+func (c *classroomRepo) ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error) {
 	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
 		return nil, 0, err
@@ -237,7 +215,7 @@ func (c *classroomRepo) ListRounds(ctx context.Context, classroomID string, page
 	}
 	defer cursor.Close(ctx)
 
-	var rounds []model.RegistrationRound
+	var rounds []model.ProjectRound
 	if err := cursor.All(ctx, &rounds); err != nil {
 		return nil, 0, err
 	}
@@ -267,33 +245,6 @@ func (c *classroomRepo) ListRounds(ctx context.Context, classroomID string, page
 	return rounds, total, nil
 }
 
-func (c *classroomRepo) UpdateRoundStatus(ctx context.Context, classroomID, roundID string, status model.RoundStatus) error {
-	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
-	if err != nil {
-		return err
-	}
-	roundObjectID, err := primitive.ObjectIDFromHex(roundID)
-	if err != nil {
-		return err
-	}
-
-	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{
-		"$set": bson.M{
-			"rounds.$[round].status":     status,
-			"rounds.$[round].updated_at": time.Now(),
-		},
-	}
-	arrayFilter := options.ArrayFilters{Filters: []interface{}{
-		bson.M{"round._id": roundObjectID},
-	}}
-
-	opts := options.Update().SetArrayFilters(arrayFilter)
-	_, err = c.collection.UpdateOne(ctx, filter, update, opts)
-	return err
-}
-
-// ==================== STUDENTS ====================
 func (c *classroomRepo) AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error {
 	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
@@ -355,6 +306,30 @@ func (c *classroomRepo) IsStudentInClassroom(ctx context.Context, classroomID, s
 	filter := bson.M{
 		"_id":          classroomObjectID,
 		"students._id": studentObjectID,
+	}
+
+	count, err := c.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func (c *classroomRepo) IsLecturer(ctx context.Context, classroomID, lecturerID string) (bool, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return false, apperror.ErrInvalidID
+	}
+
+	lecturerObjectID, err := primitive.ObjectIDFromHex(lecturerID)
+	if err != nil {
+		return false, apperror.ErrInvalidID
+	}
+
+	filter := bson.M{
+		"_id":          classroomObjectID,
+		"lecturer._id": lecturerObjectID,
 	}
 
 	count, err := c.collection.CountDocuments(ctx, filter)

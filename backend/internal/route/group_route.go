@@ -1,15 +1,15 @@
-package userroute
+package route
 
 import (
-	"github.com/giakiet05/lkforum/internal/controller"
-	"github.com/giakiet05/lkforum/internal/middleware"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/controller"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterGroupRoutes(rg *gin.RouterGroup, c *controller.GroupController) {
 	groups := rg.Group("/groups")
 	// Protected routes (require authentication)
-	groups.Use(middleware.AuthMiddleware())
+	groups.Use(middleware.RequireAuth())
 	{
 		// Group CRUD operations
 		groups.POST("", c.CreateGroup)

@@ -17,6 +17,7 @@ type Group struct {
 	TaskStatuses   []string            `bson:"task_statuses" json:"task_statuses"`
 	Reports        []Report            `bson:"reports" json:"reports"`
 	Setting        GroupSetting        `bson:"setting" json:"setting"`
+	JoinRequests   []JoinGroupRequest  `bson:"join_requests" json:"join_requests"`
 }
 
 type Task struct {
@@ -46,4 +47,23 @@ type ReportFeedback struct {
 	UpdatedAt   time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
-type GroupSetting struct{}
+type GroupSetting struct {
+	AllowJoinRequest bool `bson:"allow_join_request" json:"allow_join_request"`
+}
+
+type JoinGroupRequest struct {
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID      primitive.ObjectID `bson:"user_id" json:"user_id"`
+	UserInfo    UserInfo           `bson:"user_info" json:"user_info"`
+	Status      RequestStatus      `bson:"status" json:"status"`
+	Message     string             `bson:"message" json:"message"`
+	RequestedAt time.Time          `bson:"requested_at" json:"requested_at"`
+}
+
+type RequestStatus string
+
+const (
+	RequestPending  RequestStatus = "pending"
+	RequestAccepted RequestStatus = "accepted"
+	RequestRejected RequestStatus = "rejected"
+)

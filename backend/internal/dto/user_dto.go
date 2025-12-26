@@ -39,7 +39,7 @@ func FromUser(u *model.User) UserResponse {
 		ID:       u.ID.Hex(),
 		Username: u.Username,
 		Email:    u.Email,
-		Provider: u.Provider,
+		Provider: u.AuthProvider,
 		Avatar:   u.Avatar,
 	}
 }

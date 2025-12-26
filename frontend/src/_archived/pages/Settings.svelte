@@ -28,7 +28,7 @@
 <div class="settings-page">
   <div class="settings-container">
     <div class="settings-header">
-      <h1>Settings</h1>
+      <h1>UserSettings</h1>
       <p class="settings-description">
         Manage your account settings and preferences
       </p>
@@ -129,7 +129,7 @@
       <div class="settings-main">
         {#if activeTab === "account"}
           <div class="settings-section">
-            <h2>Account Settings</h2>
+            <h2>Account UserSettings</h2>
             <p class="section-description">
               Manage your account information and preferences
             </p>
@@ -198,21 +198,21 @@
           </div>
         {:else if activeTab === "privacy"}
           <div class="settings-section">
-            <h2>Privacy Settings</h2>
+            <h2>Privacy UserSettings</h2>
             <p class="section-description">
               Privacy settings will be implemented here
             </p>
           </div>
         {:else if activeTab === "email"}
           <div class="settings-section">
-            <h2>Email Settings</h2>
+            <h2>Email UserSettings</h2>
             <p class="section-description">
               Email settings will be implemented here
             </p>
           </div>
         {:else if activeTab === "notification"}
           <div class="settings-section">
-            <h2>Notification Settings</h2>
+            <h2>Notification UserSettings</h2>
             <p class="section-description">
               Notification settings will be implemented here
             </p>

@@ -141,7 +141,7 @@ func (s *userService) ChangePassword(userID, oldPassword, newPassword string) er
 		return err
 	}
 
-	if user.Provider != model.ProviderLocal || user.Password == "" {
+	if user.AuthProvider != model.ProviderLocal || user.Password == "" {
 		return apperror.ErrLoginMethodMismatch
 	}
 

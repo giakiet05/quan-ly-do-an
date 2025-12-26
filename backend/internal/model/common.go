@@ -25,11 +25,11 @@ type File struct{}
 type UserInfo struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Username string             `bson:"username" json:"username"`
-	Avatar   string             `bson:"avatar" json:"avatar"`
+	Avatar   *Image             `bson:"avatar" json:"avatar"`
 }
 
 type UserInfoResponse struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
-	Avatar   string `json:"avatar"`
+	Avatar   *Image `json:"avatar,omitempty"`
 }

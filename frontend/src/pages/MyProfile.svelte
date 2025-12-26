@@ -153,7 +153,7 @@
                 </div>
             </div>
 
-            <!-- Account Settings Card -->
+            <!-- Account UserSettings Card -->
             <div class="bg-white border border-slate-200 rounded-xl shadow-sm">
                 <div class="border-b border-slate-200 px-6 py-5">
                     <h4 class="text-lg text-slate-900">Cài đặt tài khoản</h4>

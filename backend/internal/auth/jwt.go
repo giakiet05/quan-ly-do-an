@@ -210,7 +210,7 @@ func ParseAccessToken(tokenStr string) (AuthUser, error) {
 		}
 	}
 
-	// Settings will be loaded by middleware through DB query
+	// UserSettings will be loaded by middleware through DB query
 	return AuthUser{ID: userID, Role: role, Settings: nil}, nil
 }
 

@@ -82,7 +82,7 @@
           Edit Profile
         </button>
         <button class="action-btn tertiary" on:click={handleSettings}>
-          <img src="/dot.png" alt="Settings" class="settings-icon" />
+          <img src="/dot.png" alt="UserSettings" class="settings-icon" />
         </button>
       </div>
     </div>

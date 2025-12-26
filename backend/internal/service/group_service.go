@@ -3,11 +3,11 @@ package service
 import (
 	"time"
 
-	"github.com/giakiet05/lkforum/internal/apperror"
-	"github.com/giakiet05/lkforum/internal/dto"
-	"github.com/giakiet05/lkforum/internal/model"
-	"github.com/giakiet05/lkforum/internal/repo"
-	"github.com/giakiet05/lkforum/internal/util"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -77,7 +77,7 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		{
 			ID:       requesterObjectID,
 			Username: leader.Username,
-			Avatar:   leader.RoleContent.User.Avatar,
+			Avatar:   leader.Avatar,
 		},
 	}
 
@@ -100,7 +100,7 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		members = append(members, model.UserInfo{
 			ID:       memberObjectID,
 			Username: user.Username,
-			Avatar:   user.RoleContent.User.Avatar,
+			Avatar:   user.Avatar,
 		})
 	}
 
@@ -110,16 +110,16 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 	}
 
 	// Tìm ProjectGroup theo ID
-	var groupFound *model.ProjectGroup
-	for i, group := range classroom.ProjectGroups {
-		if group.ID.Hex() == req.ProjectGroupID && !group.IsDeleted {
-			groupFound = &classroom.ProjectGroups[i]
+	var groupFound *model.ProjectRound
+	for i, group := range classroom.ProjectRounds {
+		if group.ID.Hex() == req.ProjectRoundID && !group.IsDeleted {
+			groupFound = &classroom.ProjectRounds[i]
 			break
 		}
 	}
 
 	if groupFound == nil {
-		return nil, apperror.ErrProjectGroupNotFound // không tìm thấy group
+		return nil, apperror.ErrProjectGroupNotFound
 	}
 
 	// Tìm Project trong ProjectGroup
@@ -317,7 +317,7 @@ func (g *groupService) UpdateGroupMemberRequest(req *dto.UpdateGroupMembersReque
 				group.Members = append(group.Members, model.UserInfo{
 					ID:       user.ID,
 					Username: user.Username,
-					Avatar:   user.RoleContent.User.Avatar,
+					Avatar:   user.Avatar,
 				})
 			}
 		}

@@ -219,13 +219,13 @@ func (s *channelService) UpdateChannel(req *dto.UpdateChannelRequest, requesterI
 	}
 
 	updated := false
-	for i := range channel.Settings {
-		if channel.Settings[i].UserID == requesterObjectID {
+	for i := range channel.UserSettings {
+		if channel.UserSettings[i].UserID == requesterObjectID {
 			if req.Notification != nil {
-				channel.Settings[i].Notification = *req.Notification
+				channel.UserSettings[i].Notification = *req.Notification
 			}
 			if req.TypingIndicator != nil {
-				channel.Settings[i].TypingIndicator = *req.TypingIndicator
+				channel.UserSettings[i].TypingIndicator = *req.TypingIndicator
 			}
 			updated = true
 			break
