@@ -2,13 +2,15 @@
     import { derived } from "svelte/store";
     import { push } from "svelte-spa-router";
     import { Edit2, Eye, FileText, Plus, Trash2 } from "lucide-svelte";
-    import { mockCategoriesList } from "../../../types/category";
-    import type { ClassData } from "../../../types/class";
     import { Users } from "@lucide/svelte";
     import { Calendar } from "@lucide/svelte";
     import CreateCategoryModal from "./CreateCategoryModal.svelte";
-    let { classData } = $props<{
+    import type { ClassData } from "../../../../types/class";
+    import { mockCategoriesList } from "../../../../types/category";
+    let { classData, onOpen, onCLose } = $props<{
         classData: ClassData;
+        onOpen: () => void;
+        onCLose: () => void;
     }>();
     let showCreateModal = $state(false);
     let handleCreateClass = (data: any) => {
@@ -32,14 +34,14 @@
         <h2 class="text-xl">Danh sách hạng mục đề tài</h2>
 
         <button
-            onclick={() => (showCreateModal = true)}
+            onclick={onOpen}
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
             <Plus class="w-5 h-5" />
             Tạo hạng mục mới
         </button>
     </div>
-    {#if categories.length === 0}
+    {#if categories.length === 0}s
         <div class="text-center py-16">
             <button
                 class="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 group"
@@ -132,7 +134,3 @@
         </div>
     {/if}
 </div>
-
-{#if showCreateModal}
-    <CreateCategoryModal />
-{/if}

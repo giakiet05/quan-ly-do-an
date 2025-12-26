@@ -5,10 +5,10 @@ import MyProfile from './pages/MyProfile.svelte';
 import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
 import MyProjectDetail from './pages/MyProjectDetail.svelte';
-import ClassLecture from './pages/lecture/ClassLecture.svelte';
-import ClassDetail from './pages/lecture/ClassDetail.svelte';
-import CreateCategoryModal from './pages/lecture/category/CreateCategoryModal.svelte';
+import ClassLecture from './pages/lecture/class/ClassLecture.svelte';
+import ClassDetail from './pages/lecture/class/ClassDetail.svelte';
 import Notification from './pages/Notification.svelte';
+import CreateCategoryModal from './pages/lecture/class/category/CreateCategoryModal.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity

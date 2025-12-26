@@ -9,9 +9,9 @@
         Search,
         Download,
         Upload,
-    } from "../../libs/Icons";
-    import { mockStudents } from "../../mocks/classes.mock";
-    import type { CreateClassRequest } from "../../types/class";
+    } from "../../../libs/Icons";
+    import { mockStudents } from "../../../mocks/classes.mock";
+    import type { CreateClassRequest } from "../../../types/class";
     import { z } from "zod";
 
     /* =======================

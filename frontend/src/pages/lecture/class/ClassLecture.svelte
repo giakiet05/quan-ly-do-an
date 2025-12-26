@@ -7,14 +7,14 @@
         Search,
         ChevronLeft,
         ChevronRight,
-    } from "../../libs/Icons";
+    } from "../../../libs/Icons";
     import { onMount } from "svelte";
 
     import CreateClassModal from "./CreateClassModal.svelte";
     import EditClassModal from "./EditClassModal.svelte";
-    import { classStore } from "../../stores/class-store";
-    import { mockClasses } from "../../mocks/classes.mock";
-    import type { ClassItem, CreateClassRequest } from "../../types/class";
+    import { classStore } from "../../../stores/class-store";
+    import { mockClasses } from "../../../mocks/classes.mock";
+    import type { ClassItem, CreateClassRequest } from "../../../types/class";
     import { push } from "svelte-spa-router";
 
     let {

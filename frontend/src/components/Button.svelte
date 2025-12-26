@@ -190,8 +190,10 @@
   }
 
   /* Support for w-full class from parent */
-  :global(.btn.w-full) {
+  .w-full {
     width: 100% !important;
     display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
 </style>

@@ -1,9 +1,29 @@
 <script lang="ts">
     import { params } from "svelte-spa-router";
-    import type { ClassData } from "../../types/class";
-    import { ArrowLeft } from "../../libs/Icons";
+    import type { ClassData } from "../../../types/class";
+    import { ArrowLeft } from "../../../libs/Icons";
     import { fade } from "svelte/transition";
     import CategoryList from "./category/CategoryList.svelte";
+    import CreateCategoryModal from "./category/CreateCategoryModal.svelte";
+    import { mockCategoriesList } from "../../../types/category";
+    import StudentTab from "./student/StudentTab.svelte";
+    import { mockStudentInClassData } from "../../../types/student";
+    import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
+    import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
+
+    let categories = $derived(
+        mockCategoriesList.map((cat) => ({
+            ...cat,
+            status:
+                new Date(cat.endDate) < new Date()
+                    ? "đã kết thúc"
+                    : new Date(cat.startDate) > new Date()
+                      ? "săp diễn ra"
+                      : "đang diễn ra",
+        })),
+    );
+    let students = $state(mockStudentInClassData);
+
     let classData = $state<ClassData>({
         id: "1",
         name: "Phát triển ứng dụng Web",
@@ -17,6 +37,8 @@
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
     );
+    let isCreateCategoryModalOpen = $state(false);
+    let showCreateAnnouncementModal = $state(false);
 
     const tabs = [
         { id: "overview", label: "Tổng quan" },
@@ -66,15 +88,24 @@
         {#if activeTab === "overview"}
             <div class="tab-content-enter-active">
                 <!-- Content for "Tổng quan" -->
-                <CategoryList {classData} />
+                <CategoryList
+                    onOpen={() => (isCreateCategoryModalOpen = true)}
+                    onCLose={() => (isCreateCategoryModalOpen = false)}
+                    {classData}
+                />
             </div>
         {:else if activeTab === "students"}
             <div class="tab-content-enter-active">
                 <!-- Content for "Sinh viên" -->
+                <StudentTab {students} {categories} />
             </div>
         {:else if activeTab === "announcements"}
             <div class="tab-content-enter-active">
                 <!-- Content for "Thông báo" -->
+                <AnnouncementTab
+                    onOpen={() => (showCreateAnnouncementModal = true)}
+                    onCLose={() => (showCreateAnnouncementModal = false)}
+                />
             </div>
         {:else if activeTab === "chat"}
             <div class="tab-content-enter-active">
@@ -83,6 +114,19 @@
         {/if}
     </div>
 </div>
+{#if isCreateCategoryModalOpen}
+    <CreateCategoryModal
+        onClose={() => (isCreateCategoryModalOpen = false)}
+        {classData}
+        onSubmit={() => {}}
+    />
+{/if}
+{#if showCreateAnnouncementModal}
+    <CreateAnnouncementModal
+        onClose={() => (showCreateAnnouncementModal = false)}
+        onSubmit={() => {}}
+    />
+{/if}
 
 <style>
     .tab-content {
