@@ -11,6 +11,12 @@ import Notification from './pages/Notification.svelte';
 import CreateCategoryModal from './pages/lecture/class/category/CreateCategoryModal.svelte';
 import CategoryDetail from './pages/lecture/class/category/CategoryDetail.svelte';
 
+// Student class pages
+import StudentClassList from './pages/student/class/StudentClassList.svelte';
+import StudentClassDetail from './pages/student/class/StudentClassDetail.svelte';
+import StudentCategoryDetail from './pages/student/class/StudentCategoryDetail.svelte';
+import StudentProjectRegister from './pages/student/class/StudentProjectRegister.svelte';
+
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
 
@@ -31,6 +37,12 @@ const routes = {
     '/lecture/my-classes/:id/categories/create': CreateCategoryModal,
     '/notifications': Notification,
     '/lecture/my-classes/:id/categories/:categoryId': CategoryDetail,
+    
+    // Student class routes
+    '/classes': StudentClassList,
+    '/classes/:classId': StudentClassDetail,
+    '/classes/:classId/categories/:categoryId': StudentCategoryDetail,
+    '/classes/:classId/categories/:categoryId/projects/:projectId': StudentProjectRegister,
 };
 
 export default routes;
