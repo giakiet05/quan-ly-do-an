@@ -184,10 +184,9 @@
                 </div>
             </div>
             <button
-                class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm"
+                class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
             >
-                <Download class="w-4 h-4" />
-                Xuất báo cáo
+                Xóa giai đoạn
             </button>
         </div>
     </div>

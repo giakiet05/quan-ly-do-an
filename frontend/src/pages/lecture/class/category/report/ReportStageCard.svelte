@@ -70,74 +70,78 @@
     const StatusIcon = $derived(statusConfig.icon);
 </script>
 
-<div
-    class="border {statusConfig.border} rounded-lg p-6 hover:shadow-md transition-shadow bg-white"
->
-    <div class="flex justify-between items-start mb-4">
-        <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
-                <h3 class="text-lg font-medium">{stage.title}</h3>
+<button onclick={() => onViewDetail(stage)}>
+    <div
+        class="border {statusConfig.border} rounded-lg p-6 hover:shadow-md transition-shadow bg-white"
+    >
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <h3 class="text-lg font-medium">{stage.title}</h3>
+                    <span
+                        class={`flex items-center gap-1 px-3 py-1 ${statusConfig.bg} ${statusConfig.color} rounded-full text-sm font-medium`}
+                    >
+                        <StatusIcon class="w-4 h-4" />
+                        {statusConfig.label}
+                    </span>
+                </div>
+                <p class="text-gray-600 text-sm">{stage.description}</p>
+            </div>
+
+            <!-- <div class="flex items-center gap-2 ml-4">
+                <button
+                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Xem chi tiết"
+                >
+                    <Eye class="w-5 h-5 text-gray-600" />
+                </button>
+                <button
+                    onclick={() => onDelete(stage.id)}
+                    class="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                    aria-label="Xóa giai đoạn"
+                >
+                    <Trash2 class="w-5 h-5 text-red-600" />
+                </button>
+            </div> -->
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar class="w-4 h-4" />
                 <span
-                    class={`flex items-center gap-1 px-3 py-1 ${statusConfig.bg} ${statusConfig.color} rounded-full text-sm font-medium`}
-                >
-                    <StatusIcon class="w-4 h-4" />
-                    {statusConfig.label}
-                </span>
-            </div>
-            <p class="text-gray-600 text-sm">{stage.description}</p>
-        </div>
-
-        <div class="flex items-center gap-2 ml-4">
-            <button
-                onclick={() => onViewDetail(stage)}
-                class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Xem chi tiết"
-            >
-                <Eye class="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-                onclick={() => onDelete(stage.id)}
-                class="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                aria-label="Xóa giai đoạn"
-            >
-                <Trash2 class="w-5 h-5 text-red-600" />
-            </button>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-4 mb-4">
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar class="w-4 h-4" />
-            <span
-                >Từ {new Date(stage.startDate).toLocaleDateString(
-                    "vi-VN",
-                )}</span
-            >
-        </div>
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar class="w-4 h-4" />
-            <span
-                >Đến {new Date(stage.endDate).toLocaleDateString("vi-VN")}</span
-            >
-        </div>
-    </div>
-
-    <div class="space-y-2">
-        <div class="flex justify-between items-center text-sm">
-            <div class="flex items-center gap-2 text-gray-600">
-                <Users class="w-4 h-4" />
-                <span>Đã nộp: {stage.submittedCount}/{stage.totalStudents}</span
+                    >Từ {new Date(stage.startDate).toLocaleDateString(
+                        "vi-VN",
+                    )}</span
                 >
             </div>
-            <span class="text-gray-600 font-medium"
-                >{submissionPercentage.toFixed(0)}%</span
-            >
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar class="w-4 h-4" />
+                <span
+                    >Đến {new Date(stage.endDate).toLocaleDateString(
+                        "vi-VN",
+                    )}</span
+                >
+            </div>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div
-                class="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                style="width: {submissionPercentage}%"
-            ></div>
+
+        <div class="space-y-2">
+            <div class="flex justify-between items-center text-sm">
+                <div class="flex items-center gap-2 text-gray-600">
+                    <Users class="w-4 h-4" />
+                    <span
+                        >Đã nộp: {stage.submittedCount}/{stage.totalStudents}</span
+                    >
+                </div>
+                <span class="text-gray-600 font-medium"
+                    >{submissionPercentage.toFixed(0)}%</span
+                >
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
+                    class="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                    style="width: {submissionPercentage}%"
+                ></div>
+            </div>
         </div>
     </div>
-</div>
+</button>

@@ -258,6 +258,11 @@
                 >
                     Lưu thay đổi
                 </button>
+                <button
+                    class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
+                >
+                    Xóa hạng mục
+                </button>
             </div>
         </div>
     </div>

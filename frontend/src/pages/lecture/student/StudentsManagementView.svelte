@@ -10,7 +10,6 @@
         ChevronRight,
         MessageCircle,
     } from "lucide-svelte";
-    import CreateStudentModal from "./CreateStudentModal.svelte";
     import { studentStore } from "../../../stores/student-store";
     import { mockStudentInClassData } from "../../../types/student";
     import { onMount } from "svelte";
@@ -42,34 +41,12 @@
     onMount(() => {
         setData(mockStudentInClassData);
     });
-
-    // function handleAddStudent(studentData) {
-    //     addStudent({
-    //         id: Date.now().toString(),
-    //         studentCode: studentData.studentCode || "",
-    //         name: studentData.name || "",
-    //         email: studentData.email || "",
-    //         phone: studentData.phone || "",
-    //         enrolledProjects: [],
-    //     });
-    //     showCreateModal = false;
-    // }
-
-    // function handleEditStudent(studentData) {
-    //     if (!editingStudent) return;
-    //     updateStudent({ ...editingStudent, ...studentData });
-    //     editingStudent = null;
-    // }
 </script>
 
 <div class="bg-white rounded-lg shadow-sm">
     <div class="p-6 border-b border-gray-200">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-semibold">Danh sách Sinh viên</h1>
-            <button onclick={() => (showCreateModal = true)} class="btn-add">
-                <Plus size={20} />
-                Thêm Sinh viên mới
-            </button>
         </div>
 
         <div class="relative">
@@ -90,27 +67,27 @@
         <table>
             <thead class="table-header">
                 <tr>
-                    <th>MSSV</th>
-                    <th>Sinh viên</th>
-                    <th>Email</th>
-                    <th>Số điện thoại</th>
-                    <th>Hành động</th>
+                    <th class="w-1/13">MSSV</th>
+                    <th class="w-2/13">Sinh viên</th>
+                    <th class="w-4/13">Email</th>
+                    <th class="w-4/13">Số điện thoại</th>
+                    <th class="w-2/13">Hành động</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
                 {#each $paginatedStudents as student (student.id)}
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-medium"
+                        <td class=" px-6 py-4 font-medium"
                             >{student.studentCode}</td
                         >
-                        <td class="px-6 py-4">{student.name}</td>
+                        <td class=" px-6 py-4">{student.name}</td>
                         <td class="px-6 py-4 text-gray-600"
                             >{student.email || "-"}</td
                         >
-                        <td class="px-6 py-4 text-center"
+                        <td class=" px-6 py-4 text-center"
                             >{student.phone || "-"}</td
                         >
-                        <td class="px-6 py-4">
+                        <td class=" px-6 py-4">
                             <div class="flex items-center gap-2">
                                 <button
                                     class="flex items-center gap-1 text-green-600 hover:text-green-800"
@@ -209,13 +186,6 @@
         </div>
     {/if}
 </div>
-
-<!-- {#if showCreateModal}
-    <CreateStudentModal
-        onClose={() => (showCreateModal = false)}
-        onSubmit={handleAddStudent}
-    />
-{/if} -->
 
 <style>
     .table-header th {

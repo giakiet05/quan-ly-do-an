@@ -50,8 +50,8 @@
     ] as const;
 </script>
 
-<div class="bg-white rounded-lg shadow-sm">
-    <div class="p-2 border-b border-gray-200">
+<div class="bg-white rounded-lg shadow-sm p-6">
+    <div class="p-2 border-gray-200">
         <button
             onclick={() => history.back()}
             class="flex items-center text-gray-600 hover:text-gray-900 transition-colors"

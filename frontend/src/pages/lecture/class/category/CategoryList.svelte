@@ -60,96 +60,83 @@
         <!-- Category List -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {#each categories as category (category.id)}
-                <div
-                    class={`rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${
-                        category.status === "đã kết thúc"
-                            ? "border-red-500 bg-red-50"
-                            : category.status === "săp diễn ra"
-                              ? "border-yellow-500 bg-yellow-50"
-                              : "border-green-500 bg-green-50"
-                    }`}
+                <button
+                    onclick={() =>
+                        push(
+                            `/lecture/my-classes/${classData.id}/categories/${category.id}`,
+                        )}
                 >
-                    <!-- Header -->
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 class="text-lg font-medium">{category.name}</h3>
-                            <p class="text-sm text-gray-500">
-                                {category.description}
-                            </p>
-                        </div>
-                        <span
-                            class={`px-2 py-1 text-xs font-semibold rounded-lg ${
-                                category.status === "đã kết thúc"
-                                    ? "bg-red-100 text-red-600"
-                                    : category.status === "săp diễn ra"
-                                      ? "bg-yellow-100 text-yellow-600"
-                                      : "bg-green-100 text-green-600"
-                            }`}
-                        >
-                            {category.status}
-                        </span>
-                    </div>
-
-                    <!-- Dates -->
                     <div
-                        class="flex justify-between items-center text-sm text-gray-600 mb-4"
+                        class={`rounded-lg p-4 shadow-sm transition-shadow hover:shadow-md hover:scale-105 duration-300 ${
+                            category.status === "đã kết thúc"
+                                ? "border-red-500 bg-red-50"
+                                : category.status === "săp diễn ra"
+                                  ? "border-yellow-500 bg-yellow-50"
+                                  : "border-green-500 bg-green-50"
+                        }`}
                     >
-                        <div class="flex items-center gap-2">
-                            <Calendar class="w-4 h-4" />
-                            <span>
-                                {new Date(
-                                    category.startDate,
-                                ).toLocaleDateString("vi-VN")}
+                        <!-- Header -->
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-medium">
+                                    {category.name}
+                                </h3>
+                                <p class="text-sm text-gray-500">
+                                    {category.description}
+                                </p>
+                            </div>
+                            <span
+                                class={`px-2 py-1 text-xs font-semibold rounded-lg ${
+                                    category.status === "đã kết thúc"
+                                        ? "bg-red-100 text-red-600"
+                                        : category.status === "săp diễn ra"
+                                          ? "bg-yellow-100 text-yellow-600"
+                                          : "bg-green-100 text-green-600"
+                                }`}
+                            >
+                                {category.status}
                             </span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <Calendar class="w-4 h-4" />
-                            <span>
-                                {new Date(category.endDate).toLocaleDateString(
-                                    "vi-VN",
-                                )}
-                            </span>
-                        </div>
-                    </div>
 
-                    <!-- Stats -->
-                    <div
-                        class="flex justify-between items-center text-sm text-gray-600 mb-4"
-                    >
-                        <div class="flex items-center gap-2">
-                            <FileText class="w-4 h-4" />
-                            <span>Số đề tài: {category.projectCount}</span>
+                        <!-- Dates -->
+                        <div
+                            class="flex justify-between items-center text-sm text-gray-600 mb-4"
+                        >
+                            <div class="flex items-center gap-2">
+                                <Calendar class="w-4 h-4" />
+                                <span>
+                                    {new Date(
+                                        category.startDate,
+                                    ).toLocaleDateString("vi-VN")}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Calendar class="w-4 h-4" />
+                                <span>
+                                    {new Date(
+                                        category.endDate,
+                                    ).toLocaleDateString("vi-VN")}
+                                </span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <Users class="w-4 h-4" />
-                            <span>
-                                Đã đăng ký: {category.registeredCount}/{classData.studentCount}
-                            </span>
-                        </div>
-                    </div>
 
-                    <!-- Actions -->
-                    <div class="flex justify-end items-center gap-3">
-                        <button
-                            onclick={() =>
-                                push(
-                                    `/lecture/my-classes/${classData.id}/categories/${category.id}`,
-                                )}
-                            class="text-blue-600 hover:text-blue-800"
+                        <!-- Stats -->
+                        <div
+                            class="flex justify-between items-center text-sm text-gray-600 mb-4"
                         >
-                            <Eye size={16} />
-                        </button>
-                        <button
-                            onclick={() => openEditCategoryModal(category)}
-                            class="text-green-600 hover:text-green-800"
-                        >
-                            <Edit2 size={16} />
-                        </button>
-                        <button class="text-red-600 hover:text-red-800">
-                            <Trash2 size={16} />
-                        </button>
+                            <div class="flex items-center gap-2">
+                                <FileText class="w-4 h-4" />
+                                <span>Số đề tài: {category.projectCount}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <Users class="w-4 h-4" />
+                                <span>
+                                    Đã đăng ký: {category.registeredCount}/{classData.studentCount}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </button>
             {/each}
         </div>
     {/if}

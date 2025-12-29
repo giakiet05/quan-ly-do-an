@@ -84,13 +84,13 @@
         <table>
             <thead class="table-header">
                 <tr>
-                    <th>Tên Lớp học</th>
-                    <th>Trường</th>
-                    <th>Mô tả</th>
-                    <th>Số lượng SV</th>
-                    <th>Học kỳ</th>
-                    <th>Trạng thái</th>
-                    <th>Hành động</th>
+                    <th class="w-2/15">Tên Lớp học</th>
+                    <th class="w-2/15">Trường</th>
+                    <th class="w-4/15">Mô tả</th>
+                    <th class="w-1/15">Số lượng SV</th>
+                    <th class="w-2/15">Học kỳ</th>
+                    <th class="w-2/15">Trạng thái</th>
+                    <th class="w-2/15">Hành động</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
