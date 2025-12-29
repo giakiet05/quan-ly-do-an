@@ -10,6 +10,7 @@
     import { mockStudentInClassData } from "../../../types/student";
     import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
     import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
+    import type { Announcement } from "../../../types/announcement";
 
     let categories = $derived(
         mockCategoriesList.map((cat) => ({
@@ -39,7 +40,8 @@
     );
     let isCreateCategoryModalOpen = $state(false);
     let showCreateAnnouncementModal = $state(false);
-
+    let editingAnnouncement = $state<null | Announcement>(null);
+    let editingCategory = $state<null | any>(null);
     const tabs = [
         { id: "overview", label: "Tổng quan" },
         { id: "students", label: "Sinh viên" },
@@ -89,6 +91,9 @@
             <div class="tab-content-enter-active">
                 <!-- Content for "Tổng quan" -->
                 <CategoryList
+                    openEditCategoryModal={(category) => {
+                        editingCategory = category;
+                    }}
                     onOpen={() => (isCreateCategoryModalOpen = true)}
                     onCLose={() => (isCreateCategoryModalOpen = false)}
                     {classData}
@@ -103,6 +108,9 @@
             <div class="tab-content-enter-active">
                 <!-- Content for "Thông báo" -->
                 <AnnouncementTab
+                    onEdit={(announcement) => {
+                        editingAnnouncement = announcement;
+                    }}
                     onOpen={() => (showCreateAnnouncementModal = true)}
                     onCLose={() => (showCreateAnnouncementModal = false)}
                 />
@@ -124,6 +132,23 @@
 {#if showCreateAnnouncementModal}
     <CreateAnnouncementModal
         onClose={() => (showCreateAnnouncementModal = false)}
+        onSubmit={() => {}}
+    />
+{/if}
+
+{#if editingAnnouncement}
+    <CreateAnnouncementModal
+        {editingAnnouncement}
+        onClose={() => (editingAnnouncement = null)}
+        onSubmit={() => {}}
+    />
+{/if}
+
+{#if editingCategory}
+    <CreateCategoryModal
+        {editingCategory}
+        {classData}
+        onClose={() => (editingCategory = null)}
         onSubmit={() => {}}
     />
 {/if}

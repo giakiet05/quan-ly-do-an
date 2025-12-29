@@ -43,7 +43,7 @@
     {
       id: "students",
       label: "Sinh viên",
-      route: "/students",
+      route: "/lecture/students-management",
       icon: "/users.svg",
     },
     {

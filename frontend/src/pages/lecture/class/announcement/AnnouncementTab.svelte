@@ -12,9 +12,10 @@
     import type { Announcement } from "../../../../types/announcement";
 
     // Định nghĩa Props bằng $props()
-    let { onOpen, onCLose } = $props<{
+    let { onOpen, onCLose, onEdit } = $props<{
         onOpen: () => void;
         onCLose: () => void;
+        onEdit: (announcement: Announcement) => void;
     }>();
     // State sử dụng Runes
     let showCreateModal = $state(false);
@@ -210,8 +211,7 @@
                                     {/if}
                                 </button>
                                 <button
-                                    onclick={() =>
-                                        (editingAnnouncement = announcement)}
+                                    onclick={() => onEdit(announcement)}
                                     class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                     <Edit class="w-5 h-5 text-gray-600" />
@@ -290,11 +290,3 @@
         </div>
     {/if}
 </div>
-
-{#if editingAnnouncement}
-    <CreateAnnouncementModal
-        {editingAnnouncement}
-        onClose={() => (editingAnnouncement = null)}
-        onSubmit={handleUpdateAnnouncement}
-    />
-{/if}

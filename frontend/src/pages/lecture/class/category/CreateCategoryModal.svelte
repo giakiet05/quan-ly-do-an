@@ -10,16 +10,22 @@
         classData: ClassData;
         editingCategory?: ProjectCategory;
     }>();
+    // Helper function để đảm bảo định dạng YYYY-MM-DD
+    const formatToDateInput = (dateStr: string | undefined) => {
+        if (!dateStr) return "";
+        // Tách lấy phần trước chữ T (YYYY-MM-DD)
+        return dateStr.split("T")[0];
+    };
 
-    // Khởi tạo state cho form bằng Rune $state
+    // Khởi tạo state cho form
     let formData = $state({
         name: editingCategory?.name || "",
         description: editingCategory?.description || "",
-        startDate: editingCategory?.startDate || "",
-        endDate: editingCategory?.endDate || "",
-        status: "upcoming" as "upcoming" | "ongoing" | "completed",
+        // Dùng helper để convert '2026-01-01T00:00:00Z' thành '2026-01-01'
+        startDate: formatToDateInput(editingCategory?.startDate),
+        endDate: formatToDateInput(editingCategory?.endDate),
+        status: editingCategory?.status || "upcoming",
     });
-
     let errors = $state<Record<string, string>>({});
 
     function handleSubmit(e: Event) {

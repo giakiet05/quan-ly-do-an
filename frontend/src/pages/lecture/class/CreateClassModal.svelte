@@ -67,6 +67,15 @@
     );
 
     /* =======================
+     * State: Add Student
+     * ======================= */
+    let newStudent = {
+        fullName: "",
+        studentCode: "",
+        email: "",
+    };
+
+    /* =======================
      * Derived
      * ======================= */
     const filteredStudents = $derived(
@@ -116,6 +125,28 @@
                 studentCode,
                 email,
             }));
+    }
+
+    /* =======================
+     * Handlers: Add Student
+     * ======================= */
+    function addStudent() {
+        if (
+            !newStudent.fullName ||
+            !newStudent.studentCode ||
+            !newStudent.email
+        ) {
+            alert("Vui lòng nhập đầy đủ thông tin sinh viên.");
+            return;
+        }
+
+        students.push({
+            ...newStudent,
+            selected: false,
+        });
+
+        // Clear input fields
+        newStudent = { fullName: "", studentCode: "", email: "" };
     }
 </script>
 
@@ -234,69 +265,88 @@
 
                 <!-- List -->
                 {#if activeTab === "list"}
-                    <div class="flex gap-2">
-                        <div class="flex-1 relative">
-                            <Search
-                                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                size={16}
+                    <div class="space-y-4">
+                        <!-- Add Student Row -->
+                        <div class="flex gap-2 items-center">
+                            <input
+                                class="flex-1 px-4 py-2 border rounded-lg"
+                                placeholder="Tên sinh viên"
+                                bind:value={newStudent.fullName}
                             />
                             <input
-                                class="w-full pl-10 pr-4 py-2 border rounded-lg"
-                                placeholder="Tìm kiếm"
-                                bind:value={searchTerm}
+                                class="flex-1 px-4 py-2 border rounded-lg"
+                                placeholder="Mã số sinh viên"
+                                bind:value={newStudent.studentCode}
                             />
+                            <input
+                                class="flex-1 px-4 py-2 border rounded-lg"
+                                placeholder="Email"
+                                bind:value={newStudent.email}
+                            />
+                            <button class="btn-add" onclick={addStudent}>
+                                <Plus size={16} /> Thêm
+                            </button>
                         </div>
 
-                        <button
-                            class="btn-add"
-                            onclick={() => {
-                                alert("Thêm sinh viên");
-                            }}
+                        <!-- Search and Actions -->
+                        <div class="flex gap-2">
+                            <div class="flex-1 relative">
+                                <Search
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                    size={16}
+                                />
+                                <input
+                                    class="w-full pl-10 pr-4 py-2 border rounded-lg"
+                                    placeholder="Tìm kiếm"
+                                    bind:value={searchTerm}
+                                />
+                            </div>
+
+                            <button class="btn-delete" onclick={() => {}}>
+                                <Trash2 size={16} /> Xóa
+                            </button>
+                        </div>
+
+                        <!-- Student Table -->
+                        <table
+                            class="w-full border border-gray-200 border-rounded-lg mt-4"
                         >
-                            <Plus size={16} /> Thêm
-                        </button>
-
-                        <button class="btn-delete" onclick={() => {}}>
-                            <Trash2 size={16} /> Xóa
-                        </button>
-                    </div>
-
-                    <table
-                        class="w-full border border-gray-200 border-rounded-lg mt-4"
-                    >
-                        <thead class="table-header">
-                            <tr>
-                                <th>STT</th>
-                                <th>MSSV</th>
-                                <th>Tên sinh viên</th>
-                                <th>Email</th>
-                                <th>
-                                    <input
-                                        type="checkbox"
-                                        bind:checked={selectAll}
-                                        onchange={() => toggleAllStudents()}
-                                    />
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {#each filteredStudents as s, i}
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-3 py-2">{i + 1}</td>
-                                    <td class="px-3 py-2">{s.studentCode}</td>
-                                    <td class="px-3 py-2">{s.fullName}</td>
-                                    <td class="px-3 py-2">{s.email}</td>
-                                    <td class="px-3 py-2 text-center">
+                            <thead class="table-header">
+                                <tr>
+                                    <th>STT</th>
+                                    <th>MSSV</th>
+                                    <th>Tên sinh viên</th>
+                                    <th>Email</th>
+                                    <th>
                                         <input
                                             type="checkbox"
-                                            bind:checked={s.selected}
-                                            onchange={() => toggleStudent()}
+                                            bind:checked={selectAll}
+                                            onchange={() => toggleAllStudents()}
                                         />
-                                    </td>
+                                    </th>
                                 </tr>
-                            {/each}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {#each filteredStudents as s, i}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-3 py-2">{i + 1}</td>
+                                        <td class="px-3 py-2"
+                                            >{s.studentCode}</td
+                                        >
+                                        <td class="px-3 py-2">{s.fullName}</td>
+                                        <td class="px-3 py-2">{s.email}</td>
+                                        <td class="px-3 py-2 text-center">
+                                            <input
+                                                type="checkbox"
+                                                bind:checked={s.selected}
+                                                onchange={() => toggleStudent()}
+                                            />
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
                 {/if}
 
                 {#if activeTab === "excel"}

@@ -10,7 +10,8 @@ import ClassDetail from './pages/lecture/class/ClassDetail.svelte';
 import Notification from './pages/Notification.svelte';
 import CreateCategoryModal from './pages/lecture/class/category/CreateCategoryModal.svelte';
 import CategoryDetail from './pages/lecture/class/category/CategoryDetail.svelte';
-
+import StudentsManagementView from './pages/lecture/student/StudentsManagementView.svelte';
+import ProjectDetailView from './pages/lecture/class/category/project/ProjectDetailView.svelte';
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
 
@@ -31,6 +32,9 @@ const routes = {
     '/lecture/my-classes/:id/categories/create': CreateCategoryModal,
     '/notifications': Notification,
     '/lecture/my-classes/:id/categories/:categoryId': CategoryDetail,
+    '/lecture/my-classes/:id/categories/:categoryId/projects/:projectId': ProjectDetailView,
+    '/lecture/students-management': StudentsManagementView,
+
 };
 
 export default routes;
