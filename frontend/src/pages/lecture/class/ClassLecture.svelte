@@ -221,17 +221,17 @@
     />
 {/if}
 
-<!-- {#if showEditModal && editingClass}
+{#if showEditModal && editingClass}
     <EditClassModal
         classData={editingClass}
         onClose={() => (showEditModal = false)}
         onSubmit={(updatedClass) => {
-            updateClass(updatedClass);
+            // updateClass(updatedClass);
             showEditModal = false;
             editingClass = null;
         }}
     />
-{/if} -->
+{/if}
 
 <style>
     .table-header th {
