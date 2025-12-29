@@ -4,6 +4,7 @@ export const mockStudentInClassData: StudentInClass[] = [
         name: 'Nguyễn Văn A',
         studentCode: 'SV001',
         email: 'nguyenvana@student.edu.vn',
+        phone: '0123456789',
         enrolledProjects: [
             {
                 categoryId: '1',
@@ -19,6 +20,7 @@ export const mockStudentInClassData: StudentInClass[] = [
         name: 'Trần Thị B',
         studentCode: 'SV002',
         email: 'tranthib@student.edu.vn',
+        phone: '0987654321',
         enrolledProjects: [
             {
                 categoryId: '2',
@@ -34,6 +36,7 @@ export const mockStudentInClassData: StudentInClass[] = [
         name: 'Lê Văn C',
         studentCode: 'SV003',
         email: 'levanc@student.edu.vn',
+        phone: '0912345678',
         enrolledProjects: [
             {
                 categoryId: '3',
@@ -49,6 +52,7 @@ export const mockStudentInClassData: StudentInClass[] = [
         name: 'Phạm Thị D',
         studentCode: 'SV004',
         email: 'phamthid@student.edu.vn',
+        phone: '0934567890',
         enrolledProjects: [
             {
                 categoryId: '1',
@@ -64,6 +68,7 @@ export const mockStudentInClassData: StudentInClass[] = [
         name: 'Hoàng Văn E',
         studentCode: 'SV005',
         email: 'hoangvane@student.edu.vn',
+        phone: '0967890123',
         enrolledProjects: [
             {
                 categoryId: '2',

@@ -7,10 +7,11 @@
     import CreateCategoryModal from "./CreateCategoryModal.svelte";
     import type { ClassData } from "../../../../types/class";
     import { mockCategoriesList } from "../../../../types/category";
-    let { classData, onOpen, onCLose } = $props<{
+    let { classData, onOpen, onCLose, openEditCategoryModal } = $props<{
         classData: ClassData;
         onOpen: () => void;
         onCLose: () => void;
+        openEditCategoryModal: (category: any) => void;
     }>();
     let showCreateModal = $state(false);
     let handleCreateClass = (data: any) => {
@@ -29,10 +30,10 @@
     );
 </script>
 
-<div class="p-6">
-    <div class="flex justify-between items-center mb-6 p-6">
-        <h2 class="text-xl">Danh sách hạng mục đề tài</h2>
-
+<div class="p-6 space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold">Danh sách hạng mục đề tài</h2>
         <button
             onclick={onOpen}
             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -41,97 +42,112 @@
             Tạo hạng mục mới
         </button>
     </div>
-    {#if categories.length === 0}s
-        <div class="text-center py-16">
+
+    <!-- Empty State -->
+    {#if categories.length === 0}
+        <div class="flex flex-col items-center justify-center py-16">
             <button
                 class="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 group"
             >
                 <Plus class="w-8 h-8 text-gray-400 group-hover:text-blue-500" />
             </button>
-
             <p class="mt-4 text-gray-600">Chưa có hạng mục nào</p>
             <p class="text-sm text-gray-500">
                 Nhấn vào dấu + để tạo hạng mục mới
             </p>
         </div>
     {:else}
-        <div class="grid grid-cols-1 gap-4">
+        <!-- Category List -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {#each categories as category (category.id)}
                 <div
-                    class={`border rounded-lg p-2 hover:shadow-md ${category.status === "đã kết thúc" ? "border-red-500" : category.status === "săp diễn ra" ? "border-yellow-500" : "border-green-500"}`}
+                    class={`rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${
+                        category.status === "đã kết thúc"
+                            ? "border-red-500 bg-red-50"
+                            : category.status === "săp diễn ra"
+                              ? "border-yellow-500 bg-yellow-50"
+                              : "border-green-500 bg-green-50"
+                    }`}
                 >
+                    <!-- Header -->
                     <div class="flex justify-between items-start mb-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-3 mb-2">
-                                <h3 class="text-lg">{category.name}</h3>
-                            </div>
-
-                            <p class="text-gray-600 text-sm">
+                        <div>
+                            <h3 class="text-lg font-medium">{category.name}</h3>
+                            <p class="text-sm text-gray-500">
                                 {category.description}
                             </p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button
-                                onclick={() =>
-                                    push(
-                                        `/lecture/my-classes/${classData.id}/categories/${category.id}`,
-                                    )}
-                                class="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                            >
-                                <Eye size={16} />
-                            </button>
-                            <span class="text-gray-300">|</span>
-                            <button
-                                class="flex items-center gap-1 text-green-600 hover:text-green-800"
-                            >
-                                <Edit2 size={16} />
-                            </button>
-                            <span class="text-gray-300">|</span>
-                            <button
-                                class="flex items-center gap-1 text-red-600 hover:text-red-800"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
+                        <span
+                            class={`px-2 py-1 text-xs font-semibold rounded-lg ${
+                                category.status === "đã kết thúc"
+                                    ? "bg-red-100 text-red-600"
+                                    : category.status === "săp diễn ra"
+                                      ? "bg-yellow-100 text-yellow-600"
+                                      : "bg-green-100 text-green-600"
+                            }`}
+                        >
+                            {category.status}
+                        </span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div
-                            class="flex items-center gap-2 text-sm text-gray-600"
-                        >
+                    <!-- Dates -->
+                    <div
+                        class="flex justify-between items-center text-sm text-gray-600 mb-4"
+                    >
+                        <div class="flex items-center gap-2">
                             <Calendar class="w-4 h-4" />
                             <span>
-                                Từ {new Date(
+                                {new Date(
                                     category.startDate,
                                 ).toLocaleDateString("vi-VN")}
                             </span>
                         </div>
-
-                        <div
-                            class="flex items-center gap-2 text-sm text-gray-600"
-                        >
+                        <div class="flex items-center gap-2">
                             <Calendar class="w-4 h-4" />
                             <span>
-                                Đến {new Date(
-                                    category.endDate,
-                                ).toLocaleDateString("vi-VN")}
+                                {new Date(category.endDate).toLocaleDateString(
+                                    "vi-VN",
+                                )}
                             </span>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-6 mb-4 text-sm">
-                        <div class="flex items-center gap-2 text-gray-600">
+                    <!-- Stats -->
+                    <div
+                        class="flex justify-between items-center text-sm text-gray-600 mb-4"
+                    >
+                        <div class="flex items-center gap-2">
                             <FileText class="w-4 h-4" />
                             <span>Số đề tài: {category.projectCount}</span>
                         </div>
-
-                        <div class="flex items-center gap-2 text-gray-600">
+                        <div class="flex items-center gap-2">
                             <Users class="w-4 h-4" />
                             <span>
-                                Đã đăng ký: {category.registeredCount} sinh viên/{classData.studentCount}
-                                sinh viên
+                                Đã đăng ký: {category.registeredCount}/{classData.studentCount}
                             </span>
                         </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-end items-center gap-3">
+                        <button
+                            onclick={() =>
+                                push(
+                                    `/lecture/my-classes/${classData.id}/categories/${category.id}`,
+                                )}
+                            class="text-blue-600 hover:text-blue-800"
+                        >
+                            <Eye size={16} />
+                        </button>
+                        <button
+                            onclick={() => openEditCategoryModal(category)}
+                            class="text-green-600 hover:text-green-800"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                        <button class="text-red-600 hover:text-red-800">
+                            <Trash2 size={16} />
+                        </button>
                     </div>
                 </div>
             {/each}

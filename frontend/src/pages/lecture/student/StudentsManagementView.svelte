@@ -1,31 +1,29 @@
 <script lang="ts">
     import {
         Plus,
-        Edit2,
+        Search,
+        Edit,
         Trash2,
         Eye,
-        Search,
+        MessageSquare,
         ChevronLeft,
         ChevronRight,
-    } from "../../../libs/Icons";
+        MessageCircle,
+    } from "lucide-svelte";
+    import CreateStudentModal from "./CreateStudentModal.svelte";
+    import { studentStore } from "../../../stores/student-store";
+    import { mockStudentInClassData } from "../../../types/student";
     import { onMount } from "svelte";
 
-    import CreateClassModal from "./CreateClassModal.svelte";
-    import EditClassModal from "./EditClassModal.svelte";
-    import { classStore } from "../../../stores/class-store";
-    import { mockClasses } from "../../../mocks/classes.mock";
-    import type { ClassItem, CreateClassRequest } from "../../../types/class";
-    import { push } from "svelte-spa-router";
-
     let {
-        classes,
+        students,
         searchTerm,
         currentPage,
         itemsPerPage,
 
         // derived
-        filteredClasses,
-        paginatedClasses,
+        filteredStudents,
+        paginatedStudents,
         totalPages,
 
         // actions
@@ -33,36 +31,44 @@
         setSearch,
         changePage,
         changePageSize,
-        addClass,
-        updateClass,
-        removeClass,
-    } = classStore;
-
-    onMount(() => {
-        setData(mockClasses);
-    });
+        addStudent,
+        updateStudent,
+        removeStudent,
+    } = studentStore;
 
     let showCreateModal = false;
-    let showEditModal = false;
-    let editingClass: ClassItem | null = null;
+    let editingStudent = null;
 
-    function handleCreateClass(classData: CreateClassRequest): void {
-        showCreateModal = false;
-    }
+    onMount(() => {
+        setData(mockStudentInClassData);
+    });
 
-    function openEditModal(cls: ClassItem): void {
-        editingClass = cls;
-        showEditModal = true;
-    }
+    // function handleAddStudent(studentData) {
+    //     addStudent({
+    //         id: Date.now().toString(),
+    //         studentCode: studentData.studentCode || "",
+    //         name: studentData.name || "",
+    //         email: studentData.email || "",
+    //         phone: studentData.phone || "",
+    //         enrolledProjects: [],
+    //     });
+    //     showCreateModal = false;
+    // }
+
+    // function handleEditStudent(studentData) {
+    //     if (!editingStudent) return;
+    //     updateStudent({ ...editingStudent, ...studentData });
+    //     editingStudent = null;
+    // }
 </script>
 
 <div class="bg-white rounded-lg shadow-sm">
     <div class="p-6 border-b border-gray-200">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-semibold">Danh sách Lớp học của tôi</h1>
+            <h1 class="text-2xl font-semibold">Danh sách Sinh viên</h1>
             <button onclick={() => (showCreateModal = true)} class="btn-add">
                 <Plus size={20} />
-                Tạo Lớp học mới
+                Thêm Sinh viên mới
             </button>
         </div>
 
@@ -75,7 +81,7 @@
                 bind:value={$searchTerm}
                 oninput={(e) =>
                     setSearch((e.target as HTMLInputElement).value || "")}
-                placeholder="Tìm kiếm theo mã lớp - tên lớp..."
+                placeholder="Tìm kiếm theo tên, MSSV, email..."
             />
         </div>
     </div>
@@ -84,59 +90,49 @@
         <table>
             <thead class="table-header">
                 <tr>
-                    <th>Tên Lớp học</th>
-                    <th>Trường</th>
-                    <th>Mô tả</th>
-                    <th>Số lượng SV</th>
-                    <th>Học kỳ</th>
-                    <th>Trạng thái</th>
+                    <th>MSSV</th>
+                    <th>Sinh viên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
                     <th>Hành động</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-                {#each $paginatedClasses as cls (cls.id)}
+                {#each $paginatedStudents as student (student.id)}
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-medium">{cls.name}</td>
-                        <td class="px-6 py-4">{cls.school}</td>
+                        <td class="px-6 py-4 font-medium"
+                            >{student.studentCode}</td
+                        >
+                        <td class="px-6 py-4">{student.name}</td>
                         <td class="px-6 py-4 text-gray-600"
-                            >{cls.description}</td
+                            >{student.email || "-"}</td
                         >
-                        <td class="px-6 py-4 text-center">{cls.studentCount}</td
+                        <td class="px-6 py-4 text-center"
+                            >{student.phone || "-"}</td
                         >
-                        <td class="px-6 py-4 text-gray-600">{cls.semester}</td>
-                        <td class="px-6 py-4">
-                            <span
-                                class="status-tag {cls.status === 'active'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'}"
-                            >
-                                {cls.status === "active"
-                                    ? "Đang hoạt động"
-                                    : "Ngừng hoạt động"}
-                            </span>
-                        </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-2">
                                 <button
-                                    onclick={() =>
-                                        push(`/lecture/my-classes/${cls.id}`)}
-                                    class="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                                    class="flex items-center gap-1 text-green-600 hover:text-green-800"
+                                    title="Xem chi tiết"
                                 >
                                     <Eye size={16} />
                                 </button>
+
                                 <span class="text-gray-300">|</span>
                                 <button
-                                    onclick={() => openEditModal(cls)}
-                                    class="flex items-center gap-1 text-green-600 hover:text-green-800"
+                                    onclick={() => removeStudent(student.id)}
+                                    class="flex items-center gap-1 text-red-600 hover:text-red-800"
+                                    title="Ngưng quản lý"
                                 >
-                                    <Edit2 size={16} />
+                                    <Trash2 size={16} />
                                 </button>
                                 <span class="text-gray-300">|</span>
                                 <button
-                                    onclick={() => removeClass(cls.id)}
-                                    class="flex items-center gap-1 text-red-600 hover:text-red-800"
+                                    class="flex items-center gap-1 text-purple-600 hover:text-purple-800"
+                                    title="Nhắn tin"
                                 >
-                                    <Trash2 size={16} />
+                                    <MessageCircle size={16} />
                                 </button>
                             </div>
                         </td>
@@ -144,28 +140,28 @@
                 {:else}
                     <tr>
                         <td
-                            colspan="7"
+                            colspan="5"
                             class="px-6 py-12 text-center text-gray-500"
                         >
                             {$searchTerm
-                                ? "Không tìm thấy lớp học nào"
-                                : "Chưa có lớp học nào"}
+                                ? "Không tìm thấy sinh viên nào"
+                                : "Chưa có sinh viên nào"}
                         </td>
                     </tr>
                 {/each}
             </tbody>
         </table>
     </div>
-    <!-- pagination -->
-    {#if $filteredClasses.length > 0}
+
+    {#if $filteredStudents.length > 0}
         <div
             class="p-6 border-t border-gray-200 flex justify-between items-center"
         >
             <div class="text-sm text-gray-600">
                 Hiển thị {($currentPage - 1) * $itemsPerPage + 1}-{Math.min(
                     $currentPage * $itemsPerPage,
-                    $filteredClasses.length,
-                )} của {$filteredClasses.length} lớp
+                    $filteredStudents.length,
+                )} của {$filteredStudents.length} sinh viên
             </div>
 
             <div class="flex items-center gap-4">
@@ -214,22 +210,10 @@
     {/if}
 </div>
 
-{#if showCreateModal}
-    <CreateClassModal
+<!-- {#if showCreateModal}
+    <CreateStudentModal
         onClose={() => (showCreateModal = false)}
-        onSubmit={handleCreateClass}
-    />
-{/if}
-
-<!-- {#if showEditModal && editingClass}
-    <EditClassModal
-        classData={editingClass}
-        onClose={() => (showEditModal = false)}
-        onSubmit={(updatedClass) => {
-            updateClass(updatedClass);
-            showEditModal = false;
-            editingClass = null;
-        }}
+        onSubmit={handleAddStudent}
     />
 {/if} -->
 
@@ -270,25 +254,5 @@
     td {
         word-wrap: break-word;
         text-align: left;
-    }
-
-    .status-tag {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        border-radius: 0.375rem;
-    }
-    .bg-green-100 {
-        background-color: rgba(16, 185, 129, 0.2);
-    }
-    .text-green-700 {
-        color: #047857;
-    }
-    .bg-red-100 {
-        background-color: rgba(239, 68, 68, 0.2);
-    }
-    .text-red-700 {
-        color: #b91c1c;
     }
 </style>

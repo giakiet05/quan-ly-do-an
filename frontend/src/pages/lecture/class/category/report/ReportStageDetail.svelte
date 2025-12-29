@@ -11,6 +11,7 @@
         Edit,
     } from "lucide-svelte";
     import type { ReportStage } from "../../../../../types/report";
+    import GradeReportModal from "./GradeReportModal.svelte";
 
     // Định nghĩa Interface địa phương
     interface GroupReport {
@@ -372,11 +373,11 @@
         {/if}
     </div>
 </div>
-<!-- 
+
 {#if gradingReport}
     <GradeReportModal
         report={gradingReport}
         onClose={() => (gradingReport = null)}
         onSubmit={handleGradeSubmit}
     />
-{/if} -->
+{/if}

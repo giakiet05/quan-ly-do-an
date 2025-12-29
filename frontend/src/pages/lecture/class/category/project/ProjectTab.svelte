@@ -14,6 +14,7 @@
     import CreateProjectModal from "./CreateProjectModal.svelte";
     import type { ProjectCategory } from "../../../../../types/category";
     import { mockProjects, type Project } from "../../../../../types/project";
+    import { push } from "svelte-spa-router";
 
     let projects = mockProjects;
 
@@ -372,7 +373,11 @@
                             </div>
                             <div class="flex gap-1">
                                 <button
-                                    onclick={() => onSelectProject(project)}
+                                    onclick={() => {
+                                        push(
+                                            `/lecture/my-classes/1/categories/${category.id}/projects/${project.id}`,
+                                        );
+                                    }}
                                     class="rounded p-2 text-blue-600 hover:bg-blue-50"
                                     title="Xem chi tiết"
                                     ><Eye class="h-5 w-5" /></button
