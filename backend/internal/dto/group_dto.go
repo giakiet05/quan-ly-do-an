@@ -19,11 +19,26 @@ type UpdateGroupRequest struct {
 	LeaderID  *string             `json:"leader_id,omitempty"`
 	Setting   *model.GroupSetting `json:"setting,omitempty"`
 }
+type CreateJoinGroupRequest struct {
+	GroupID string `json:"group_id"`
+	Message string `json:"message"`
+}
 
-type UpdateGroupMembersRequest struct {
-	GroupID   string   `json:"group_id"`
-	MemberIDs []string `json:"member_ids"`
-	Action    string   `json:"action"` // "add" or "remove"
+type UpdateJoinGroupRequest struct {
+	GroupID   string                       `json:"group_id"`
+	RequestID string                       `json:"request_id"`
+	Status    model.JoinGroupRequestStatus `json:"status"`
+}
+
+type CreateGroupInvitationRequest struct {
+	GroupID     string `json:"group_id"`
+	RecipientID string `json:"recipient_id"`
+}
+
+type UpdateGroupInvitationRequest struct {
+	GroupID      string                       `json:"group_id"`
+	InvitationID string                       `json:"invitation_id"`
+	Status       model.JoinGroupRequestStatus `json:"status"`
 }
 
 type CreateTaskRequest struct {

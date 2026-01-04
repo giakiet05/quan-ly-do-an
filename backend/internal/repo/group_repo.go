@@ -20,6 +20,9 @@ type GroupRepo interface {
 	Replace(ctx context.Context, group *model.Group) error
 	Delete(ctx context.Context, groupID string) error
 
+	GetInvitationByID(ctx context.Context, groupID, invitationID primitive.ObjectID) (*model.JoinGroupInvitation, error)
+	GetJoinRequestByID(ctx context.Context, groupID, requestID primitive.ObjectID) (*model.JoinGroupRequest, error)
+
 	IsLeader(ctx context.Context, groupID string, userID string) (bool, error)
 	IsMember(ctx context.Context, groupID string, userID string) (bool, error)
 }
@@ -118,6 +121,64 @@ func (g *groupRepo) Delete(ctx context.Context, groupID string) error {
 	}
 
 	return nil
+}
+
+func (g *groupRepo) GetInvitationByID(
+	ctx context.Context,
+	groupID, invitationID primitive.ObjectID,
+) (*model.JoinGroupInvitation, error) {
+	var result struct {
+		JoinInvitation []model.JoinGroupInvitation `bson:"join_invitations"`
+	}
+
+	err := g.groupCollection.FindOne(
+		ctx,
+		bson.M{
+			"_id":                  groupID,
+			"join_invitations._id": invitationID,
+		},
+	).Decode(&result)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, in := range result.JoinInvitation {
+		if in.ID == invitationID {
+			return &in, nil
+		}
+	}
+
+	return nil, apperror.ErrNotFound
+}
+
+func (g *groupRepo) GetJoinRequestByID(
+	ctx context.Context,
+	groupID, requestID primitive.ObjectID,
+) (*model.JoinGroupRequest, error) {
+	var result struct {
+		JoinRequest []model.JoinGroupRequest `bson:"join_requests"`
+	}
+
+	err := g.groupCollection.FindOne(
+		ctx,
+		bson.M{
+			"_id":               groupID,
+			"join_requests._id": requestID,
+		},
+	).Decode(&result)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, re := range result.JoinRequest {
+		if re.ID == requestID {
+			return &re, nil
+		}
+	}
+
+	return nil, apperror.ErrNotFound
 }
 
 func (g *groupRepo) IsLeader(ctx context.Context, groupID string, userID string) (bool, error) {

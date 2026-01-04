@@ -1,6 +1,8 @@
 package bus
 
 import (
+	"time"
+
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 )
@@ -21,6 +23,8 @@ const (
 	TopicMessageError  = "message.error"
 	TopicTypingMessage = "message.typing"
 	TopicInChatMessage = "message.in_chat"
+
+	TopicGroupInvitation = "group.invitation"
 )
 
 type BroadcastEventType string
@@ -28,7 +32,6 @@ type BroadcastEventType string
 const (
 	// ---- Message-related ----
 	BroadcastEventMessageCreated BroadcastEventType = "message_created"
-	BroadcastEventMessageDeleted BroadcastEventType = "message_deleted"
 	BroadcastEventTypingStart    BroadcastEventType = "typing_start"
 	BroadcastEventTypingStop     BroadcastEventType = "typing_stop"
 	BroadcastEventMessageRead    BroadcastEventType = "message_read"
@@ -204,5 +207,28 @@ func (e InChatMessageEvent) Payload() map[string]interface{} {
 		"channel_id": e.ChannelID,
 		"user_id":    e.UserID,
 		"is_in_chat": e.IsInChat,
+	}
+}
+
+type GroupInvitationEvent struct {
+	GroupID     string     `json:"group_id"`
+	InviterID   string     `json:"inviter_id"`
+	InviteeID   string     `json:"invitee_id"`
+	IsAccepted  bool       `json:"is_accepted"`
+	SentAt      time.Time  `json:"sent_at"`
+	RespondedAt *time.Time `json:"responded_at,omitempty"`
+}
+
+func (e GroupInvitationEvent) Topic() string {
+	return TopicGroupInvitation
+}
+func (e GroupInvitationEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"group_id":     e.GroupID,
+		"inviter_id":   e.InviterID,
+		"invitee_id":   e.InviteeID,
+		"is_accepted":  e.IsAccepted,
+		"sent_at":      e.SentAt,
+		"responded_at": e.RespondedAt,
 	}
 }

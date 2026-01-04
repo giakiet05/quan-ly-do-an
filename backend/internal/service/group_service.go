@@ -6,6 +6,7 @@ import (
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson"
@@ -17,8 +18,13 @@ type GroupService interface {
 	GetGroupByID(groupID string, requesterID string) (*model.Group, error)
 	GetGroupsFilter(query *dto.GetGroupsFilterQuery, requesterID string) ([]model.Group, error)
 	UpdateGroup(req *dto.UpdateGroupRequest, requesterID string) (*model.Group, error)
-	UpdateGroupMemberRequest(req *dto.UpdateGroupMembersRequest, requesterID string) error
 	DeleteGroup(groupID string, requesterID string) error
+
+	ChangeLeader(groupID string, newLeaderID string, requesterID string) error
+	CreateJoinGroupRequest(req *dto.CreateJoinGroupRequest, requesterID string) error
+	UpdateJoinGroupRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error
+	CreateGroupInvitation(recipientIDs []string, groupID string, requesterID string) error
+	UpdateGroupInvitation(req *dto.UpdateGroupInvitationRequest, requesterID string) error
 
 	CreateTask(req *dto.CreateTaskRequest, requesterID string) (*model.Task, error)
 	UpdateTask(req *dto.UpdateTaskRequest, requesterID string) (*model.Task, error)
@@ -37,6 +43,7 @@ type groupService struct {
 	classroomRepo repo.ClassroomRepo
 	channelRepo   repo.ChannelRepo
 	userRepo      repo.UserRepo
+	eventBus      *bus.EventBus
 }
 
 func NewGroupService(
@@ -44,8 +51,15 @@ func NewGroupService(
 	classroomRepo repo.ClassroomRepo,
 	channelRepo repo.ChannelRepo,
 	userRepo repo.UserRepo,
+	eventBus *bus.EventBus,
 ) GroupService {
-	return &groupService{groupRepo: groupRepo, classroomRepo: classroomRepo, channelRepo: channelRepo, userRepo: userRepo}
+	return &groupService{
+		groupRepo:     groupRepo,
+		classroomRepo: classroomRepo,
+		channelRepo:   channelRepo,
+		userRepo:      userRepo,
+		eventBus:      eventBus,
+	}
 }
 
 func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID string) (*model.Group, error) {
@@ -263,96 +277,6 @@ func (g *groupService) UpdateGroup(req *dto.UpdateGroupRequest, requesterID stri
 	return group, nil
 }
 
-func (g *groupService) UpdateGroupMemberRequest(req *dto.UpdateGroupMembersRequest, requesterID string) error {
-	ctx, cancel := util.NewDefaultDBContext()
-	defer cancel()
-
-	ok, err := g.groupRepo.IsLeader(ctx, req.GroupID, requesterID)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return apperror.ErrForbidden
-	}
-
-	// Validate action
-	if req.Action != "add" && req.Action != "remove" {
-		return apperror.ErrBadRequest
-	}
-
-	// Validate member IDs
-	if len(req.MemberIDs) == 0 {
-		return apperror.ErrBadRequest
-	}
-
-	// Get existing group
-	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
-	if err != nil {
-		return err
-	}
-
-	switch req.Action {
-	case "add":
-		for _, memberID := range req.MemberIDs {
-			// Check if member already exists
-			memberOID, err := primitive.ObjectIDFromHex(memberID)
-			if err != nil {
-				return apperror.ErrBadRequest
-			}
-
-			exists := false
-			for _, existing := range group.Members {
-				if existing.ID == memberOID {
-					exists = true
-					break
-				}
-			}
-
-			if !exists {
-				user, err := g.userRepo.GetByID(ctx, memberID)
-				if err != nil {
-					return err
-				}
-
-				group.Members = append(group.Members, model.UserInfo{
-					ID:       user.ID,
-					Username: user.Username,
-					Avatar:   user.Avatar,
-				})
-			}
-		}
-
-	case "remove":
-		// Prevent removing the group leader
-		for _, memberID := range req.MemberIDs {
-			if memberID == group.LeaderID.Hex() {
-				return apperror.ErrBadRequest
-			}
-		}
-
-		// Remove members from the list
-		memberOIDsToRemove := make(map[primitive.ObjectID]bool)
-		for _, memberID := range req.MemberIDs {
-			oid, err := primitive.ObjectIDFromHex(memberID)
-			if err != nil {
-				return apperror.ErrBadRequest
-			}
-			memberOIDsToRemove[oid] = true
-		}
-
-		filteredMembers := make([]model.UserInfo, 0)
-		for _, member := range group.Members {
-			if !memberOIDsToRemove[member.ID] {
-				filteredMembers = append(filteredMembers, member)
-			}
-		}
-		group.Members = filteredMembers
-	}
-
-	// Replace the entire group document
-	return g.groupRepo.Replace(ctx, group)
-}
-
 func (g *groupService) DeleteGroup(groupID string, requesterID string) error {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
@@ -366,6 +290,302 @@ func (g *groupService) DeleteGroup(groupID string, requesterID string) error {
 	}
 
 	return g.groupRepo.Delete(ctx, groupID)
+}
+
+func (g *groupService) ChangeLeader(groupID string, newLeaderID string, requesterID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Check if requester is the current leader
+	ok, err := g.groupRepo.IsLeader(ctx, groupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return apperror.ErrForbidden
+	}
+
+	// Get existing group
+	group, err := g.groupRepo.GetByID(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	// Verify new leader is a member of the group
+	newLeaderOID, err := primitive.ObjectIDFromHex(newLeaderID)
+	if err != nil {
+		return apperror.ErrBadRequest
+	}
+
+	isMember := false
+	for _, member := range group.Members {
+		if member.ID == newLeaderOID {
+			isMember = true
+		}
+	}
+	if !isMember {
+		return apperror.ErrBadRequest
+	}
+
+	// Update leader
+	group.LeaderID = newLeaderOID
+	return g.groupRepo.Replace(ctx, group)
+}
+
+func (g *groupService) CreateJoinGroupRequest(req *dto.CreateJoinGroupRequest, requesterID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Verify group exists
+	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	// Check if join requests are allowed
+	if !group.Setting.AllowJoinRequest {
+		return apperror.ErrForbidden
+	}
+
+	// Check if requester is already a member
+	isMember, err := g.groupRepo.IsMember(ctx, req.GroupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if isMember {
+		return apperror.ErrAlreadyMember
+	}
+
+	// Check if request already exists
+	requesterOID, err := primitive.ObjectIDFromHex(requesterID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	for _, jr := range group.JoinRequests {
+		if jr.UserID == requesterOID && jr.Status == model.RequestPending {
+			return apperror.ErrInvitationAlreadyExists
+		}
+	}
+
+	// Create new join request
+	joinRequest := model.JoinGroupRequest{
+		ID:          primitive.NewObjectID(),
+		UserID:      requesterOID,
+		Status:      model.RequestPending,
+		Message:     req.Message,
+		RequestedAt: time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	// Update group with new join request
+	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	filter := repo.Filter{
+		"_id": groupOID,
+	}
+
+	update := repo.UpdateDocument{
+		"$push": bson.M{
+			"join_requests": joinRequest,
+		},
+	}
+
+	return g.groupRepo.Update(ctx, filter, update)
+}
+
+func (g *groupService) UpdateJoinGroupRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Check leader permission
+	ok, err := g.groupRepo.IsLeader(ctx, req.GroupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return apperror.ErrForbidden
+	}
+
+	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	requestOID, err := primitive.ObjectIDFromHex(req.RequestID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	now := time.Now()
+
+	// Base filter: match group + invitation
+	filter := repo.Filter{
+		"_id":               groupOID,
+		"join_requests._id": requestOID,
+	}
+
+	update := repo.UpdateDocument{
+		"$set": bson.M{
+			"join_requests.$.status":     req.Status,
+			"join_requests.$.updated_at": now,
+		},
+	}
+
+	// If approved → add member atomically
+	if req.Status == model.RequestAccepted {
+		invitation, err := g.groupRepo.GetJoinRequestByID(ctx, groupOID, requestOID)
+		if err != nil {
+			return err
+		}
+
+		user, err := g.userRepo.GetByID(ctx, invitation.UserID.Hex())
+		if err != nil {
+			return err
+		}
+
+		update["$addToSet"] = bson.M{
+			"members": model.UserInfo{
+				ID:       invitation.UserID,
+				Username: user.Username,
+				Avatar:   user.Avatar,
+			},
+		}
+	}
+
+	return g.groupRepo.Update(ctx, filter, update)
+}
+
+func (g *groupService) CreateGroupInvitation(recipientIDs []string, groupID string, requesterID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Check if requester is the group leader
+	ok, err := g.groupRepo.IsLeader(ctx, groupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return apperror.ErrForbidden
+	}
+
+	isMember, err := g.groupRepo.IsMember(ctx, groupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if isMember {
+		return apperror.ErrAlreadyMember
+	}
+
+	groupOID, err := primitive.ObjectIDFromHex(groupID)
+	if err != nil {
+		return apperror.ErrBadRequest
+	}
+
+	var invitations []model.JoinGroupInvitation
+	for _, rid := range recipientIDs {
+		recipientOID, err := primitive.ObjectIDFromHex(rid)
+		if err != nil {
+			return apperror.ErrBadRequest
+		}
+
+		invitations = append(invitations, model.JoinGroupInvitation{
+			GroupID:     groupOID,
+			RecipientID: recipientOID,
+			Status:      model.RequestPending,
+			SentAt:      time.Now(),
+		})
+
+		g.eventBus.Publish(bus.GroupInvitationEvent{
+			GroupID:    groupID,
+			InviterID:  requesterID,
+			InviteeID:  rid,
+			IsAccepted: false,
+			SentAt:     time.Now(),
+		})
+	}
+
+	filter := repo.Filter{
+		"_id": groupOID,
+	}
+
+	update := repo.UpdateDocument{
+		"$addToSet": bson.M{
+			"join_invitations": bson.M{
+				"$each": invitations,
+			},
+		},
+	}
+
+	return g.groupRepo.Update(ctx, filter, update)
+}
+
+func (g *groupService) UpdateGroupInvitation(
+	req *dto.UpdateGroupInvitationRequest,
+	requesterID string,
+) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Check leader permission
+	ok, err := g.groupRepo.IsLeader(ctx, req.GroupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return apperror.ErrForbidden
+	}
+
+	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	invitationOID, err := primitive.ObjectIDFromHex(req.InvitationID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	now := time.Now()
+
+	// Base filter: match group + invitation
+	filter := repo.Filter{
+		"_id":                  groupOID,
+		"join_invitations._id": invitationOID,
+	}
+
+	update := repo.UpdateDocument{
+		"$set": bson.M{
+			"join_invitations.$.status":     req.Status,
+			"join_invitations.$.updated_at": now,
+		},
+	}
+
+	// If approved → add member atomically
+	if req.Status == model.RequestAccepted {
+		invitation, err := g.groupRepo.GetInvitationByID(ctx, groupOID, invitationOID)
+		if err != nil {
+			return err
+		}
+
+		user, err := g.userRepo.GetByID(ctx, invitation.RecipientID.Hex())
+		if err != nil {
+			return err
+		}
+
+		update["$addToSet"] = bson.M{
+			"members": model.UserInfo{
+				ID:       invitation.RecipientID,
+				Username: user.Username,
+				Avatar:   user.Avatar,
+			},
+		}
+	}
+
+	return g.groupRepo.Update(ctx, filter, update)
 }
 
 func (g *groupService) CreateTask(req *dto.CreateTaskRequest, requesterID string) (*model.Task, error) {
