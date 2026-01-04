@@ -18,6 +18,8 @@ func RegisterGroupRoutes(rg *gin.RouterGroup, c *controller.GroupController) {
 		groups.PUT("", c.UpdateGroup)
 		groups.DELETE("/:group_id", c.DeleteGroup)
 
+		groups.PUT("leave/:group_id", c.LeaveGroup)
+
 		groups.POST("join", c.CreateJoinGroupRequest)
 		groups.PUT("join", c.UpdateJoinGroupRequest)
 

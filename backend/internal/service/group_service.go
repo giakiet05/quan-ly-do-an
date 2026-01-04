@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
@@ -19,8 +20,8 @@ type GroupService interface {
 	GetGroupsFilter(query *dto.GetGroupsFilterQuery, requesterID string) ([]model.Group, error)
 	UpdateGroup(req *dto.UpdateGroupRequest, requesterID string) (*model.Group, error)
 	DeleteGroup(groupID string, requesterID string) error
+	LeaveGroup(groupID string, requesterID string) error
 
-	ChangeLeader(groupID string, newLeaderID string, requesterID string) error
 	CreateJoinGroupRequest(req *dto.CreateJoinGroupRequest, requesterID string) error
 	UpdateJoinGroupRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error
 	CreateGroupInvitation(recipientIDs []string, groupID string, requesterID string) error
@@ -165,6 +166,8 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		ProjectID:   projectObjectID,
 		LeaderID:    requesterObjectID,
 		Members:     members,
+		MinMember:   projectFound.MinMember,
+		MaxMember:   projectFound.MaxMember,
 		Tasks:       []model.Task{},
 		Reports:     []model.Report{},
 		Setting:     model.GroupSetting{},
@@ -292,51 +295,38 @@ func (g *groupService) DeleteGroup(groupID string, requesterID string) error {
 	return g.groupRepo.Delete(ctx, groupID)
 }
 
-func (g *groupService) ChangeLeader(groupID string, newLeaderID string, requesterID string) error {
+func (g *groupService) LeaveGroup(groupID string, requesterID string) error {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// Check if requester is the current leader
-	ok, err := g.groupRepo.IsLeader(ctx, groupID, requesterID)
+	// Check if requester is the group leader
+	isLeader, err := g.groupRepo.IsLeader(ctx, groupID, requesterID)
 	if err != nil {
 		return err
 	}
-	if !ok {
-		return apperror.ErrForbidden
+	if isLeader {
+		return apperror.ErrCannotLeaveGroup
 	}
 
-	// Get existing group
-	group, err := g.groupRepo.GetByID(ctx, groupID)
-	if err != nil {
-		return err
-	}
-
-	// Verify new leader is a member of the group
-	newLeaderOID, err := primitive.ObjectIDFromHex(newLeaderID)
-	if err != nil {
-		return apperror.ErrBadRequest
-	}
-
-	isMember := false
-	for _, member := range group.Members {
-		if member.ID == newLeaderOID {
-			isMember = true
-		}
-	}
-	if !isMember {
-		return apperror.ErrBadRequest
-	}
-
-	// Update leader
-	group.LeaderID = newLeaderOID
-	return g.groupRepo.Replace(ctx, group)
+	// Remove member from group
+	return g.groupRepo.RemoveMember(ctx, groupID, requesterID)
 }
 
 func (g *groupService) CreateJoinGroupRequest(req *dto.CreateJoinGroupRequest, requesterID string) error {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// Verify group exists
+	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	requesterOID, err := primitive.ObjectIDFromHex(requesterID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	// Verify group exists and get settings
 	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
 	if err != nil {
 		return err
@@ -356,36 +346,32 @@ func (g *groupService) CreateJoinGroupRequest(req *dto.CreateJoinGroupRequest, r
 		return apperror.ErrAlreadyMember
 	}
 
-	// Check if request already exists
-	requesterOID, err := primitive.ObjectIDFromHex(requesterID)
-	if err != nil {
-		return apperror.ErrInvalidID
-	}
-
-	for _, jr := range group.JoinRequests {
-		if jr.UserID == requesterOID && jr.Status == model.RequestPending {
-			return apperror.ErrInvitationAlreadyExists
-		}
+	if len(group.Members) >= group.MaxMember {
+		return apperror.ErrGroupFull
 	}
 
 	// Create new join request
+	now := time.Now()
 	joinRequest := model.JoinGroupRequest{
 		ID:          primitive.NewObjectID(),
 		UserID:      requesterOID,
 		Status:      model.RequestPending,
 		Message:     req.Message,
-		RequestedAt: time.Now(),
-		UpdatedAt:   time.Now(),
+		RequestedAt: now,
+		UpdatedAt:   now,
 	}
 
-	// Update group with new join request
-	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
-	if err != nil {
-		return apperror.ErrInvalidID
-	}
-
+	// Atomically add join request only if no pending request exists
 	filter := repo.Filter{
 		"_id": groupOID,
+		"join_requests": bson.M{
+			"$not": bson.M{
+				"$elemMatch": bson.M{
+					"user_id": requesterOID,
+					"status":  model.RequestPending,
+				},
+			},
+		},
 	}
 
 	update := repo.UpdateDocument{
@@ -394,7 +380,16 @@ func (g *groupService) CreateJoinGroupRequest(req *dto.CreateJoinGroupRequest, r
 		},
 	}
 
-	return g.groupRepo.Update(ctx, filter, update)
+	err = g.groupRepo.Update(ctx, filter, update)
+	if err != nil {
+		// If document not found, it means a pending request already exists
+		if errors.Is(err, apperror.ErrDocumentNotFound) {
+			return apperror.ErrJoinRequestAlreadyExists
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (g *groupService) UpdateJoinGroupRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error {
@@ -447,12 +442,9 @@ func (g *groupService) UpdateJoinGroupRequest(req *dto.UpdateJoinGroupRequest, r
 			return err
 		}
 
-		update["$addToSet"] = bson.M{
-			"members": model.UserInfo{
-				ID:       invitation.UserID,
-				Username: user.Username,
-				Avatar:   user.Avatar,
-			},
+		err = g.groupRepo.AddMember(ctx, req.GroupID, user)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -463,6 +455,11 @@ func (g *groupService) CreateGroupInvitation(recipientIDs []string, groupID stri
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
+	groupOID, err := primitive.ObjectIDFromHex(groupID)
+	if err != nil {
+		return apperror.ErrBadRequest
+	}
+
 	// Check if requester is the group leader
 	ok, err := g.groupRepo.IsLeader(ctx, groupID, requesterID)
 	if err != nil {
@@ -472,17 +469,12 @@ func (g *groupService) CreateGroupInvitation(recipientIDs []string, groupID stri
 		return apperror.ErrForbidden
 	}
 
-	isMember, err := g.groupRepo.IsMember(ctx, groupID, requesterID)
+	isFull, err := g.groupRepo.IsMaxMemberReached(ctx, groupID)
 	if err != nil {
 		return err
 	}
-	if isMember {
-		return apperror.ErrAlreadyMember
-	}
-
-	groupOID, err := primitive.ObjectIDFromHex(groupID)
-	if err != nil {
-		return apperror.ErrBadRequest
+	if isFull {
+		return apperror.ErrGroupFull
 	}
 
 	var invitations []model.JoinGroupInvitation
@@ -490,6 +482,15 @@ func (g *groupService) CreateGroupInvitation(recipientIDs []string, groupID stri
 		recipientOID, err := primitive.ObjectIDFromHex(rid)
 		if err != nil {
 			return apperror.ErrBadRequest
+		}
+
+		// Check if recipient is already a member
+		isMember, err := g.groupRepo.IsMember(ctx, groupID, rid)
+		if err != nil {
+			return err
+		}
+		if isMember {
+			continue
 		}
 
 		invitations = append(invitations, model.JoinGroupInvitation{
@@ -576,12 +577,9 @@ func (g *groupService) UpdateGroupInvitation(
 			return err
 		}
 
-		update["$addToSet"] = bson.M{
-			"members": model.UserInfo{
-				ID:       invitation.RecipientID,
-				Username: user.Username,
-				Avatar:   user.Avatar,
-			},
+		err = g.groupRepo.AddMember(ctx, req.GroupID, user)
+		if err != nil {
+			return err
 		}
 	}
 

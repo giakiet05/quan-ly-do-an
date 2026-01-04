@@ -19,6 +19,7 @@ type UpdateGroupRequest struct {
 	LeaderID  *string             `json:"leader_id,omitempty"`
 	Setting   *model.GroupSetting `json:"setting,omitempty"`
 }
+
 type CreateJoinGroupRequest struct {
 	GroupID string `json:"group_id"`
 	Message string `json:"message"`
