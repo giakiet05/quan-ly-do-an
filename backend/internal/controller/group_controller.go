@@ -110,28 +110,6 @@ func (g *GroupController) UpdateGroup(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Group updated successfully", dto.FromGroup(group))
 }
 
-func (g *GroupController) UpdateGroupMembers(ctx *gin.Context) {
-	var req *dto.UpdateGroupMembersRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
-	}
-
-	authUser, exists := ctx.Get("authUser")
-	if !exists {
-		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
-		return
-	}
-
-	err := g.groupService.UpdateGroupMemberRequest(req, authUser.(auth.AuthUser).ID)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "Group members updated successfully", nil)
-}
-
 func (g *GroupController) DeleteGroup(ctx *gin.Context) {
 	groupID := ctx.Param("group_id")
 	if groupID == "" {
@@ -152,6 +130,116 @@ func (g *GroupController) DeleteGroup(ctx *gin.Context) {
 	}
 
 	dto.SendSuccess(ctx, http.StatusOK, "Group deleted successfully", nil)
+}
+
+func (g *GroupController) LeaveGroup(ctx *gin.Context) {
+	groupID := ctx.Param("group_id")
+	if groupID == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "Group ID is required", apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.LeaveGroup(groupID, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Leave group successfully", nil)
+}
+
+func (g *GroupController) CreateJoinGroupRequest(ctx *gin.Context) {
+	var req *dto.CreateJoinGroupRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.CreateJoinGroupRequest(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusCreated, "Join group request created successfully", nil)
+}
+
+func (g *GroupController) UpdateJoinGroupRequest(ctx *gin.Context) {
+	var req *dto.UpdateJoinGroupRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.UpdateJoinGroupRequest(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Join group request updated successfully", nil)
+}
+
+func (g *GroupController) CreateGroupInvitation(ctx *gin.Context) {
+	var req *dto.CreateGroupInvitationRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.CreateGroupInvitation([]string{req.RecipientID}, req.GroupID, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusCreated, "Group invitation created successfully", nil)
+}
+
+func (g *GroupController) UpdateGroupInvitation(ctx *gin.Context) {
+	var req *dto.UpdateGroupInvitationRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.UpdateGroupInvitation(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Group invitation updated successfully", nil)
 }
 
 // Task Operations

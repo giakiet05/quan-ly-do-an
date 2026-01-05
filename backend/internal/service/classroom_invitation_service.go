@@ -247,10 +247,7 @@ func (s *classroomInvitationService) AcceptInvitation(invitationID, userID strin
 	studentInfo := model.UserInfo{
 		ID:       user.ID,
 		Username: user.Username,
-		Avatar:   "",
-	}
-	if user.Avatar != nil {
-		studentInfo.Avatar = user.Avatar.URL
+		Avatar:   user.Avatar,
 	}
 
 	err = s.classroomRepo.AddStudent(ctx, invitation.ClassroomID.Hex(), studentInfo)

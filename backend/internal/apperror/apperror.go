@@ -67,10 +67,10 @@ func StatusFromError(err error) int {
 	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
 		return http.StatusForbidden
 	// 404 Not Found
-	case isErrorType(err, ErrUserNotFound, ErrCommunityNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound):
+	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound):
 		return http.StatusNotFound
 	// 409 Conflict
-	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrCommunityNameExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed):
+	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed):
 		return http.StatusConflict
 	// 500 Internal Server Error
 	case isErrorType(err, ErrInternal, ErrNoFieldsToUpdate, ErrMembershipCreateFailed, ErrMembershipDeleteFailed):
@@ -103,6 +103,7 @@ var (
 	ErrInvalidID         = AppError{Code: "INVALID_ID", Message: "Invalid ID format"}
 	ErrPaginationInvalid = AppError{Code: "PAGINATION_INVALID", Message: "Page number or page size is invalid. Page size must be smaller than 500."}
 	ErrNotFound          = AppError{Code: "NOT_FOUND", Message: "Resource not found"}
+	ErrDocumentNotFound  = AppError{Code: "DOCUMENT_NOT_FOUND", Message: "Document not found"}
 
 	// User-related
 	ErrUserNotFound   = AppError{Code: "USER_NOT_FOUND", Message: "User not found"}
@@ -115,6 +116,8 @@ var (
 	ErrProjectGroupNotFound = AppError{Code: "PROJECT_GROUP_NOT_FOUND", Message: "Project group not found"}
 	ErrProjectNotFound      = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
 	ErrInvalidMemberNumber  = AppError{Code: "INVALID_MEMBER_NUMBER", Message: "Invalid member number"}
+	ErrGroupFull            = AppError{Code: "GROUP_FULL", Message: "Group has reached maximum member capacity"}
+	ErrCannotLeaveGroup     = AppError{Code: "CANNOT_LEAVE_GROUP", Message: "Cannot leave group as the leader. Please assign a new leader before leaving."}
 
 	// Class Membership-related
 	ErrMembershipNotFound     = AppError{Code: "MEMBERSHIP_NOT_FOUND", Message: "Membership not found"}
@@ -126,17 +129,18 @@ var (
 	// Messaging-related
 	ErrChannelNotFound = AppError{Code: "CHANNEL_NOT_FOUND", Message: "Channel not found"}
 	ErrNoMessageFound  = AppError{Code: "NO_MESSAGE_FOUND", Message: "No message found"}
+	ErrMessageNotFound = AppError{Code: "MESSAGE_NOT_FOUND", Message: "Message not found"}
 
 	// Classroom-related
 	ErrClassroomNotFound = AppError{Code: "CLASSROOM_NOT_FOUND", Message: "Classroom not found"}
 	ErrRoundNotFound     = AppError{Code: "ROUND_NOT_FOUND", Message: "Round not found"}
-	ErrProjectNotFound   = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
 
 	// Invitation-related
-	ErrInvitationNotFound        = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
-	ErrInvitationExpired         = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
-	ErrInvitationAlreadyExists   = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
+	ErrInvitationNotFound         = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
+	ErrInvitationExpired          = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
+	ErrInvitationAlreadyExists    = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
+	ErrJoinRequestAlreadyExists   = AppError{Code: "JOIN_REQUEST_ALREADY_EXISTS", Message: "Join request already exists for this user"}
 	ErrInvitationAlreadyProcessed = AppError{Code: "INVITATION_ALREADY_PROCESSED", Message: "Invitation has already been accepted or rejected"}
-	ErrAlreadyInClassroom        = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
-	ErrEmailMismatch             = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
+	ErrAlreadyInClassroom         = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
+	ErrEmailMismatch              = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
 )
