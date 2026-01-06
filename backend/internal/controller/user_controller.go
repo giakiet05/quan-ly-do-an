@@ -122,6 +122,30 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Password changed successfully", nil)
 }
 
+// UpdateProfile updates user profile (full_name, student_code)
+// PUT /api/users/me
+func (c *UserController) UpdateProfile(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	var req dto.UpdateProfileRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	user, err := c.service.UpdateProfile(authUser.(auth.AuthUser).ID, req)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Profile updated successfully", user)
+}
+
 // --- Admin-only actions ---
 
 func (c *UserController) DeleteUser(ctx *gin.Context) {

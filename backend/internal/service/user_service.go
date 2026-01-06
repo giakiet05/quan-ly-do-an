@@ -25,6 +25,7 @@ type UserService interface {
 	DeleteAvatar(userID string) (dto.UserResponse, error)
 	DeleteUser(id string) error
 	ChangePassword(userID, oldPassword, newPassword string) error
+	UpdateProfile(userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error)
 
 	GetUserByID(id string) (dto.UserResponse, error)
 	GetUserByEmail(email string) (dto.UserResponse, error)
@@ -158,6 +159,53 @@ func (s *userService) ChangePassword(userID, oldPassword, newPassword string) er
 		return err
 	}
 	return nil
+}
+
+func (s *userService) UpdateProfile(userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return dto.UserResponse{}, apperror.ErrUserNotFound
+		}
+		return dto.UserResponse{}, err
+	}
+
+	// Build update document
+	updateDoc := bson.M{}
+	if req.FullName != nil && *req.FullName != "" {
+		updateDoc["full_name"] = *req.FullName
+		user.FullName = *req.FullName
+	}
+	if req.StudentCode != nil {
+		// Allow empty string to clear student code
+		if *req.StudentCode == "" {
+			updateDoc["student_code"] = nil
+			user.StudentCode = nil
+		} else {
+			updateDoc["student_code"] = *req.StudentCode
+			user.StudentCode = req.StudentCode
+		}
+	}
+
+	// Check if there's anything to update
+	if len(updateDoc) == 0 {
+		return dto.FromUser(user), nil
+	}
+
+	// Update user
+	_, err = s.userRepo.Update(ctx, user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return dto.UserResponse{}, apperror.ErrUserNotFound
+		}
+		return dto.UserResponse{}, err
+	}
+
+	return dto.FromUser(user), nil
 }
 
 func (s *userService) GetUserByID(id string) (dto.UserResponse, error) {
