@@ -160,7 +160,7 @@ func FromGroup(group *model.Group) *GroupResponse {
 	for i, m := range group.Members {
 		members[i] = model.UserInfoResponse{
 			UserID:   m.ID.Hex(),
-			Username: m.Username,
+			FullName: m.FullName,
 			Avatar:   m.Avatar,
 		}
 	}

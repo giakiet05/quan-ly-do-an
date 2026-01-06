@@ -23,13 +23,14 @@ type Video struct {
 type File struct{}
 
 type UserInfo struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Username string             `bson:"username" json:"username"`
-	Avatar   *Image             `bson:"avatar" json:"avatar"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	FullName    string             `bson:"full_name" json:"full_name"`
+	Avatar      *Image             `bson:"avatar" json:"avatar"`
+	StudentCode *string            `bson:"student_code,omitempty" json:"student_code,omitempty"`
 }
 
 type UserInfoResponse struct {
 	UserID   string `json:"user_id"`
-	Username string `json:"username"`
+	FullName string `json:"full_name"`
 	Avatar   *Image `json:"avatar,omitempty"`
 }

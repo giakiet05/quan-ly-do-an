@@ -10,7 +10,8 @@ import (
 
 // GetUsersQuery contains query parameters for searching and paginating users
 type GetUsersQuery struct {
-	Username string `form:"username"`
+	FullName string `form:"full_name"`
+	Email    string `form:"email"`
 	Page     int    `form:"page"`
 	PageSize int    `form:"pageSize"`
 }
@@ -24,11 +25,12 @@ type ChangePasswordRequest struct {
 
 // UserResponse is the main user object returned in API responses.
 type UserResponse struct {
-	ID       string             `json:"id"`
-	Username string             `json:"username"`
-	Email    string             `json:"email,omitempty"`
-	Provider model.AuthProvider `json:"provider"`
-	Avatar   *model.Image       `json:"avatar,omitempty"`
+	ID          string             `json:"id"`
+	Email       string             `json:"email,omitempty"`
+	FullName    string             `json:"full_name"`
+	StudentCode *string            `json:"student_code,omitempty"`
+	Provider    model.AuthProvider `json:"provider"`
+	Avatar      *model.Image       `json:"avatar,omitempty"`
 }
 
 func FromUser(u *model.User) UserResponse {
@@ -36,11 +38,12 @@ func FromUser(u *model.User) UserResponse {
 		return UserResponse{}
 	}
 	return UserResponse{
-		ID:       u.ID.Hex(),
-		Username: u.Username,
-		Email:    u.Email,
-		Provider: u.AuthProvider,
-		Avatar:   u.Avatar,
+		ID:          u.ID.Hex(),
+		Email:       u.Email,
+		FullName:    u.FullName,
+		StudentCode: u.StudentCode,
+		Provider:    u.AuthProvider,
+		Avatar:      u.Avatar,
 	}
 }
 

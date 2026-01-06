@@ -39,7 +39,7 @@ type AuthService interface {
 	// Local Auth - New Flow (Verify Email First)
 	SendEmailVerification(email string) error
 	VerifyEmailCode(email, otp string) (string, error) // Returns verification_token
-	CompleteRegistration(verificationToken, username, password string) (*model.User, string, string, error)
+	CompleteRegistration(verificationToken, fullName, studentCode, password string) (*model.User, string, string, error)
 	ResendOTP(email string) error
 	Login(identifier, password string) (*model.User, string, string, error)
 	RefreshToken(refreshToken string) (string, string, error)
@@ -52,7 +52,7 @@ type AuthService interface {
 
 	// Google OAuth
 	ProcessGoogleCallback(code string) (*GoogleAuthResult, error)
-	CompleteGoogleSetup(setupToken, username string) (*model.User, string, string, error)
+	CompleteGoogleSetup(setupToken, fullName, studentCode string) (*model.User, string, string, error)
 }
 
 type authService struct {
@@ -163,7 +163,7 @@ func (s *authService) VerifyEmailCode(email, otp string) (string, error) {
 }
 
 // CompleteRegistration creates the user account after email verification
-func (s *authService) CompleteRegistration(verificationToken, username, password string) (*model.User, string, string, error) {
+func (s *authService) CompleteRegistration(verificationToken, fullName, studentCode, password string) (*model.User, string, string, error) {
 	// Parse verification token
 	claims, err := auth.ParseVerificationToken(verificationToken)
 	if err != nil {
@@ -190,11 +190,6 @@ func (s *authService) CompleteRegistration(verificationToken, username, password
 		return nil, "", "", apperror.ErrInvalidToken
 	}
 
-	// Check username availability
-	if _, err := s.userRepo.GetByUsername(ctx, username); !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, "", "", apperror.ErrUsernameExists
-	}
-
 	// Double-check email not taken (race condition prevention)
 	if _, err := s.userRepo.GetByEmail(ctx, claims.Email); !errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, "", "", apperror.ErrEmailExists
@@ -207,9 +202,15 @@ func (s *authService) CompleteRegistration(verificationToken, username, password
 	}
 
 	// Create user (already verified)
+	var studentCodePtr *string
+	if studentCode != "" {
+		studentCodePtr = &studentCode
+	}
+
 	user := &model.User{
-		Username:     username,
 		Email:        claims.Email,
+		FullName:     fullName,
+		StudentCode:  studentCodePtr, // nil if empty (lecturer)
 		Password:     string(hashedPassword),
 		AuthProvider: model.ProviderLocal,
 		CreatedAt:    time.Now(),
@@ -222,9 +223,6 @@ func (s *authService) CompleteRegistration(verificationToken, username, password
 
 	// Delete verification record (cleanup)
 	_ = s.emailVerificationRepo.Delete(ctx, claims.Email)
-
-	// Invalidate username cache
-	s.invalidateUsernameCache(username)
 
 	// Generate access & refresh tokens
 	accessToken, refreshToken, err := auth.GenerateToken(createdUser.ID.Hex())
@@ -276,15 +274,9 @@ func (s *authService) ResendOTP(email string) error {
 func (s *authService) Login(identifier, password string) (*model.User, string, string, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
-	var user *model.User
-	var err error
 
-	if isEmail(identifier) {
-		user, err = s.userRepo.GetByEmail(ctx, identifier)
-	} else {
-		user, err = s.userRepo.GetByUsername(ctx, identifier)
-	}
-
+	// Now identifier must be email since we removed username
+	user, err := s.userRepo.GetByEmail(ctx, identifier)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, "", "", apperror.ErrInvalidCredentials
@@ -407,7 +399,7 @@ func (s *authService) ProcessGoogleCallback(code string) (*GoogleAuthResult, err
 	}, nil
 }
 
-func (s *authService) CompleteGoogleSetup(setupToken, username string) (*model.User, string, string, error) {
+func (s *authService) CompleteGoogleSetup(setupToken, fullName, studentCode string) (*model.User, string, string, error) {
 	claims, err := auth.ParseSetupToken(setupToken)
 	if err != nil {
 		return nil, "", "", err
@@ -416,17 +408,19 @@ func (s *authService) CompleteGoogleSetup(setupToken, username string) (*model.U
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	if _, err := s.userRepo.GetByUsername(ctx, username); !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, "", "", apperror.ErrUsernameExists
-	}
-
 	if _, err := s.userRepo.GetByEmail(ctx, claims.Email); !errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, "", "", apperror.ErrEmailExists
 	}
 
+	var studentCodePtr *string
+	if studentCode != "" {
+		studentCodePtr = &studentCode
+	}
+
 	newUser := &model.User{
-		Username:     username,
 		Email:        claims.Email,
+		FullName:     fullName,
+		StudentCode:  studentCodePtr, // nil if empty (lecturer)
 		AuthProvider: model.ProviderGoogle,
 		ProviderID:   claims.GoogleID,
 		CreatedAt:    time.Now(),
@@ -436,9 +430,6 @@ func (s *authService) CompleteGoogleSetup(setupToken, username string) (*model.U
 	if err != nil {
 		return nil, "", "", err
 	}
-
-	// Invalidate username cache
-	s.invalidateUsernameCache(username)
 
 	accessToken, refreshToken, err := auth.GenerateToken(createdUser.ID.Hex())
 	if err != nil {

@@ -49,11 +49,11 @@ func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
 		return ChannelResponse{}
 	}
 
-	members := make([]ChannelMemberResponse, len(channel.Members))
+	members := make([]model.UserInfoResponse, len(channel.Members))
 	for i, m := range channel.Members {
 		members[i] = model.UserInfoResponse{
 			UserID:   m.ID.Hex(),
-			Username: m.Username,
+			FullName: m.FullName,
 			Avatar:   m.Avatar,
 		}
 	}

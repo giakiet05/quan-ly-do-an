@@ -21,7 +21,7 @@ func NewUserController(service service.UserService) *UserController {
 	return &UserController{service: service}
 }
 
-// GetUsers retrieves a paginated list of users with optional username search.
+// GetUsers retrieves a paginated list of users with optional search filters.
 func (c *UserController) GetUsers(ctx *gin.Context) {
 	var query dto.GetUsersQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
@@ -35,27 +35,6 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 		return
 	}
 	dto.SendSuccess(ctx, http.StatusOK, "Users retrieved successfully", response)
-}
-
-// GetUserByUsername retrieves a user's public profile by their username.
-func (c *UserController) GetUserByUsername(ctx *gin.Context) {
-	username := ctx.Param("username")
-
-	// Get requester ID (may be empty for unauthenticated requests)
-	requesterID, _ := ctx.Get("user_id")
-	requesterIDStr := ""
-	if id, ok := requesterID.(string); ok {
-		requesterIDStr = id
-	}
-
-	user, err := c.service.GetUserByUsername(username, requesterIDStr)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	user.Email = "" // Hide email for public profile
-	dto.SendSuccess(ctx, http.StatusOK, "User profile retrieved successfully", user)
 }
 
 // GetMyProfile retrieves the profile of the currently authenticated user.
@@ -141,27 +120,6 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 	}
 
 	dto.SendSuccess(ctx, http.StatusOK, "Password changed successfully", nil)
-}
-
-// CheckUsername checks if a username is available for registration.
-// This is a public endpoint for real-time username availability checking.
-func (c *UserController) CheckUsername(ctx *gin.Context) {
-	var req struct {
-		Username string `json:"username" binding:"required,min=3,max=20"`
-	}
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
-	}
-
-	available, err := c.service.CheckUsernameAvailability(req.Username)
-	if err != nil {
-		dto.SendError(ctx, http.StatusInternalServerError, apperror.Message(apperror.ErrInternal), apperror.ErrInternal.Code)
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "", gin.H{"available": available})
 }
 
 // --- Admin-only actions ---

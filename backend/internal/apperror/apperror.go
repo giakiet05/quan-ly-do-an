@@ -58,19 +58,19 @@ func isErrorType(err error, targets ...error) bool {
 func StatusFromError(err error) int {
 	switch {
 	// 400 Bad Request
-	case isErrorType(err, ErrBadRequest, ErrInvalidID, ErrInvalidMembershipData, ErrInvalidOTP, ErrOTPExpired):
+	case isErrorType(err, ErrBadRequest, ErrInvalidID, ErrInvalidMembershipData, ErrInvalidOTP, ErrOTPExpired, ErrCodeInvalid):
 		return http.StatusBadRequest
 	// 401 Unauthorized
 	case isErrorType(err, ErrInvalidCredentials, ErrInvalidToken, ErrInvalidClaims, ErrInvalidIssuer, ErrInvalidAudience, ErrTokenInvalidated):
 		return http.StatusUnauthorized
 	// 403 Forbidden
-	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
+	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified, ErrStudentCodeNotInWhitelist, ErrInvalidEmailDomain, ErrClassroomFull):
 		return http.StatusForbidden
 	// 404 Not Found
-	case isErrorType(err, ErrUserNotFound, ErrCommunityNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound):
+	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound):
 		return http.StatusNotFound
 	// 409 Conflict
-	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrCommunityNameExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed):
+	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed, ErrStudentCodeAlreadyUsed, ErrJoinRequestAlreadyProcessed):
 		return http.StatusConflict
 	// 500 Internal Server Error
 	case isErrorType(err, ErrInternal, ErrNoFieldsToUpdate, ErrMembershipCreateFailed, ErrMembershipDeleteFailed):
@@ -124,19 +124,28 @@ var (
 	ErrInvalidMembershipData  = AppError{Code: "INVALID_MEMBERSHIP_DATA", Message: "Invalid membership data"}
 
 	// Messaging-related
-	ErrChannelNotFound = AppError{Code: "CHANNEL_NOT_FOUND", Message: "Channel not found"}
-	ErrNoMessageFound  = AppError{Code: "NO_MESSAGE_FOUND", Message: "No message found"}
+	ErrChannelNotFound  = AppError{Code: "CHANNEL_NOT_FOUND", Message: "Channel not found"}
+	ErrNoMessageFound   = AppError{Code: "NO_MESSAGE_FOUND", Message: "No message found"}
+	ErrMessageNotFound  = AppError{Code: "MESSAGE_NOT_FOUND", Message: "Message not found"}
 
 	// Classroom-related
 	ErrClassroomNotFound = AppError{Code: "CLASSROOM_NOT_FOUND", Message: "Classroom not found"}
 	ErrRoundNotFound     = AppError{Code: "ROUND_NOT_FOUND", Message: "Round not found"}
-	ErrProjectNotFound   = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
 
 	// Invitation-related
-	ErrInvitationNotFound        = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
-	ErrInvitationExpired         = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
-	ErrInvitationAlreadyExists   = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
+	ErrInvitationNotFound         = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
+	ErrInvitationExpired          = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
+	ErrInvitationAlreadyExists    = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
 	ErrInvitationAlreadyProcessed = AppError{Code: "INVITATION_ALREADY_PROCESSED", Message: "Invitation has already been accepted or rejected"}
-	ErrAlreadyInClassroom        = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
-	ErrEmailMismatch             = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
+	ErrAlreadyInClassroom         = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
+	ErrEmailMismatch              = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
+
+	// Classroom Join-related
+	ErrCodeInvalid               = AppError{Code: "CODE_INVALID", Message: "Invalid invitation code"}
+	ErrStudentCodeNotInWhitelist = AppError{Code: "STUDENT_CODE_NOT_IN_WHITELIST", Message: "Student code not in whitelist"}
+	ErrStudentCodeAlreadyUsed    = AppError{Code: "STUDENT_CODE_ALREADY_USED", Message: "Student code already used in this classroom"}
+	ErrInvalidEmailDomain        = AppError{Code: "INVALID_EMAIL_DOMAIN", Message: "Email domain not allowed"}
+	ErrClassroomFull             = AppError{Code: "CLASSROOM_FULL", Message: "Classroom has reached maximum capacity"}
+	ErrJoinRequestNotFound       = AppError{Code: "JOIN_REQUEST_NOT_FOUND", Message: "Join request not found"}
+	ErrJoinRequestAlreadyProcessed = AppError{Code: "JOIN_REQUEST_ALREADY_PROCESSED", Message: "Join request already processed"}
 )

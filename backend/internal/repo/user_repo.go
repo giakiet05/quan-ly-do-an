@@ -21,7 +21,6 @@ type UserRepo interface {
 
 	GetByID(ctx context.Context, id string) (*model.User, error)
 	GetByIDs(ctx context.Context, ids []string) ([]*model.User, error)
-	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	Find(ctx context.Context, filter Filter, opts *FindOptions) ([]*model.User, int64, error)
 }
@@ -112,16 +111,6 @@ func (r *userRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 	filter := bson.M{"_id": objectID, "deleted_at": bson.M{"$exists": false}}
 	var user model.User
 	err = r.userCollection.FindOne(ctx, filter).Decode(&user)
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
-func (r *userRepo) GetByUsername(ctx context.Context, username string) (*model.User, error) {
-	filter := bson.M{"username": username, "deleted_at": bson.M{"$exists": false}}
-	var user model.User
-	err := r.userCollection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		return nil, err
 	}

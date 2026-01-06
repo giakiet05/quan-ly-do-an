@@ -75,9 +75,10 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 	// Initialize members slice with leader
 	members := []model.UserInfo{
 		{
-			ID:       requesterObjectID,
-			Username: leader.Username,
-			Avatar:   leader.Avatar,
+			ID:          requesterObjectID,
+			FullName:    leader.FullName,
+			Avatar:      leader.Avatar,
+			StudentCode: leader.StudentCode,
 		},
 	}
 
@@ -98,9 +99,10 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		}
 
 		members = append(members, model.UserInfo{
-			ID:       memberObjectID,
-			Username: user.Username,
-			Avatar:   user.Avatar,
+			ID:          memberObjectID,
+			FullName:    user.FullName,
+			Avatar:      user.Avatar,
+			StudentCode: user.StudentCode,
 		})
 	}
 
@@ -315,9 +317,10 @@ func (g *groupService) UpdateGroupMemberRequest(req *dto.UpdateGroupMembersReque
 				}
 
 				group.Members = append(group.Members, model.UserInfo{
-					ID:       user.ID,
-					Username: user.Username,
-					Avatar:   user.Avatar,
+					ID:          user.ID,
+					FullName:    user.FullName,
+					Avatar:      user.Avatar,
+					StudentCode: user.StudentCode,
 				})
 			}
 		}
