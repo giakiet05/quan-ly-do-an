@@ -16,7 +16,6 @@ func RegisterGroupRoutes(rg *gin.RouterGroup, c *controller.GroupController) {
 		groups.GET("/:group_id", c.GetGroupByID)
 		groups.GET("", c.GetGroupsFilter)
 		groups.PUT("", c.UpdateGroup)
-		groups.PUT("/members", c.UpdateGroupMembers)
 		groups.DELETE("/:group_id", c.DeleteGroup)
 
 		// Task operations

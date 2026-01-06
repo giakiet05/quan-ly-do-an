@@ -17,7 +17,6 @@ type GroupService interface {
 	GetGroupByID(groupID string, requesterID string) (*model.Group, error)
 	GetGroupsFilter(query *dto.GetGroupsFilterQuery, requesterID string) ([]model.Group, error)
 	UpdateGroup(req *dto.UpdateGroupRequest, requesterID string) (*model.Group, error)
-	UpdateGroupMemberRequest(req *dto.UpdateGroupMembersRequest, requesterID string) error
 	DeleteGroup(groupID string, requesterID string) error
 
 	CreateTask(req *dto.CreateTaskRequest, requesterID string) (*model.Task, error)
@@ -75,10 +74,9 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 	// Initialize members slice with leader
 	members := []model.UserInfo{
 		{
-			ID:          requesterObjectID,
-			FullName:    leader.FullName,
-			Avatar:      leader.Avatar,
-			StudentCode: leader.StudentCode,
+			ID:       requesterObjectID,
+			FullName: leader.FullName,
+			Avatar:   leader.Avatar,
 		},
 	}
 
@@ -101,8 +99,8 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		members = append(members, model.UserInfo{
 			ID:          memberObjectID,
 			FullName:    user.FullName,
-			Avatar:      user.Avatar,
 			StudentCode: user.StudentCode,
+			Avatar:      user.Avatar,
 		})
 	}
 
@@ -265,96 +263,6 @@ func (g *groupService) UpdateGroup(req *dto.UpdateGroupRequest, requesterID stri
 	return group, nil
 }
 
-func (g *groupService) UpdateGroupMemberRequest(req *dto.UpdateGroupMembersRequest, requesterID string) error {
-	ctx, cancel := util.NewDefaultDBContext()
-	defer cancel()
-
-	ok, err := g.groupRepo.IsLeader(ctx, req.GroupID, requesterID)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return apperror.ErrForbidden
-	}
-
-	// Validate action
-	if req.Action != "add" && req.Action != "remove" {
-		return apperror.ErrBadRequest
-	}
-
-	// Validate member IDs
-	if len(req.MemberIDs) == 0 {
-		return apperror.ErrBadRequest
-	}
-
-	// Get existing group
-	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
-	if err != nil {
-		return err
-	}
-
-	switch req.Action {
-	case "add":
-		for _, memberID := range req.MemberIDs {
-			// Check if member already exists
-			memberOID, err := primitive.ObjectIDFromHex(memberID)
-			if err != nil {
-				return apperror.ErrBadRequest
-			}
-
-			exists := false
-			for _, existing := range group.Members {
-				if existing.ID == memberOID {
-					exists = true
-					break
-				}
-			}
-
-			if !exists {
-				user, err := g.userRepo.GetByID(ctx, memberID)
-				if err != nil {
-					return err
-				}
-
-				group.Members = append(group.Members, model.UserInfo{
-					ID:          user.ID,
-					FullName:    user.FullName,
-					Avatar:      user.Avatar,
-					StudentCode: user.StudentCode,
-				})
-			}
-		}
-
-	case "remove":
-		// Prevent removing the group leader
-		for _, memberID := range req.MemberIDs {
-			if memberID == group.LeaderID.Hex() {
-				return apperror.ErrBadRequest
-			}
-		}
-
-		// Remove members from the list
-		memberOIDsToRemove := make(map[primitive.ObjectID]bool)
-		for _, memberID := range req.MemberIDs {
-			oid, err := primitive.ObjectIDFromHex(memberID)
-			if err != nil {
-				return apperror.ErrBadRequest
-			}
-			memberOIDsToRemove[oid] = true
-		}
-
-		filteredMembers := make([]model.UserInfo, 0)
-		for _, member := range group.Members {
-			if !memberOIDsToRemove[member.ID] {
-				filteredMembers = append(filteredMembers, member)
-			}
-		}
-		group.Members = filteredMembers
-	}
-
-	// Replace the entire group document
-	return g.groupRepo.Replace(ctx, group)
-}
 
 func (g *groupService) DeleteGroup(groupID string, requesterID string) error {
 	ctx, cancel := util.NewDefaultDBContext()

@@ -110,28 +110,6 @@ func (g *GroupController) UpdateGroup(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Group updated successfully", dto.FromGroup(group))
 }
 
-func (g *GroupController) UpdateGroupMembers(ctx *gin.Context) {
-	var req *dto.UpdateGroupMembersRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
-	}
-
-	authUser, exists := ctx.Get("authUser")
-	if !exists {
-		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
-		return
-	}
-
-	err := g.groupService.UpdateGroupMemberRequest(req, authUser.(auth.AuthUser).ID)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "Group members updated successfully", nil)
-}
-
 func (g *GroupController) DeleteGroup(ctx *gin.Context) {
 	groupID := ctx.Param("group_id")
 	if groupID == "" {

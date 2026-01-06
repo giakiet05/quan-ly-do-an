@@ -41,6 +41,7 @@ func (s *notificationService) Start() {
 	eventChannel := make(bus.EventListener, 100)
 
 	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
+	s.eventBus.Subscribe(bus.TopicGroupInvitation, eventChannel)
 
 	log.Println("NotificationService started and subscribed to events.")
 
@@ -52,6 +53,8 @@ func (s *notificationService) processEvents(ch bus.EventListener) {
 		switch event.Topic() {
 		case bus.TopicBroadcast:
 			s.handleBroadcast(event)
+		case bus.TopicGroupInvitation:
+			s.handleGroupInvitation(event)
 		}
 	}
 }
@@ -128,6 +131,38 @@ func (s *notificationService) handleBroadcast(event bus.Event) {
 			})
 		}
 	}
+}
+
+func (s *notificationService) handleGroupInvitation(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	payload := event.Payload()
+	inviteeID, _ := payload["invitee_ids"].(string)
+	inviterID, _ := payload["inviter_id"].(string)
+
+	inviteeObjectID, _ := primitive.ObjectIDFromHex(inviteeID)
+	inviterObjectID, _ := primitive.ObjectIDFromHex(inviterID)
+
+	notification := &model.Notification{
+		RecipientID: inviteeObjectID,
+		ActorID:     inviterObjectID,
+		Type:        model.NotificationTypeGroupInvitation,
+		Message:     fmt.Sprintf("Bạn có thư mời tham gia nhóm"),
+		Link:        "",
+		IsRead:      false,
+		Metadata:    payload,
+		CreatedAt:   time.Now(),
+	}
+	createdNotification, err := s.notificationRepo.Create(ctx, notification)
+	if err != nil {
+		log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+	}
+
+	s.eventBus.Publish(bus.NotificationCreatedEvent{
+		RecipientID:  inviteeID,
+		Notification: dto.FromNotification(createdNotification),
+	})
 }
 
 func (s *notificationService) GetNotifications(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error) {

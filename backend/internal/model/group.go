@@ -7,17 +7,20 @@ import (
 )
 
 type Group struct {
-	ID             primitive.ObjectID  `bson:"_id,omitempty"`
-	ClassroomID    primitive.ObjectID  `bson:"classroom_id,omitempty"`
-	ProjectID      primitive.ObjectID  `bson:"project_id,omitempty"`
-	GroupChannelID *primitive.ObjectID `bson:"group_channel_id,omitempty"`
-	LeaderID       primitive.ObjectID  `bson:"leader_id,omitempty"`
-	Members        []UserInfo          `bson:"members" json:"members"`
-	Tasks          []Task              `bson:"tasks" json:"tasks"`
-	TaskStatuses   []string            `bson:"task_statuses" json:"task_statuses"`
-	Reports        []Report            `bson:"reports" json:"reports"`
-	Setting        GroupSetting        `bson:"setting" json:"setting"`
-	JoinRequests   []JoinGroupRequest  `bson:"join_requests" json:"join_requests"`
+	ID             primitive.ObjectID    `bson:"_id,omitempty"`
+	ClassroomID    primitive.ObjectID    `bson:"classroom_id,omitempty"`
+	ProjectID      primitive.ObjectID    `bson:"project_id,omitempty"`
+	GroupChannelID *primitive.ObjectID   `bson:"group_channel_id,omitempty"`
+	LeaderID       primitive.ObjectID    `bson:"leader_id,omitempty"`
+	Members        []UserInfo            `bson:"members" json:"members"`
+	Tasks          []Task                `bson:"tasks" json:"tasks"`
+	TaskStatuses   []string              `bson:"task_statuses" json:"task_statuses"`
+	Reports        []Report              `bson:"reports" json:"reports"`
+	Setting        GroupSetting          `bson:"setting" json:"setting"`
+	MinMember      int                   `bson:"min_member" json:"min_member"`
+	MaxMember      int                   `bson:"max_member" json:"max_member"`
+	JoinRequests   []JoinGroupRequest    `bson:"join_requests" json:"join_requests"`
+	JoinInvitation []JoinGroupInvitation `bson:"join_invitations" json:"join_invitations"`
 }
 
 type Task struct {
@@ -51,20 +54,3 @@ type ReportFeedback struct {
 type GroupSetting struct {
 	AllowJoinRequest bool `bson:"allow_join_request" json:"allow_join_request"`
 }
-
-type JoinGroupRequest struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID      primitive.ObjectID `bson:"user_id" json:"user_id"`
-	UserInfo    UserInfo           `bson:"user_info" json:"user_info"`
-	Status      RequestStatus      `bson:"status" json:"status"`
-	Message     string             `bson:"message" json:"message"`
-	RequestedAt time.Time          `bson:"requested_at" json:"requested_at"`
-}
-
-type RequestStatus string
-
-const (
-	RequestPending  RequestStatus = "pending"
-	RequestAccepted RequestStatus = "accepted"
-	RequestRejected RequestStatus = "rejected"
-)
