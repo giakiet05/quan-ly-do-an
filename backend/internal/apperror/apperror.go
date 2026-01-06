@@ -67,7 +67,7 @@ func StatusFromError(err error) int {
 	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
 		return http.StatusForbidden
 	// 404 Not Found
-	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound):
+	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound, ErrPostNotFound):
 		return http.StatusNotFound
 	// 409 Conflict
 	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed, ErrStudentCodeAlreadyUsed, ErrJoinRequestAlreadyProcessed):
@@ -130,6 +130,7 @@ var (
 	// Classroom-related
 	ErrClassroomNotFound = AppError{Code: "CLASSROOM_NOT_FOUND", Message: "Classroom not found"}
 	ErrRoundNotFound     = AppError{Code: "ROUND_NOT_FOUND", Message: "Round not found"}
+	ErrPostNotFound      = AppError{Code: "POST_NOT_FOUND", Message: "Post not found"}
 
 	// Invitation-related
 	ErrInvitationNotFound        = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}

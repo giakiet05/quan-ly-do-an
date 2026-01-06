@@ -20,6 +20,7 @@ import (
 type Repos struct {
 	repo.UserRepo
 	repo.ClassroomRepo
+	repo.ClassPostRepo
 	repo.GroupRepo
 	repo.NotificationRepo
 	repo.ChannelRepo
@@ -38,6 +39,7 @@ type Services struct {
 	service.MessageService
 	service.ClassroomJoinService
 	service.ClassroomService
+	service.ClassPostService
 }
 
 type Controllers struct {
@@ -50,6 +52,7 @@ type Controllers struct {
 	controller.GroupController
 	controller.ClassroomJoinController
 	controller.ClassroomController
+	controller.ClassPostController
 }
 
 func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
@@ -63,6 +66,7 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 		PasswordResetRepo:        repo.NewPasswordResetRepo(db),
 		ClassroomRepo:            repo.NewClassroomRepo(db),
 		ClassroomJoinRequestRepo: repo.NewClassroomJoinRequestRepo(db),
+		ClassPostRepo:            repo.NewClassPostRepo(db),
 	}
 }
 
@@ -76,6 +80,7 @@ func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sen
 		MessageService:       service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
 		ClassroomJoinService: service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
 		ClassroomService:     service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
+		ClassPostService:     service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
 	}
 }
 
@@ -90,6 +95,7 @@ func initControllers(services *Services, wsHub *ws.Hub) *Controllers {
 		MessageController:       *controller.NewMessageController(services.MessageService),
 		ClassroomJoinController: *controller.NewClassroomJoinController(services.ClassroomJoinService),
 		ClassroomController:     *controller.NewClassroomController(services.ClassroomService),
+		ClassPostController:     *controller.NewClassPostController(services.ClassPostService),
 	}
 }
 
@@ -111,6 +117,8 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 	route.RegisterMessageRoutes(api, &controllers.MessageController)
 	route.RegisterClassroomRoutes(api, &controllers.ClassroomController)
 	route.RegisterClassroomJoinRoutes(api, &controllers.ClassroomJoinController)
+	route.RegisterClassPostRoutes(api, &controllers.ClassPostController)
+	route.RegisterGroupRoutes(api, &controllers.GroupController)
 }
 
 func Init() (*gin.Engine, error) {
