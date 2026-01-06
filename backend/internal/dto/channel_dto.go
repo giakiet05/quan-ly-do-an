@@ -53,7 +53,7 @@ func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
 	for i, m := range channel.Members {
 		members[i] = model.UserInfoResponse{
 			UserID:   m.ID.Hex(),
-			Username: m.Username,
+			FullName: m.FullName,
 			Avatar:   m.Avatar,
 		}
 	}

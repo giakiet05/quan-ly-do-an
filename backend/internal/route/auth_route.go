@@ -11,7 +11,6 @@ func RegisterAuthRoutes(rg *gin.RouterGroup, authCtrl *controller.AuthController
 
 	auth.POST("/refresh", authCtrl.RefreshToken)
 	auth.POST("/logout", authCtrl.Logout)
-	auth.POST("/check-username", userCtrl.CheckUsername) // Public endpoint for username availability check
 
 	// Local Authentication - New Flow (Verify Email First)
 	local := auth.Group("/local")

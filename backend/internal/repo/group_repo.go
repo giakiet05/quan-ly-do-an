@@ -100,7 +100,7 @@ func (g *groupRepo) Update(ctx context.Context, filter Filter, update UpdateDocu
 
 	// Check if any documents were actually modified
 	if result.ModifiedCount == 0 && result.MatchedCount == 0 {
-		return apperror.ErrDocumentNotFound
+		return apperror.ErrGroupNotFound
 	}
 
 	return nil
@@ -151,7 +151,7 @@ func (g *groupRepo) AddMember(ctx context.Context, groupID string, user *model.U
 		"$addToSet": bson.M{
 			"members": bson.M{
 				"user_id":   user.ID,
-				"username":  user.Username,
+				"full_name": user.FullName,
 				"avatar":    user.Avatar,
 				"joined_at": time.Now(),
 			},

@@ -11,7 +11,8 @@ type VerifyEmailCodeRequest struct {
 
 type CompleteRegistrationRequest struct {
 	VerificationToken string `json:"verification_token" binding:"required"`
-	Username          string `json:"username" binding:"required,min=3,max=20"`
+	FullName          string `json:"full_name" binding:"required,min=3"`
+	StudentCode       string `json:"student_code"` // Optional - empty for lecturers
 	Password          string `json:"password" binding:"required,min=6"`
 }
 
@@ -26,8 +27,9 @@ type UserLoginRequest struct {
 }
 
 type CompleteGoogleSetupRequest struct {
-	SetupToken string `json:"setup_token" binding:"required"`
-	Username   string `json:"username" binding:"required,min=3,max=20"`
+	SetupToken  string `json:"setup_token" binding:"required"`
+	FullName    string `json:"full_name" binding:"required,min=3"`
+	StudentCode string `json:"student_code"` // Optional - empty for lecturers
 }
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`

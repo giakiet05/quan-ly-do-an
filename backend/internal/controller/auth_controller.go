@@ -109,7 +109,7 @@ func (c *AuthController) CompleteRegistration(ctx *gin.Context) {
 		return
 	}
 
-	user, accessToken, refreshToken, err := c.authService.CompleteRegistration(req.VerificationToken, req.Username, req.Password)
+	user, accessToken, refreshToken, err := c.authService.CompleteRegistration(req.VerificationToken, req.FullName, req.StudentCode, req.Password)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -239,7 +239,7 @@ func (c *AuthController) CompleteGoogleSetup(ctx *gin.Context) {
 		return
 	}
 
-	user, accessToken, refreshToken, err := c.authService.CompleteGoogleSetup(req.SetupToken, req.Username)
+	user, accessToken, refreshToken, err := c.authService.CompleteGoogleSetup(req.SetupToken, req.FullName, req.StudentCode)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return

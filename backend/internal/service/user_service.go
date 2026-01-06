@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
@@ -26,13 +25,11 @@ type UserService interface {
 	DeleteAvatar(userID string) (dto.UserResponse, error)
 	DeleteUser(id string) error
 	ChangePassword(userID, oldPassword, newPassword string) error
+	UpdateProfile(userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error)
 
 	GetUserByID(id string) (dto.UserResponse, error)
-	GetUserByUsername(username string, requesterID string) (dto.UserResponse, error)
 	GetUserByEmail(email string) (dto.UserResponse, error)
 	GetUsers(query *dto.GetUsersQuery) (*dto.PaginatedUsersResponse, error)
-
-	CheckUsernameAvailability(username string) (bool, error)
 }
 
 type userService struct {
@@ -164,6 +161,53 @@ func (s *userService) ChangePassword(userID, oldPassword, newPassword string) er
 	return nil
 }
 
+func (s *userService) UpdateProfile(userID string, req dto.UpdateProfileRequest) (dto.UserResponse, error) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return dto.UserResponse{}, apperror.ErrUserNotFound
+		}
+		return dto.UserResponse{}, err
+	}
+
+	// Build update document
+	updateDoc := bson.M{}
+	if req.FullName != nil && *req.FullName != "" {
+		updateDoc["full_name"] = *req.FullName
+		user.FullName = *req.FullName
+	}
+	if req.StudentCode != nil {
+		// Allow empty string to clear student code
+		if *req.StudentCode == "" {
+			updateDoc["student_code"] = nil
+			user.StudentCode = nil
+		} else {
+			updateDoc["student_code"] = *req.StudentCode
+			user.StudentCode = req.StudentCode
+		}
+	}
+
+	// Check if there's anything to update
+	if len(updateDoc) == 0 {
+		return dto.FromUser(user), nil
+	}
+
+	// Update user
+	_, err = s.userRepo.Update(ctx, user)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return dto.UserResponse{}, apperror.ErrUserNotFound
+		}
+		return dto.UserResponse{}, err
+	}
+
+	return dto.FromUser(user), nil
+}
+
 func (s *userService) GetUserByID(id string) (dto.UserResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
@@ -174,20 +218,6 @@ func (s *userService) GetUserByID(id string) (dto.UserResponse, error) {
 		}
 		return dto.UserResponse{}, err
 	}
-	return dto.FromUser(user), nil
-}
-
-func (s *userService) GetUserByUsername(username string, requesterID string) (dto.UserResponse, error) {
-	ctx, cancel := util.NewDefaultDBContext()
-	defer cancel()
-	user, err := s.userRepo.GetByUsername(ctx, username)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return dto.UserResponse{}, apperror.ErrUserNotFound
-		}
-		return dto.UserResponse{}, err
-	}
-
 	return dto.FromUser(user), nil
 }
 
@@ -214,9 +244,14 @@ func (s *userService) GetUsers(query *dto.GetUsersQuery) (*dto.PaginatedUsersRes
 		"is_banned":  false, // Only show non-banned users
 	}
 
-	// Add username search if provided
-	if query.Username != "" {
-		filter["username"] = bson.M{"$regex": primitive.Regex{Pattern: query.Username, Options: "i"}}
+	// Add full_name search if provided
+	if query.FullName != "" {
+		filter["full_name"] = bson.M{"$regex": primitive.Regex{Pattern: query.FullName, Options: "i"}}
+	}
+
+	// Add email search if provided
+	if query.Email != "" {
+		filter["email"] = bson.M{"$regex": primitive.Regex{Pattern: query.Email, Options: "i"}}
 	}
 
 	// Pagination
@@ -253,42 +288,4 @@ func (s *userService) GetUsers(query *dto.GetUsersQuery) (*dto.PaginatedUsersRes
 			Total:    total,
 		},
 	}, nil
-}
-
-func (s *userService) CheckUsernameAvailability(username string) (bool, error) {
-	// Try cache first
-	if s.redisClient != nil {
-		ctx, cancel := util.NewDefaultRedisContext()
-		defer cancel()
-
-		cacheKey := fmt.Sprintf("username_exists:%s", username)
-		cached, err := s.redisClient.Get(ctx, cacheKey).Result()
-		if err == nil {
-			// Cache hit - "false" means available, "true" means taken
-			return cached == "false", nil
-		}
-	}
-
-	// Cache miss - query database
-	dbCtx, cancel := util.NewDefaultDBContext()
-	defer cancel()
-
-	_, err := s.userRepo.GetByUsername(dbCtx, username)
-	exists := !errors.Is(err, mongo.ErrNoDocuments)
-
-	// Cache the result (5 minutes TTL)
-	if s.redisClient != nil {
-		ctx, cancel := util.NewDefaultRedisContext()
-		defer cancel()
-
-		cacheKey := fmt.Sprintf("username_exists:%s", username)
-		value := "false"
-		if exists {
-			value = "true"
-		}
-		// Ignore cache write errors, not critical
-		_ = s.redisClient.Set(ctx, cacheKey, value, 5*time.Minute).Err()
-	}
-
-	return !exists, nil
 }
