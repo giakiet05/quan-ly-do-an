@@ -31,7 +31,7 @@ export interface VerifyEmailResponseDto {
 
 export interface CompleteRegistrationRequestDto {
   verification_token: string;
-  username: string;
+  full_name: string;
   password: string;
 }
 

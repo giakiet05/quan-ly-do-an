@@ -45,7 +45,7 @@
       const verification_token = res.verification_token || input_token;
       await completeRegistration({
         verification_token,
-        username: fullname,
+        full_name: fullname,
         password,
       });
       replace("/auth/login");

@@ -33,6 +33,7 @@
             loading = false;
         }
     };
+
     const goBackToEmail = () => {
         step = "email";
         error = "";
@@ -40,6 +41,7 @@
         confirmNewPassword = "";
         resetToken = "";
     };
+
     const handleOtpSuccess = async (e: CustomEvent) => {
         const code = e.detail.verification_token || e.detail.code;
         loading = true;
@@ -214,17 +216,18 @@
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+                                    d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
                                 />
                             {:else}
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-                                /><path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                    d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
                                 />
                             {/if}
                         </svg>
@@ -264,17 +267,18 @@
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
+                                    d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                                />
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
                                 />
                             {:else}
                                 <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
-                                    d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
-                                /><path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                    d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"
                                 />
                             {/if}
                         </svg>
@@ -296,7 +300,6 @@
 </div>
 
 <style>
-    /* --- SYNC VỚI LOGIN CSS --- */
     :root {
         --primary-blue: #1a56db;
         --text-dark: #111827;
@@ -363,46 +366,27 @@
         border-color: var(--primary-blue);
     }
 
-    .back-login {
-        text-align: center;
-        margin-top: 32px;
-    }
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-gray);
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 15px;
-        transition: color 0.2s;
-    }
-    .back-link:hover {
-        color: var(--text-dark);
-    }
-    .arrow-icon {
-        width: 18px;
-        height: 18px;
-        margin-right: 6px;
-    }
-
+    /* Fix vị trí con mắt */
     .input-wrapper-with-icon {
-        position: relative;
+        position: relative; /* Rất quan trọng để nút con căn theo ô này */
+        display: flex;
+        align-items: center;
     }
     input.has-icon-right {
-        padding-right: 48px;
+        padding-right: 48px; /* Đẩy chữ ra để không bị đè bởi con mắt */
     }
-    .toggle-password-wrapper {
+    .btn-eye {
         position: absolute;
-        right: 8px;
+        right: 6px; /* Khoảng cách từ lề phải ô input */
         top: 50%;
-        transform: translateY(-50%);
+        transform: translateY(-50%); /* Căn giữa dọc tuyệt đối */
         background: transparent;
         border: none;
         padding: 8px;
         cursor: pointer;
         display: flex;
         align-items: center;
+        justify-content: center;
         color: #9ca3af;
         z-index: 5;
     }
@@ -421,9 +405,7 @@
         border-radius: 8px;
         margin-bottom: 16px;
         font-size: 14px;
-        text-align: left;
     }
-
     .back-login {
         margin-top: 24px;
         text-align: center;
@@ -444,7 +426,6 @@
         height: 16px;
         margin-right: 6px;
     }
-
     .w-full {
         width: 100% !important;
     }
@@ -461,7 +442,6 @@
         color: #ef4444;
         margin-left: 2px;
     }
-
     .link-text-small {
         background: none;
         border: none;
