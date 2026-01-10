@@ -3,7 +3,7 @@ import type { User } from '../models/user';
 
 
 export interface LoginRequestDto {
-  identifier: string; // username hoặc email
+  identifier: string;
   password: string;
 }
 
@@ -80,5 +80,5 @@ export interface ResetPasswordRequestDto {
 
 export interface CompleteGoogleSetupRequestDto {
   setup_token: string;
-  username: string;
+  full_name: string;
 }
