@@ -37,7 +37,6 @@
       loading = true;
       error = null;
       const data = await getUserProfile();
-      console.log("Profile data:", data);
       profile = data;
       editedFullName = data.full_name;
       editedStudentCode = data.student_code || "";

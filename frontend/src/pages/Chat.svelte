@@ -1,5 +1,20 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
   import { authStore } from "../stores/auth-store";
+  import {
+    getChannelsByUserId,
+    type Channel,
+  } from "../services/channel-service";
+  import {
+    getMessages,
+    type Message as APIMessage,
+  } from "../services/message-service";
+  import {
+    wsService,
+    type IncomingMessagePayload,
+    type ACKMessagePayload,
+    type ErrorMessagePayload,
+  } from "../services/websocket-service";
 
   interface Message {
     id: string;
@@ -12,6 +27,7 @@
 
   interface Conversation {
     id: string;
+    channelId: string;
     userId: string;
     userName: string;
     userRole: string;
@@ -25,135 +41,159 @@
   let selectedConversation = $state<string | null>(null);
   let messageText = $state("");
   let searchTerm = $state("");
+  let loading = $state(true);
+  let loadingMessages = $state(false);
+  let error = $state<string | null>(null);
+  let wsConnected = $state(false);
+  let pendingMessages = new Map<string, Message>();
 
-  const currentUserId = $derived($authStore.user?.id || "current-user");
+  const currentUserId = $derived($authStore.user?.id || "");
   const currentUserName = $derived($authStore.user?.fullname || "User");
 
+  let conversations = $state<Conversation[]>([]);
+
+  // Load channels on mount
+  onMount(async () => {
+    if (!currentUserId) {
+      error = "User not authenticated";
+      loading = false;
+      return;
+    }
+
+    try {
+      loading = true;
+      error = null;
+      const channelsData = await getChannelsByUserId(currentUserId, 1, 50);
+
+      // Convert channels to conversations
+      conversations = await Promise.all(
+        channelsData.channels.map(async (channel) => {
+          // Get the other user (not current user)
+          const otherMember = channel.members.find(
+            (m) => m.userId !== currentUserId
+          );
+
+          // Try to fetch last message
+          let lastMessage = "Chưa có tin nhắn";
+          let lastMessageTime = "";
+          try {
+            const messagesData = await getMessages({
+              channel_id: channel.id,
+              page: 1,
+              page_size: 1,
+            });
+            if (messagesData.messages.length > 0) {
+              const lastMsg = messagesData.messages[0];
+              lastMessage = lastMsg.content;
+              lastMessageTime = new Date(lastMsg.created_at).toLocaleString(
+                "vi-VN",
+                {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              );
+            }
+          } catch (err) {
+            console.error("Error fetching last message:", err);
+          }
+
+          return {
+            id: channel.id,
+            channelId: channel.id,
+            userId: otherMember?.userId || "",
+            userName: otherMember?.username || "Unknown",
+            userRole: "User",
+            userAvatar: otherMember?.avatar?.url,
+            lastMessage,
+            lastMessageTime,
+            unread: channel.unread_message_count || 0,
+            messages: [],
+          };
+        })
+      );
+    } catch (err) {
+      error =
+        err instanceof Error ? err.message : "Failed to load conversations";
+      console.error("Error loading channels:", err);
+    } finally {
+      loading = false;
+    }
+
+    // Connect WebSocket
+    const token = $authStore.accessToken;
+    if (token) {
+      wsService
+        .connect(token)
+        .then(() => {
+          wsConnected = true;
+          setupWebSocketHandlers();
+        })
+        .catch((err) => {
+          console.error("WebSocket connection failed:", err);
+        });
+    }
+  });
+
+  // Cleanup WebSocket on destroy
+  onDestroy(() => {
+    wsService.disconnect();
+  });
+
+  // Load messages when conversation is selected
+  async function loadMessages(channelId: string) {
+    if (!channelId) return;
+
+    try {
+      loadingMessages = true;
+      error = null;
+      const messagesData = await getMessages({
+        channel_id: channelId,
+        page: 1,
+        page_size: 100,
+      });
+
+      // Convert API messages to UI messages
+      const uiMessages: Message[] = messagesData.messages.map((msg) => ({
+        id: msg.id,
+        senderId: msg.sender_id,
+        senderName: msg.sender_username,
+        content: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        read: msg.read_by.includes(currentUserId),
+      }));
+
+      // Update conversation with messages
+      conversations = conversations.map((conv) => {
+        if (conv.channelId === channelId) {
+          return { ...conv, messages: uiMessages };
+        }
+        return conv;
+      });
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Failed to load messages";
+      console.error("Error loading messages:", err);
+    } finally {
+      loadingMessages = false;
+    }
+  }
+
+  // Watch for conversation selection changes
+  $effect(() => {
+    if (selectedConversation) {
+      const conv = conversations.find((c) => c.id === selectedConversation);
+      if (conv && conv.messages.length === 0) {
+        loadMessages(conv.channelId);
+      }
+    }
+  });
+
   // Mock conversations data
-  let conversations = $state<Conversation[]>([
-    {
-      id: "c1",
-      userId: "sv1",
-      userName: "Nguyễn Văn An",
-      userRole: "MSSV: 20200001",
-      lastMessage: "Em cảm ơn thầy ạ!",
-      lastMessageTime: "10:30",
-      unread: 2,
-      messages: [
-        {
-          id: "m1",
-          senderId: "sv1",
-          senderName: "Nguyễn Văn An",
-          content: "Thầy ơi, em có thắc mắc về đề tài ạ",
-          timestamp: "10:25",
-          read: true,
-        },
-        {
-          id: "m2",
-          senderId: currentUserId,
-          senderName: currentUserName,
-          content: "Chào em, em cứ hỏi thầy nhé",
-          timestamp: "10:27",
-          read: true,
-        },
-        {
-          id: "m3",
-          senderId: "sv1",
-          senderName: "Nguyễn Văn An",
-          content: "Em muốn hỏi về phần công nghệ sử dụng trong đề tài ạ",
-          timestamp: "10:28",
-          read: true,
-        },
-        {
-          id: "m4",
-          senderId: currentUserId,
-          senderName: currentUserName,
-          content:
-            "Em có thể sử dụng React + Node.js, hoặc Vue.js tùy em thích",
-          timestamp: "10:29",
-          read: true,
-        },
-        {
-          id: "m5",
-          senderId: "sv1",
-          senderName: "Nguyễn Văn An",
-          content: "Em cảm ơn thầy ạ!",
-          timestamp: "10:30",
-          read: false,
-        },
-      ],
-    },
-    {
-      id: "c2",
-      userId: "sv2",
-      userName: "Trần Thị Bình",
-      userRole: "MSSV: 20200002",
-      lastMessage: "Vâng ạ, em sẽ làm theo hướng dẫn của thầy",
-      lastMessageTime: "Hôm qua",
-      unread: 0,
-      messages: [
-        {
-          id: "m1",
-          senderId: "sv2",
-          senderName: "Trần Thị Bình",
-          content: "Thầy cho em hỏi deadline nộp báo cáo là khi nào ạ?",
-          timestamp: "Hôm qua 14:20",
-          read: true,
-        },
-        {
-          id: "m2",
-          senderId: currentUserId,
-          senderName: currentUserName,
-          content: "Deadline là 25/12 em nhé",
-          timestamp: "Hôm qua 14:25",
-          read: true,
-        },
-        {
-          id: "m3",
-          senderId: "sv2",
-          senderName: "Trần Thị Bình",
-          content: "Vâng ạ, em sẽ làm theo hướng dẫn của thầy",
-          timestamp: "Hôm qua 14:30",
-          read: true,
-        },
-      ],
-    },
-    {
-      id: "c3",
-      userId: "sv3",
-      userName: "Lê Văn Cường",
-      userRole: "MSSV: 20200003",
-      lastMessage: "Em hiểu rồi ạ, cảm ơn thầy",
-      lastMessageTime: "2 ngày trước",
-      unread: 0,
-      messages: [
-        {
-          id: "m1",
-          senderId: "sv3",
-          senderName: "Lê Văn Cường",
-          content: "Thầy ơi, em có thể đổi đề tài không ạ?",
-          timestamp: "2 ngày trước 09:00",
-          read: true,
-        },
-        {
-          id: "m2",
-          senderId: currentUserId,
-          senderName: currentUserName,
-          content: "Em liên hệ với thầy trong giờ hành chính nhé",
-          timestamp: "2 ngày trước 09:15",
-          read: true,
-        },
-        {
-          id: "m3",
-          senderId: "sv3",
-          senderName: "Lê Văn Cường",
-          content: "Em hiểu rồi ạ, cảm ơn thầy",
-          timestamp: "2 ngày trước 09:20",
-          read: true,
-        },
-      ],
-    },
-  ]);
+  // let conversations = $state<Conversation[]>([
+  //   ... mock data removed ...
+  // ]);
 
   const filteredConversations = $derived(
     conversations.filter(
@@ -170,11 +210,19 @@
   function handleSendMessage() {
     if (!messageText.trim() || !selectedConversation) return;
 
-    const newMessage: Message = {
-      id: `m${Date.now()}`,
+    const conv = conversations.find((c) => c.id === selectedConversation);
+    if (!conv) return;
+
+    const tempId = `temp_${Date.now()}`;
+    const content = messageText;
+    messageText = "";
+
+    // Optimistic UI update
+    const optimisticMessage: Message = {
+      id: tempId,
       senderId: currentUserId,
       senderName: currentUserName,
-      content: messageText,
+      content,
       timestamp: new Date().toLocaleTimeString("vi-VN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -182,19 +230,153 @@
       read: false,
     };
 
-    conversations = conversations.map((conv) => {
-      if (conv.id === selectedConversation) {
+    conversations = conversations.map((c) => {
+      if (c.id === selectedConversation) {
         return {
-          ...conv,
-          messages: [...conv.messages, newMessage],
-          lastMessage: messageText,
+          ...c,
+          messages: [...c.messages, optimisticMessage],
+          lastMessage: content,
           lastMessageTime: "Vừa xong",
         };
       }
-      return conv;
+      return c;
     });
 
-    messageText = "";
+    pendingMessages.set(tempId, optimisticMessage);
+
+    // Send via WebSocket
+    if (wsConnected) {
+      const sent = wsService.send("SendMessage", {
+        channel_id: conv.channelId,
+        content,
+        temp_id: tempId,
+      });
+
+      if (!sent) {
+        error = "Failed to send message. Please check connection.";
+        // Remove optimistic message on failure
+        conversations = conversations.map((c) => {
+          if (c.id === selectedConversation) {
+            return {
+              ...c,
+              messages: c.messages.filter((m) => m.id !== tempId),
+            };
+          }
+          return c;
+        });
+        pendingMessages.delete(tempId);
+      }
+    } else {
+      error = "WebSocket not connected";
+      // Remove optimistic message
+      conversations = conversations.map((c) => {
+        if (c.id === selectedConversation) {
+          return {
+            ...c,
+            messages: c.messages.filter((m) => m.id !== tempId),
+          };
+        }
+        return c;
+      });
+      pendingMessages.delete(tempId);
+    }
+  }
+
+  // Setup WebSocket event handlers
+  function setupWebSocketHandlers() {
+    // Handle ACK (message sent confirmation)
+    wsService.on("ACKMessage", (msg) => {
+      const payload = msg.payload as ACKMessagePayload;
+      const tempId = payload.temp_message_id;
+      const realMessage = payload.message;
+
+      if (pendingMessages.has(tempId)) {
+        // Replace temp message with real message
+        conversations = conversations.map((conv) => {
+          return {
+            ...conv,
+            messages: conv.messages.map((m) =>
+              m.id === tempId
+                ? {
+                    id: realMessage.id,
+                    senderId: realMessage.sender_id,
+                    senderName: realMessage.sender_username,
+                    content: realMessage.content,
+                    timestamp: new Date(
+                      realMessage.created_at
+                    ).toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                    read: realMessage.read_by.includes(currentUserId),
+                  }
+                : m
+            ),
+          };
+        });
+        pendingMessages.delete(tempId);
+      }
+    });
+
+    // Handle incoming messages from others
+    wsService.on("SendMessage", (msg) => {
+      const payload = msg.payload as IncomingMessagePayload;
+      const incomingMessage = payload.message;
+
+      // Don't add our own messages (already handled by ACK)
+      if (incomingMessage.sender_id === currentUserId) return;
+
+      const newMessage: Message = {
+        id: incomingMessage.id,
+        senderId: incomingMessage.sender_id,
+        senderName: incomingMessage.sender_username,
+        content: incomingMessage.content,
+        timestamp: new Date(incomingMessage.created_at).toLocaleTimeString(
+          "vi-VN",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        ),
+        read: incomingMessage.read_by.includes(currentUserId),
+      };
+
+      // Add message to conversation
+      conversations = conversations.map((conv) => {
+        if (conv.channelId === incomingMessage.channel_id) {
+          return {
+            ...conv,
+            messages: [...conv.messages, newMessage],
+            lastMessage: incomingMessage.content,
+            lastMessageTime: "Vừa xong",
+            unread:
+              conv.id !== selectedConversation ? (conv.unread || 0) + 1 : 0,
+          };
+        }
+        return conv;
+      });
+    });
+
+    // Handle errors
+    wsService.on("ErrorMessage", (msg) => {
+      const payload = msg.payload as ErrorMessagePayload;
+      error = payload.error_msg;
+
+      // Remove pending message if it failed
+      if (
+        payload.temp_message_id &&
+        pendingMessages.has(payload.temp_message_id)
+      ) {
+        const tempId = payload.temp_message_id;
+        conversations = conversations.map((conv) => {
+          return {
+            ...conv,
+            messages: conv.messages.filter((m) => m.id !== tempId),
+          };
+        });
+        pendingMessages.delete(tempId);
+      }
+    });
   }
 
   function handleKeyPress(e: KeyboardEvent) {
@@ -235,8 +417,21 @@
 
     <!-- Conversations List -->
     <div class="conversations-list">
-      {#if filteredConversations.length === 0}
-        <div class="empty-state">Không tìm thấy cuộc trò chuyện</div>
+      {#if loading}
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Đang tải danh sách...</p>
+        </div>
+      {:else if error && conversations.length === 0}
+        <div class="error-state">
+          <p>❌ {error}</p>
+        </div>
+      {:else if filteredConversations.length === 0}
+        <div class="empty-state">
+          {conversations.length === 0
+            ? "Chưa có cuộc trò chuyện nào"
+            : "Không tìm thấy cuộc trò chuyện"}
+        </div>
       {:else}
         {#each filteredConversations as conv (conv.id)}
           <button
@@ -293,52 +488,59 @@
 
       <!-- Messages -->
       <div class="messages-container">
-        {#each currentConversation.messages as message (message.id)}
-          {@const isOwn = message.senderId === currentUserId}
-          <div class="message-wrapper" class:own={isOwn}>
-            <div class="message-bubble" class:own={isOwn}>
-              {#if !isOwn}
-                <div class="sender-name">{message.senderName}</div>
-              {/if}
-              <div class="message-content">
-                <p>{message.content}</p>
-              </div>
-              <div class="message-footer" class:own={isOwn}>
-                <span>{message.timestamp}</span>
-                {#if isOwn}
-                  {#if message.read}
-                    <!-- CheckCheck icon -->
-                    <svg
-                      class="check-icon double"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path d="M18 6 7 17l-5-5"></path>
-                      <path d="m22 6-11 11-2-2"></path>
-                    </svg>
-                  {:else}
-                    <!-- Check icon -->
-                    <svg
-                      class="check-icon"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path d="M20 6 9 17l-5-5"></path>
-                    </svg>
-                  {/if}
+        {#if loadingMessages}
+          <div class="loading-messages">
+            <div class="spinner"></div>
+            <p>Đang tải tin nhắn...</p>
+          </div>
+        {:else}
+          {#each currentConversation.messages as message (message.id)}
+            {@const isOwn = message.senderId === currentUserId}
+            <div class="message-wrapper" class:own={isOwn}>
+              <div class="message-bubble" class:own={isOwn}>
+                {#if !isOwn}
+                  <div class="sender-name">{message.senderName}</div>
                 {/if}
+                <div class="message-content">
+                  <p>{message.content}</p>
+                </div>
+                <div class="message-footer" class:own={isOwn}>
+                  <span>{message.timestamp}</span>
+                  {#if isOwn}
+                    {#if message.read}
+                      <!-- CheckCheck icon -->
+                      <svg
+                        class="check-icon double"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M18 6 7 17l-5-5"></path>
+                        <path d="m22 6-11 11-2-2"></path>
+                      </svg>
+                    {:else}
+                      <!-- Check icon -->
+                      <svg
+                        class="check-icon"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M20 6 9 17l-5-5"></path>
+                      </svg>
+                    {/if}
+                  {/if}
+                </div>
               </div>
             </div>
-          </div>
-        {/each}
+          {/each}
+        {/if}
       </div>
 
       <!-- Message Input -->
@@ -491,6 +693,42 @@
     padding: 32px;
     text-align: center;
     color: #6b7280;
+  }
+
+  .loading-state,
+  .error-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: #6b7280;
+  }
+
+  .error-state {
+    color: #dc2626;
+  }
+
+  .loading-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: #6b7280;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 12px;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .conversation-item {
