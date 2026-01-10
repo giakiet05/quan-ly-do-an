@@ -1,6 +1,9 @@
 import Login from './pages/Login.svelte';
 import Register from './pages/Register.svelte';
 import ForgotPassword from './pages/ForgotPassword.svelte';
+import GoogleCallBack from './pages/GoogleCallBack.svelte';
+import GoogleSetUp from './pages/GoogleSetUp.svelte';
+import GoogleError from './pages/GoogleError.svelte';
 import MyProfile from './pages/MyProfile.svelte';
 import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
@@ -29,13 +32,16 @@ const routes = {
     '/auth/login': Login,
     '/auth/register': Register,
     '/auth/forgot-password': ForgotPassword,
+    '/auth/callback': GoogleCallBack,
+    '/auth/google-setup': GoogleSetUp,
+    "/auth/error": GoogleError,
     '/home': MyProfile, // Trang chủ sau khi login
     '/my-profile': MyProfile,
     '/chats': Chat,
     '/my-projects': MyProjects,
     '/my-projects/:id': MyProjectDetail,
     '/notifications': Notification,
-    
+
     // Lecturer routes
     '/lecture/my-classes': ClassLecture,
     '/lecture/my-classes/:id': ClassDetail,
@@ -43,7 +49,7 @@ const routes = {
     '/lecture/my-classes/:id/categories/:categoryId': CategoryDetail,
     '/lecture/my-classes/:id/categories/:categoryId/projects/:projectId': ProjectDetailView,
     '/lecture/students-management': StudentsManagementView,
-    
+
     // Student routes
     '/classes': StudentClassList,
     '/classes/:id': StudentClassDetail,

@@ -236,11 +236,22 @@ export function loginWithGoogle() {
   window.location.href = `${API_BASE_URL}/api/auth/google/login`;
 }
 
-export function handleLoginCallback(): { success: boolean; user?: any; accessToken?: string } {
-  const params = new URLSearchParams(window.location.search);
-  const accessToken = params.get('accessToken');
-  const refreshToken = params.get('refreshToken');
+export function handleLoginCallback(): {
+  success: boolean; user?: any; accessToken?: string; setupRequired?: boolean;
+  setupToken?: string;
+} {
+  const hash = window.location.hash;
+  const queryString = hash.includes("?") ? hash.split("?")[1] : "";
+  const params = new URLSearchParams(queryString);
+
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
   const userStr = params.get('user');
+  const setupToken = params.get('setup_token');
+
+  if (setupToken) {
+    return { success: false, setupRequired: true, setupToken };
+  }
 
   if (!accessToken) {
     return { success: false };
