@@ -3,6 +3,7 @@ import Register from './pages/Register.svelte';
 import ForgotPassword from './pages/ForgotPassword.svelte';
 import GoogleCallBack from './pages/GoogleCallBack.svelte';
 import GoogleSetUp from './pages/GoogleSetUp.svelte';
+import GoogleError from './pages/GoogleError.svelte';
 import MyProfile from './pages/MyProfile.svelte';
 import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
@@ -33,6 +34,7 @@ const routes = {
     '/auth/forgot-password': ForgotPassword,
     '/auth/callback': GoogleCallBack,
     '/auth/google-setup': GoogleSetUp,
+    "/auth/error": GoogleError,
     '/home': MyProfile, // Trang chủ sau khi login
     '/my-profile': MyProfile,
     '/chats': Chat,
