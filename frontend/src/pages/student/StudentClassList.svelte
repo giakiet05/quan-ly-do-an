@@ -22,25 +22,14 @@
           name: "Đồ án Phát triển ứng dụng web",
           description: "Lớp học đồ án cuối kỳ HK2 2024-2025",
           semester: "HK2",
-          year: "2024-2025",
+          year: 2024,
           invitation_code: "WEB2024",
           status: "active",
           requiresProjectRegistration: true, // Thêm field này
           lecturer: {
-            id: "lecturer1",
-            full_name: "TS. Nguyễn Văn A",
-            email: "nguyenvana@university.edu.vn",
-            role: "lecturer",
-            student_id: "",
-            faculty: "Công nghệ thông tin",
-            major: "",
-            phone_number: "0901234567",
-            date_of_birth: "1980-01-01",
-            gender: "male",
-            address: "TPHCM",
+            userId: "lecturer1",
+            fullName: "TS. Nguyễn Văn A",
             avatar: "",
-            created_at: "2024-01-01",
-            updated_at: "2024-01-01",
           },
           students: Array(45).fill(null),
           project_rounds: [
@@ -63,21 +52,15 @@
           name: "Đồ án Trí tuệ nhân tạo",
           description: "Áp dụng AI vào bài toán thực tế",
           semester: "HK2",
-          year: "2024-2025",
+          year: 2024,
           invitation_code: "AI2024",
           status: "active",
           requiresProjectRegistration: false, // Class này không cần đăng ký
           lecturer: {
-            id: "lecturer2",
-            full_name: "TS. Trần Thị B",
-            email: "tranthib@university.edu.vn",
-            role: "lecturer",
-            student_id: "",
-            faculty: "Công nghệ thông tin",
-            major: "",
-            phone_number: "0907654321",
-            date_of_birth: "1985-05-15",
-            gender: "female",
+            userId: "lecturer2",
+            fullName: "TS. Trần Thị B",
+            avatar: "",
+          },
             address: "TPHCM",
             avatar: "",
             created_at: "2024-01-01",
@@ -271,7 +254,7 @@
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <span>GV: {classData.lecturer.full_name}</span>
+              <span>GV: {classData.lecturer.fullName}</span>
             </div>
           </div>
         </div>

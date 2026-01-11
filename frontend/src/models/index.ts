@@ -28,8 +28,9 @@ export interface Attachment {
 
 export interface UserInfo {
   id: string;
-  username: string;
+  fullName: string;
   avatar?: Image;
+  studentCode?: string;
 }
 
 export interface UserInfoResponse {
@@ -45,6 +46,7 @@ export type AuthProvider = "local" | "google";
 export interface User {
   id: string;
   username: string;
+  fullName?: string;
   email: string;
   authProvider: AuthProvider;
   avatar?: Image;
@@ -81,7 +83,15 @@ export interface ProjectRound {
   id: string;
   name: string;
   startDate: string;
-  endDatype ClassroomStatus = "active" | "inactive" | "archived";
+  endDate: string;
+  description: string;
+  projects: Project[];
+  reportPeriods: ReportPeriod[];
+  createdAt: string;
+  isDeleted: boolean;
+}
+
+export type ClassroomStatus = "active" | "inactive" | "archived";
 
 export interface Classroom {
   id: string;
@@ -129,20 +139,10 @@ export interface ClassPost {
   attachments?: Attachment[];
   isPinned: boolean;
   createdAt: string;
-  upd string;
-  universityId: string;
-  universityName: string;
-  name: string;
-  avatar: string;
-  generalChannelId: string;
-  lecturer: UserInfo;
-  students: UserInfo[];
-  projectRounds: ProjectRound[];
-  setting: ClassroomSetting;
-  createdAt: string;
+  updatedAt: string;
 }
 
-// =========JoinGroupRequestStatus = "pending" | "accepted" | "rejected";
+export type JoinGroupRequestStatus = "pending" | "accepted" | "rejected";
 
 export interface JoinGroupRequest {
   id: string;
@@ -174,10 +174,10 @@ export interface Group {
   taskStatuses: string[];
   reports: Report[];
   setting: GroupSetting;
+  minMember: number;
+  maxMember: number;
   joinRequests: JoinGroupRequest[];
-  invitations?: JoinGroupInvitation
-  files: File[];
-  feedback: ReportFeedback;
+  joinInvitation: JoinGroupInvitation[];
   createdAt: string;
   updatedAt: string;
 }
@@ -186,29 +186,36 @@ export interface GroupSetting {
   allowJoinRequest: boolean;
 }
 
-export type RequestStatus = "pending" | "accepted" | "rejected";
+// ==================== TASK ====================
 
-export interface JoinGroupRequest {
-  id: string;
-  userId: string;
-  userInfo: UserInfo;
-  status: RequestStatus;
-  message: string;
-  requestedAt: string;
+export interface Task {
+  id?: string;
+  title: string;
+  details?: string;
+  assignToIDs: string[];
+  dueDate: string;
+  status: string;
 }
 
-export interface Group {
-  id: string;
-  classroomId: string;
-  projectId: string;
-  groupChannelId?: string;
-  leaderId: string;
-  members: UserInfo[];
-  tasks: Task[];
-  taskStatuses: string[];
-  reports: Report[];
-  setting: GroupSetting;
-  joinRequests: JoinGroupRequest[];
+// ==================== REPORT ====================
+
+export interface Report {
+  id?: string;
+  reportPeriodId: string;
+  title: string;
+  content: string;
+  files: File[];
+  feedback: ReportFeedback;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportFeedback {
+  content: string;
+  grade: string;
+  lecturerId: string;
+  commentedAt: string;
+  updatedAt: string;
 }
 
 // ==================== CHANNEL ====================

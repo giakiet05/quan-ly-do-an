@@ -98,9 +98,13 @@ export async function apiFetch<T = any>(
 
   // Prepare headers
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...((fetchOptions.headers as Record<string, string>) || {}),
   };
+
+  // Only set Content-Type to JSON if not FormData (FormData needs browser to set multipart/form-data with boundary)
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
 
   // Add authorization header if not skipping auth
   if (!skipAuth) {
@@ -162,7 +166,16 @@ export async function apiFetch<T = any>(
   const contentType = response.headers.get("content-type");
   
   if (contentType?.includes("application/json")) {
-    return await response.json();
+    const jsonResponse: ApiResponse<T> = await response.json();
+    
+    // Backend wraps all responses in ApiResponse { success, message, data }
+    // Extract and return only the data field
+    if (jsonResponse.data !== undefined) {
+      return jsonResponse.data as T;
+    }
+    
+    // If no data field, return the whole response (e.g., for error responses)
+    return jsonResponse as any;
   }
 
   // For non-JSON responses (e.g., file downloads)
