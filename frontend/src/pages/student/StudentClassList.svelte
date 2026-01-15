@@ -55,16 +55,11 @@
           year: 2024,
           invitation_code: "AI2024",
           status: "active",
-          requiresProjectRegistration: false, // Class này không cần đăng ký
+          requiresProjectRegistration: false,
           lecturer: {
             userId: "lecturer2",
             fullName: "TS. Trần Thị B",
             avatar: "",
-          },
-            address: "TPHCM",
-            avatar: "",
-            created_at: "2024-01-01",
-            updated_at: "2024-01-01",
           },
           students: Array(38).fill(null),
           project_rounds: [
