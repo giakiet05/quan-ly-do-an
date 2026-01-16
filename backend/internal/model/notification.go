@@ -29,4 +29,16 @@ const (
 	NotificationTypeNewMessage      NotificationType = "new_message"
 	NotificationTypeGroupInvitation NotificationType = "group_invitation"
 	NotificationTypeSystem          NotificationType = "system"
+
+	NotificationTypeProjectRegistrationDeadline NotificationType = "project_registration_deadline"
+	NotificationTypeProjectRegistrationExpired  NotificationType = "project_registration_expired"
+	NotificationTypeProjectRegistrationOpened   NotificationType = "project_registration_opened"
+
+	NotificationTypeReportGraded    NotificationType = "report_graded"
+	NotificationTypeReportExpired   NotificationType = "report_expired"
+	NotificationTypeReportSubmitted NotificationType = "report_submitted"
+	NotificationTypeReportDeadline  NotificationType = "report_deadline"
+	NotificationTypeReportOpened    NotificationType = "report_opened"
+
+	NotificationTypeClassUpdated NotificationType = "class_updated"
 )
