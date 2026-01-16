@@ -169,7 +169,7 @@ export interface Group {
   projectId: string;
   groupChannelId?: string;
   leaderId: string;
-  members: UserInfo[];
+  members: UserInfoResponse[];  // Backend sends UserInfoResponse, not UserInfo
   tasks: Task[];
   taskStatuses: string[];
   reports: Report[];
