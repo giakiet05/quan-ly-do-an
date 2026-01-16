@@ -246,10 +246,10 @@
 
     // Send via WebSocket
     if (wsConnected) {
-      const sent = wsService.send("SendMessage", {
+      const sent = wsService.send("new_message", {
         channel_id: conv.channelId,
         content,
-        temp_id: tempId,
+        temp_message_id: tempId,
       });
 
       if (!sent) {
@@ -285,7 +285,7 @@
   // Setup WebSocket event handlers
   function setupWebSocketHandlers() {
     // Handle ACK (message sent confirmation)
-    wsService.on("ACKMessage", (msg) => {
+    wsService.on("ack_message", (msg) => {
       const payload = msg.payload as ACKMessagePayload;
       const tempId = payload.temp_message_id;
       const realMessage = payload.message;
@@ -319,7 +319,7 @@
     });
 
     // Handle incoming messages from others
-    wsService.on("SendMessage", (msg) => {
+    wsService.on("send_message", (msg) => {
       const payload = msg.payload as IncomingMessagePayload;
       const incomingMessage = payload.message;
 
@@ -358,7 +358,7 @@
     });
 
     // Handle errors
-    wsService.on("ErrorMessage", (msg) => {
+    wsService.on("error", (msg) => {
       const payload = msg.payload as ErrorMessagePayload;
       error = payload.error_msg;
 

@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { push } from "svelte-spa-router";
   import ChatTab from "../../components/ChatTab.svelte";
-  // import {
-  //   getClassroom,
-  //   getClassPosts,
-  //   leaveClassroom,
-  // } from "../../services/classroom-service";
+  import {
+    getClassroom,
+    getClassPosts,
+  } from "../../services/classroom-service";
+  import { authStore } from "../../stores/auth-store";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
   import type { ClassPostResponse } from "../../dtos/class-post-dto";
 
@@ -39,10 +39,143 @@
   onMount(async () => {
     try {
       loading = true;
-      // MOCK DATA - Comment để test UI
-      // classroom = await getClassroom(params.id);
-      // classPosts = await getClassPosts(params.id);
 
+      // TEMPORARY: Use mock data if ID starts with "mock-"
+      if (params.id.startsWith("mock-")) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        classroom = {
+          id: params.id,
+          name:
+            params.id === "mock-class-1"
+              ? "Đồ án Phát triển ứng dụng web"
+              : "Đồ án Trí tuệ nhân tạo",
+          description:
+            params.id === "mock-class-1"
+              ? "Lớp học đồ án cuối kỳ HK2 2024-2025 - Phát triển ứng dụng web full-stack"
+              : "Áp dụng AI vào bài toán thực tế",
+          semester: "HK2",
+          year: 2024,
+          invitationCode: params.id === "mock-class-1" ? "WEB2024" : "AI2024",
+          status: "active",
+          generalChannelId: "channel1",
+          lecturer: {
+            userId: "lecturer1",
+            fullName:
+              params.id === "mock-class-1"
+                ? "TS. Nguyễn Văn A"
+                : "TS. Trần Thị B",
+            avatar: "",
+          },
+          students: [
+            { userId: "s1", fullName: "Nguyễn Văn Minh", avatar: "" },
+            { userId: "s2", fullName: "Trần Thị Lan", avatar: "" },
+            { userId: "s3", fullName: "Lê Hoàng Nam", avatar: "" },
+          ],
+          projectRounds:
+            params.id === "mock-class-1"
+              ? [
+                  {
+                    id: "round1",
+                    name: "Đợt 1 - Đồ án cuối kỳ",
+                    description: "Phát triển ứng dụng web hoàn chỉnh",
+                    startDate: "2024-02-01T00:00:00Z",
+                    endDate: "2024-05-31T23:59:59Z",
+                    projects: [
+                      {
+                        id: "proj1",
+                        classroomId: params.id,
+                        projectRoundId: "round1",
+                        title: "Hệ thống quản lý thư viện",
+                        amount: 5,
+                        description: "Xây dựng hệ thống quản lý thư viện",
+                        minMember: 2,
+                        maxMember: 4,
+                        status: "approved",
+                      },
+                    ],
+                    reportPeriods: [
+                      {
+                        id: "rp1",
+                        title: "Báo cáo đề cương",
+                        description: "Nộp báo cáo đề cương dự án",
+                        fileType: ["pdf", "docx"],
+                        startDate: "2024-02-01T00:00:00Z",
+                        endDate: "2024-02-15T23:59:59Z",
+                      },
+                    ],
+                    createdAt: "2024-01-15T00:00:00Z",
+                    isDeleted: false,
+                  },
+                ]
+              : [
+                  {
+                    id: "round2",
+                    name: "Đợt 1 - AI Research",
+                    description: "Nghiên cứu và ứng dụng AI",
+                    startDate: "2024-02-01T00:00:00Z",
+                    endDate: "2024-05-31T23:59:59Z",
+                    projects: [],
+                    reportPeriods: [],
+                    createdAt: "2024-01-15T00:00:00Z",
+                    isDeleted: false,
+                  },
+                ],
+          maxStudents: 50,
+          autoApprove: false,
+          canStudentDeleteGroup: false,
+          avatar: "",
+          createdAt: "2024-01-15T00:00:00Z",
+        } as any;
+
+        classPosts = [
+          {
+            id: "post1",
+            classroomId: params.id,
+            title: "Thông báo về lịch bảo vệ đồ án",
+            content:
+              "Lịch bảo vệ đồ án sẽ diễn ra vào tuần 15 (20-24/5/2024). Các nhóm vui lòng chuẩn bị slides và demo sản phẩm.",
+            attachments: [
+              {
+                fileName: "lich-bao-ve.pdf",
+                fileURL: "#",
+                fileSize: 245680,
+                mimeType: "application/pdf",
+              },
+            ],
+            isPinned: true,
+            author: {
+              userId: "lecturer1",
+              fullName: "TS. Nguyễn Văn A",
+              avatar: "",
+            },
+            createdAt: "2024-05-01T10:00:00Z",
+            updatedAt: "2024-05-01T10:00:00Z",
+          },
+          {
+            id: "post2",
+            classroomId: params.id,
+            title: "Hướng dẫn nộp báo cáo giữa kỳ",
+            content:
+              "Các nhóm nộp báo cáo giữa kỳ theo template đã gửi. Deadline: 15/4/2024.",
+            attachments: [],
+            isPinned: false,
+            author: {
+              userId: "lecturer1",
+              fullName: "TS. Nguyễn Văn A",
+              avatar: "",
+            },
+            createdAt: "2024-04-01T09:00:00Z",
+            updatedAt: "2024-04-01T09:00:00Z",
+          },
+        ] as any;
+      } else {
+        // Fetch real data from API
+        classroom = await getClassroom(params.id);
+        classPosts = await getClassPosts(params.id);
+      }
+
+      /* MOCK DATA - Uncomment for testing
       await new Promise((resolve) => setTimeout(resolve, 600));
       classroom = {
         id: params.id,
@@ -141,6 +274,7 @@
         ...post,
         isRead: index > 0, // post đầu là chưa đọc
       })) as any;
+      */
     } catch (err) {
       console.error("Error loading classroom:", err);
     } finally {
@@ -554,11 +688,17 @@
         </div>
       {:else if activeTab === "chat"}
         <div class="chat-tab">
-          <ChatTab
-            classId={params.id}
-            currentUserRole="student"
-            currentUserName="Nguyễn Văn Minh"
-          />
+          {#if classroom?.generalChannelId}
+            <ChatTab
+              channelId={classroom.generalChannelId}
+              currentUserRole="student"
+              currentUserName={$authStore.user?.fullname || "Student"}
+            />
+          {:else}
+            <div class="no-chat">
+              <p>Kênh chat chưa được tạo</p>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

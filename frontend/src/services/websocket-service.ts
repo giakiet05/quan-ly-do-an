@@ -3,12 +3,13 @@
 const WS_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('http', 'ws') || 'ws://localhost:8080';
 
 export type WebSocketMessageType =
-  | 'SendMessage'
-  | 'ACKMessage'
-  | 'TypingIndicator'
-  | 'InChatIndicator'
-  | 'NewNotification'
-  | 'ErrorMessage';
+  | 'new_message'
+  | 'send_message'
+  | 'ack_message'
+  | 'typing'
+  | 'in_chat'
+  | 'new_notification'
+  | 'error';
 
 export interface WebSocketMessage {
   type: WebSocketMessageType;

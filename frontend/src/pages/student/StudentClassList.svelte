@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { push } from "svelte-spa-router";
-  // import { getMyJoinedClassrooms } from "../../services/classroom-service";
+  import { getMyJoinedClassrooms } from "../../services/classroom-service";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
 
   let classes = $state<ClassroomResponse[]>([]);
@@ -11,10 +11,129 @@
   onMount(async () => {
     try {
       loading = true;
-      // MOCK DATA - Comment để test UI
-      // classes = await getMyJoinedClassrooms();
+      error = null;
 
-      // Mock data
+      // Fetch real data from API
+      classes = await getMyJoinedClassrooms();
+
+      // TEMPORARY: Add mock data if empty for UI testing
+      if (classes.length === 0) {
+        classes = [
+          {
+            id: "mock-class-1",
+            name: "Đồ án Phát triển ứng dụng web",
+            description:
+              "Lớp học đồ án cuối kỳ HK2 2024-2025 - Phát triển ứng dụng web full-stack",
+            semester: "HK2",
+            year: 2024,
+            invitationCode: "WEB2024",
+            status: "active",
+            generalChannelId: "channel1",
+            lecturer: {
+              userId: "lecturer1",
+              fullName: "TS. Nguyễn Văn A",
+              avatar: "",
+            },
+            students: Array(45).fill({
+              userId: "s1",
+              fullName: "Student",
+              avatar: "",
+            }),
+            projectRounds: [
+              {
+                id: "round1",
+                name: "Đợt 1 - Đồ án cuối kỳ",
+                description: "Phát triển ứng dụng web hoàn chỉnh",
+                startDate: "2024-02-01T00:00:00Z",
+                endDate: "2024-05-31T23:59:59Z",
+                projects: [
+                  {
+                    id: "proj1",
+                    classroomId: "mock-class-1",
+                    projectRoundId: "round1",
+                    title: "Hệ thống quản lý thư viện",
+                    amount: 5,
+                    description:
+                      "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách",
+                    minMember: 2,
+                    maxMember: 4,
+                    status: "approved",
+                  },
+                  {
+                    id: "proj2",
+                    classroomId: "mock-class-1",
+                    projectRoundId: "round1",
+                    title: "Ứng dụng quản lý chi tiêu",
+                    amount: 3,
+                    description:
+                      "Ứng dụng mobile giúp theo dõi thu chi cá nhân",
+                    minMember: 2,
+                    maxMember: 3,
+                    status: "approved",
+                  },
+                ],
+                reportPeriods: [
+                  {
+                    id: "rp1",
+                    title: "Báo cáo đề cương",
+                    description: "Nộp báo cáo đề cương dự án",
+                    fileType: ["pdf", "docx"],
+                    startDate: "2024-02-01T00:00:00Z",
+                    endDate: "2024-02-15T23:59:59Z",
+                  },
+                ],
+                createdAt: "2024-01-15T00:00:00Z",
+                isDeleted: false,
+              },
+            ],
+            maxStudents: 50,
+            autoApprove: false,
+            canStudentDeleteGroup: false,
+            avatar: "",
+            createdAt: "2024-01-15T00:00:00Z",
+          },
+          {
+            id: "mock-class-2",
+            name: "Đồ án Trí tuệ nhân tạo",
+            description: "Áp dụng AI vào bài toán thực tế",
+            semester: "HK2",
+            year: 2024,
+            invitationCode: "AI2024",
+            status: "active",
+            generalChannelId: "channel2",
+            lecturer: {
+              userId: "lecturer2",
+              fullName: "TS. Trần Thị B",
+              avatar: "",
+            },
+            students: Array(38).fill({
+              userId: "s1",
+              fullName: "Student",
+              avatar: "",
+            }),
+            projectRounds: [
+              {
+                id: "round2",
+                name: "Đợt 1 - AI Research",
+                description: "Nghiên cứu và ứng dụng AI",
+                startDate: "2024-02-01T00:00:00Z",
+                endDate: "2024-05-31T23:59:59Z",
+                projects: [],
+                reportPeriods: [],
+                createdAt: "2024-01-15T00:00:00Z",
+                isDeleted: false,
+              },
+            ],
+            maxStudents: 40,
+            autoApprove: true,
+            canStudentDeleteGroup: false,
+            avatar: "",
+            createdAt: "2024-01-15T00:00:00Z",
+          },
+        ] as any;
+      }
+
+      /* MOCK DATA - Uncomment để test UI
       await new Promise((resolve) => setTimeout(resolve, 800));
       classes = [
         {
@@ -87,8 +206,10 @@
           updated_at: "2024-01-20",
         },
       ];
+      */
     } catch (err: any) {
       error = err.message || "Không thể tải danh sách lớp học";
+      console.error("Error loading classes:", err);
     } finally {
       loading = false;
     }
