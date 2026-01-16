@@ -1,8 +1,13 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
+  import { getMessages } from "../services/message-service";
+  import { getChannelById } from "../services/channel-service";
+  import { wsService } from "../services/websocket-service";
+  import { authStore } from "../stores/auth-store";
+  import type { Message as APIMessage } from "../models";
 
-  let { classId, currentUserRole, currentUserName } = $props<{
-    classId: string;
+  let { channelId, currentUserRole, currentUserName } = $props<{
+    channelId: string;
     currentUserRole: "teacher" | "student";
     currentUserName: string;
   }>();
@@ -17,64 +22,10 @@
     attachments?: string[];
   }
 
-  let messages = $state<Message[]>([
-    {
-      id: "1",
-      userId: "teacher1",
-      userName: "TS. Nguyễn Văn A",
-      userRole: "teacher",
-      content:
-        "Chào các em! Đây là kênh chat chung của lớp. Các em có thể trao đổi, thảo luận về đề tài ở đây.",
-      timestamp: "2024-12-01 09:00",
-      attachments: [],
-    },
-    {
-      id: "2",
-      userId: "student1",
-      userName: "Nguyễn Văn Minh",
-      userRole: "student",
-      content: "Dạ em chào thầy ạ!",
-      timestamp: "2024-12-01 09:05",
-      attachments: [],
-    },
-    {
-      id: "3",
-      userId: "student2",
-      userName: "Trần Thị Lan",
-      userRole: "student",
-      content: "Chào thầy và các bạn!",
-      timestamp: "2024-12-01 09:06",
-      attachments: [],
-    },
-    {
-      id: "4",
-      userId: "student3",
-      userName: "Lê Văn Cường",
-      userRole: "student",
-      content: "Thầy ơi, em có thể hỏi về đề tài ở đây được không ạ?",
-      timestamp: "2024-12-01 09:10",
-      attachments: [],
-    },
-    {
-      id: "5",
-      userId: "teacher1",
-      userName: "TS. Nguyễn Văn A",
-      userRole: "teacher",
-      content:
-        "Được em, các em cứ thoải mái trao đổi nhé. Nếu có thắc mắc gì về đề tài, deadline, hoặc yêu cầu nào cũng có thể hỏi ở đây.",
-      timestamp: "2024-12-01 09:12",
-      attachments: [],
-    },
-    {
-      id: "6",
-      userId: "student1",
-      userName: "Nguyễn Văn Minh",
-      userRole: "student",
-      content: "Dạ em cảm ơn thầy ạ!",
-      timestamp: "2024-12-01 09:15",
-      attachments: [],
-    },
-  ]);
+  let messages = $state<Message[]>([]);
+  let loading = $state(true);
+  let wsConnected = $state(false);
+  let pendingMessages = $state<Map<string, Message>>(new Map());
 
   let newMessage = $state("");
   let messagesEndRef: HTMLDivElement;
@@ -84,9 +35,101 @@
     messagesEndRef?.scrollIntoView({ behavior: "smooth" });
   }
 
-  onMount(() => {
-    scrollToBottom();
+  onMount(async () => {
+    try {
+      loading = true;
+
+      // TEMPORARY: Use mock data if channelId is mock
+      if (channelId.startsWith("channel") && !channelId.includes("-")) {
+        // Mock channel ID detected
+        messages = [
+          {
+            id: "1",
+            userId: "teacher1",
+            userName: "TS. Nguyễn Văn A",
+            userRole: "teacher",
+            content:
+              "Chào các em! Đây là kênh chat chung của lớp. Các em có thể trao đổi, thảo luận về đề tài ở đây.",
+            timestamp: new Date().toLocaleString("vi-VN"),
+            attachments: [],
+          },
+          {
+            id: "2",
+            userId: "student1",
+            userName: "Nguyễn Văn Minh",
+            userRole: "student",
+            content: "Dạ em chào thầy ạ!",
+            timestamp: new Date().toLocaleString("vi-VN"),
+            attachments: [],
+          },
+        ];
+        loading = false;
+        scrollToBottom();
+        return;
+      }
+
+      // Fetch messages from API
+      const response = await getMessages({ channel_id: channelId });
+      messages = response.messages.map((msg) => ({
+        id: msg.id,
+        userId: msg.sender_id,
+        userName: msg.sender_username,
+        userRole: currentUserRole, // Determine from context
+        content: msg.content,
+        timestamp: new Date(msg.created_at).toLocaleString("vi-VN"),
+        attachments: [],
+      }));
+
+      // Connect to WebSocket
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        await wsService.connect(token);
+        wsConnected = wsService.isConnected();
+
+        // Listen for incoming messages
+        wsService.on("send_message", handleIncomingMessage);
+        wsService.on("ack_message", handleMessageAck);
+      }
+    } catch (err) {
+      console.error("Error loading chat:", err);
+    } finally {
+      loading = false;
+      scrollToBottom();
+    }
   });
+
+  onDestroy(() => {
+    wsService.off("send_message", handleIncomingMessage);
+    wsService.off("ack_message", handleMessageAck);
+  });
+
+  function handleIncomingMessage(data: any) {
+    const newMsg: Message = {
+      id: data.message_id,
+      userId: data.sender_id,
+      userName: data.sender_name || "Unknown",
+      userRole:
+        data.sender_id === $authStore.user?.id ? currentUserRole : "student",
+      content: data.content,
+      timestamp: new Date().toLocaleString("vi-VN"),
+      attachments: [],
+    };
+    messages = [...messages, newMsg];
+  }
+
+  function handleMessageAck(data: any) {
+    const tempMsg = pendingMessages.get(data.temp_id);
+    if (tempMsg) {
+      const index = messages.findIndex((m) => m.id === data.temp_id);
+      if (index !== -1) {
+        messages[index] = {
+          ...tempMsg,
+          id: data.message_id,
+        };
+      }
+      pendingMessages.delete(data.temp_id);
+    }
+  }
 
   $effect(() => {
     if (messages.length) {
@@ -97,9 +140,10 @@
   function handleSendMessage() {
     if (!newMessage.trim()) return;
 
+    const tempId = `temp_${Date.now()}`;
     const message: Message = {
-      id: Date.now().toString(),
-      userId: currentUserRole === "teacher" ? "teacher1" : "currentStudent",
+      id: tempId,
+      userId: $authStore.user?.id || "unknown",
       userName: currentUserName,
       userRole: currentUserRole,
       content: newMessage,
@@ -113,7 +157,22 @@
       attachments: [],
     };
 
+    // Add to messages immediately (optimistic UI)
     messages = [...messages, message];
+
+    // If mock channelId, just keep local message
+    if (!channelId.startsWith("channel") || channelId.includes("-")) {
+      // Real channel - send via WebSocket
+      if (wsConnected) {
+        pendingMessages.set(tempId, message);
+        wsService.send("new_message", {
+          channel_id: channelId,
+          content: newMessage,
+          temp_message_id: tempId,
+        });
+      }
+    }
+
     newMessage = "";
 
     // Reset textarea height

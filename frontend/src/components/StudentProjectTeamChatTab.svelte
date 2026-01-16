@@ -1,4 +1,9 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
+  import { getMessages } from "../services/message-service";
+  import { wsService } from "../services/websocket-service";
+  import { authStore } from "../stores/auth-store";
+
   interface Message {
     id: string;
     senderId: string;
@@ -13,6 +18,7 @@
     name: string;
     leaderId: string;
     members: { id: string; name: string; studentId: string }[];
+    groupChannelId?: string; // Add channel ID field
   }
 
   let { team, currentStudentId } = $props<{
@@ -21,38 +27,128 @@
   }>();
 
   let message = $state("");
-  let messages = $state<Message[]>([
-    {
-      id: "1",
-      senderId: team.leaderId,
-      senderName: "Nhóm trưởng",
-      content: "Chào mọi người! Chúng ta hãy thảo luận về tiến độ dự án nhé.",
-      timestamp: "10:30",
-      isMe: team.leaderId === currentStudentId,
-    },
-    {
-      id: "2",
-      senderId: team.members[0]?.id || "2",
-      senderName: team.members[0]?.name || "Member 1",
-      content: "Em đã hoàn thành phần thiết kế database rồi ạ!",
-      timestamp: "10:35",
-      isMe: team.members[0]?.id === currentStudentId,
-    },
-    {
-      id: "3",
-      senderId: currentStudentId,
-      senderName: "Bạn",
-      content: "Tuyệt vời! Em sẽ bắt đầu code phần backend.",
-      timestamp: "10:40",
-      isMe: true,
-    },
-  ]);
+  let loading = $state(true);
+  let wsConnected = $state(false);
+  let pendingMessages = $state<Map<string, Message>>(new Map());
+  let messages = $state<Message[]>([]);
+  onMount(async () => {
+    try {
+      loading = true;
+
+      // Check if team has groupChannelId and it's not mock
+      if (team.groupChannelId && !team.id.startsWith("t")) {
+        // Fetch real messages from API
+        const response = await getMessages({ channel_id: team.groupChannelId });
+        messages = response.messages.map((msg) => ({
+          id: msg.id,
+          senderId: msg.sender_id,
+          senderName: msg.sender_username,
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isMe: msg.sender_id === currentStudentId,
+        }));
+
+        // Connect to WebSocket
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+          await wsService.connect(token);
+          wsConnected = wsService.isConnected();
+          wsService.on("send_message", handleIncomingMessage);
+          wsService.on("ack_message", handleMessageAck);
+        }
+      } else {
+        // MOCK DATA - Use when team.id starts with 't' or no groupChannelId
+        messages = [
+          {
+            id: "1",
+            senderId: team.leaderId,
+            senderName: "Nhóm trưởng",
+            content:
+              "Chào mọi người! Chúng ta hãy thảo luận về tiến độ dự án nhé.",
+            timestamp: "10:30",
+            isMe: team.leaderId === currentStudentId,
+          },
+          {
+            id: "2",
+            senderId: team.members[0]?.id || "2",
+            senderName: team.members[0]?.name || "Member 1",
+            content: "Em đã hoàn thành phần thiết kế database rồi ạ!",
+            timestamp: "10:35",
+            isMe: team.members[0]?.id === currentStudentId,
+          },
+          {
+            id: "3",
+            senderId: currentStudentId,
+            senderName: "Bạn",
+            content: "Tuyệt vời! Em sẽ bắt đầu code phần backend.",
+            timestamp: "10:40",
+            isMe: true,
+          },
+        ];
+      }
+    } catch (err) {
+      console.error("Error loading team chat:", err);
+      // Fallback to mock on error
+      messages = [
+        {
+          id: "1",
+          senderId: team.leaderId,
+          senderName: "Nhóm trưởng",
+          content: "Chào mọi người!",
+          timestamp: "10:30",
+          isMe: false,
+        },
+      ];
+    } finally {
+      loading = false;
+    }
+  });
+
+  onDestroy(() => {
+    if (wsConnected) {
+      wsService.off("send_message", handleIncomingMessage);
+      wsService.off("ack_message", handleMessageAck);
+    }
+  });
+
+  function handleIncomingMessage(data: any) {
+    const newMsg: Message = {
+      id: data.message.id,
+      senderId: data.message.sender_id,
+      senderName: data.message.sender_username,
+      content: data.message.content,
+      timestamp: new Date().toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      isMe: data.message.sender_id === currentStudentId,
+    };
+    messages = [...messages, newMsg];
+  }
+
+  function handleMessageAck(data: any) {
+    const tempMsg = pendingMessages.get(data.temp_message_id);
+    if (tempMsg) {
+      const index = messages.findIndex((m) => m.id === data.temp_message_id);
+      if (index !== -1) {
+        messages[index] = {
+          ...tempMsg,
+          id: data.message.id,
+        };
+      }
+      pendingMessages.delete(data.temp_message_id);
+    }
+  }
 
   function handleSendMessage() {
     if (!message.trim()) return;
 
+    const tempId = `temp_${Date.now()}`;
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: tempId,
       senderId: currentStudentId,
       senderName: "Bạn",
       content: message,
@@ -63,7 +159,20 @@
       isMe: true,
     };
 
+    // Add to messages immediately (optimistic UI)
     messages = [...messages, newMessage];
+
+    // If real channel and WebSocket connected, send via WS
+    if (team.groupChannelId && !team.id.startsWith("t") && wsConnected) {
+      pendingMessages.set(tempId, newMessage);
+      wsService.send("new_message", {
+        channel_id: team.groupChannelId,
+        content: message,
+        temp_message_id: tempId,
+      });
+    }
+    // Otherwise just keep local (mock mode)
+
     message = "";
   }
 
