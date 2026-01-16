@@ -209,7 +209,7 @@ export async function leaveClassroom(classroomId: string): Promise<void> {
  */
 export async function getMyJoinedClassrooms(): Promise<ClassroomResponse[]> {
   const response = await apiFetch<ApiResponse<ClassroomResponse[]>>(
-    "/api/classrooms/my-joined"
+    "/api/classrooms/joined"
   );
   return response.data || [];
 }

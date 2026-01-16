@@ -13,6 +13,20 @@ export async function getClassroomGroups(
 }
 
 /**
+ * Get groups with filters (e.g., by project_round_id, user_id, etc.)
+ */
+export async function getGroupsFilter(
+  filters: Record<string, string | number>
+): Promise<Group[]> {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    params.append(key, String(value));
+  });
+  
+  return apiFetch<Group[]>(`/api/groups?${params.toString()}`);
+}
+
+/**
  * Get a single group by ID
  */
 export async function getGroup(groupId: string): Promise<Group> {

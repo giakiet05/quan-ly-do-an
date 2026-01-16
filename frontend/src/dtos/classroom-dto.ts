@@ -46,6 +46,7 @@ export interface ClassroomResponse {
   semester: string;
   year: number;
   status: string;
+  generalChannelId: string;
   lecturer: {
     userId: string;
     fullName: string;
@@ -56,10 +57,40 @@ export interface ClassroomResponse {
     fullName: string;
     avatar: string;
   }>;
+  projectRounds: Array<{
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+    projects: Array<{
+      id: string;
+      classroomId: string;
+      projectRoundId: string;
+      title: string;
+      amount: number;
+      description: string;
+      minMember: number;
+      maxMember: number;
+      status: string;
+    }>;
+    reportPeriods: Array<{
+      id: string;
+      title: string;
+      description: string;
+      fileType: string[];
+      startDate: string;
+      endDate: string;
+    }>;
+    createdAt: string;
+    isDeleted: boolean;
+  }>;
   invitationCode: string;
   maxStudents: number;
   autoApprove: boolean;
+  canStudentDeleteGroup: boolean;
   whitelistStudentCode?: string[];
+  requireEmailDomain?: string;
   createdAt: string;
 }
 

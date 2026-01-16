@@ -72,13 +72,13 @@
     {
       id: "classes",
       label: "Lớp học",
-      route: "/classes",
+      route: "/classes*",
       icon: "/book-open-text.svg",
     },
     {
       id: "my-projects",
       label: "Đề tài của tôi",
-      route: "/my-projects",
+      route: "/my-projects*",
       icon: "/my_project.svg",
     },
     {
@@ -98,8 +98,17 @@
   ];
 
   const menuItems = $derived(
-    role === "LECTURER" ? teacherMenuItems : studentMenuItems,
+    role === "LECTURER" ? teacherMenuItems : studentMenuItems
   );
+
+  // Helper to check if route is active (supports wildcards)
+  function isActiveRoute(route: string, currentLocation: string): boolean {
+    if (route.endsWith("*")) {
+      const baseRoute = route.slice(0, -1); // Remove *
+      return currentLocation.startsWith(baseRoute);
+    }
+    return currentLocation === route;
+  }
 </script>
 
 <aside class="sidebar" class:collapsed>
@@ -121,12 +130,9 @@
       {#each menuItems as item}
         <li>
           <a
-            href={item.route}
+            href={item.route.replace("*", "")}
             use:link
-            use:active={{
-              path: item.route,
-              className: "active-link",
-            }}
+            class:active-link={isActiveRoute(item.route, $location)}
             title={collapsed ? item.label : ""}
           >
             <span class="icon">
@@ -268,7 +274,7 @@
     background: #f1f5f9;
   }
 
-  :global(.active-link) {
+  .active-link {
     background: #dbeafe !important;
     color: #2563eb !important;
   }

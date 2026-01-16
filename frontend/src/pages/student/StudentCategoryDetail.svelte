@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { push } from "svelte-spa-router";
+  import { getClassroom } from "../../services/classroom-service";
+  import { getGroupsFilter } from "../../services/group-service";
+  import { authStore } from "../../stores/auth-store";
+  import type { ProjectRound, Group } from "../../models";
 
   let { params } = $props<{
     params: { id: string; categoryId: string };
@@ -8,6 +12,13 @@
 
   let activeTab = $state<"projects" | "reports">("projects");
   let loading = $state(true);
+  let error = $state<string | null>(null);
+
+  let projectRound = $state<ProjectRound | null>(null);
+  let groups = $state<Group[]>([]);
+  let myGroup = $derived(
+    groups.find((g) => g.members.some((m) => m.id === $authStore.user?.id))
+  );
 
   // Mock data - Replace with API calls
   let category = $state({
@@ -67,8 +78,116 @@
     },
   ]);
 
-  onMount(() => {
-    loading = false;
+  onMount(async () => {
+    try {
+      loading = true;
+      error = null;
+
+      // TEMPORARY: Use mock data if classroom ID starts with "mock-"
+      if (params.id.startsWith("mock-")) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const mockClassroom = {
+          id: params.id,
+          projectRounds:
+            params.id === "mock-class-1"
+              ? [
+                  {
+                    id: "round1",
+                    name: "Đợt 1 - Đồ án cuối kỳ",
+                    description: "Phát triển ứng dụng web hoàn chỉnh",
+                    startDate: "2024-02-01T00:00:00Z",
+                    endDate: "2024-05-31T23:59:59Z",
+                    projects: [
+                      {
+                        id: "proj1",
+                        classroomId: params.id,
+                        projectRoundId: "round1",
+                        title: "Hệ thống quản lý thư viện",
+                        amount: 5,
+                        description:
+                          "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
+                        minMember: 2,
+                        maxMember: 4,
+                        status: "approved",
+                      },
+                      {
+                        id: "proj2",
+                        classroomId: params.id,
+                        projectRoundId: "round1",
+                        title: "Ứng dụng quản lý chi tiêu",
+                        amount: 3,
+                        description:
+                          "Ứng dụng mobile giúp theo dõi thu chi cá nhân",
+                        minMember: 2,
+                        maxMember: 3,
+                        status: "approved",
+                      },
+                    ],
+                    reportPeriods: [
+                      {
+                        id: "rp1",
+                        title: "Báo cáo đề cương",
+                        description: "Nộp báo cáo đề cương dự án",
+                        fileType: ["pdf", "docx"],
+                        startDate: "2024-02-01T00:00:00Z",
+                        endDate: "2024-02-15T23:59:59Z",
+                      },
+                    ],
+                    createdAt: "2024-01-15T00:00:00Z",
+                    isDeleted: false,
+                  },
+                ]
+              : [
+                  {
+                    id: "round2",
+                    name: "Đợt 1 - AI Research",
+                    description: "Nghiên cứu và ứng dụng AI",
+                    startDate: "2024-02-01T00:00:00Z",
+                    endDate: "2024-05-31T23:59:59Z",
+                    projects: [],
+                    reportPeriods: [],
+                    createdAt: "2024-01-15T00:00:00Z",
+                    isDeleted: false,
+                  },
+                ],
+        };
+
+        const foundRound = mockClassroom.projectRounds.find(
+          (round) => round.id === params.categoryId
+        );
+
+        if (!foundRound) {
+          error = "Không tìm thấy đợt đồ án này";
+          return;
+        }
+
+        projectRound = foundRound as unknown as ProjectRound;
+        groups = []; // Empty groups for mock data
+      } else {
+        // Fetch classroom to get project round
+        const classroom = await getClassroom(params.id);
+        const foundRound = classroom.projectRounds.find(
+          (round) => round.id === params.categoryId
+        );
+
+        if (!foundRound) {
+          error = "Không tìm thấy đợt đồ án này";
+          return;
+        }
+
+        // Cast to ProjectRound type (DTO has string status, model has enum)
+        projectRound = foundRound as unknown as ProjectRound;
+
+        // Fetch groups/projects for this round
+        groups = await getGroupsFilter({ project_round_id: params.categoryId });
+      }
+    } catch (err) {
+      console.error("Error loading project round:", err);
+      error = err instanceof Error ? err.message : "Không thể tải dữ liệu";
+    } finally {
+      loading = false;
+    }
   });
 
   function handleBack() {
@@ -99,7 +218,12 @@
       <div class="spinner"></div>
       <p>Đang tải...</p>
     </div>
-  {:else}
+  {:else if error}
+    <div class="error-message">
+      <p>{error}</p>
+      <button onclick={handleBack} class="back-button">Quay lại</button>
+    </div>
+  {:else if projectRound}
     <div class="header-section">
       <button onclick={handleBack} class="back-button">
         <svg
@@ -117,11 +241,11 @@
 
       <div class="header-content">
         <div>
-          <h1 class="category-title">{category.name}</h1>
-          <p class="category-description">{category.description}</p>
+          <h1 class="category-title">{projectRound.name}</h1>
+          <p class="category-description">{projectRound.description}</p>
           <p class="category-dates">
-            Thời gian: {formatDate(category.startDate)} - {formatDate(
-              category.endDate
+            Thời gian: {formatDate(projectRound.startDate)} - {formatDate(
+              projectRound.endDate
             )}
           </p>
         </div>
@@ -147,8 +271,12 @@
 
     <div class="content-section">
       {#if activeTab === "projects"}
+        {@const myProjectId = myGroup?.projectId}
         <div class="projects-tab">
-          {#if projects.some((p) => p.isMyProject)}
+          {#if myProjectId}
+            {@const myProject = projectRound.projects.find(
+              (p) => p.id === myProjectId
+            )}
             <div class="alert alert-success">
               <svg
                 width="20"
@@ -163,9 +291,7 @@
               </svg>
               <div>
                 <strong>Bạn đã đăng ký đề tài trong hạng mục này</strong>
-                <p>
-                  Đề tài: {projects.find((p) => p.isMyProject)?.name}
-                </p>
+                <p>Đề tài: {myProject?.title || "N/A"}</p>
               </div>
             </div>
           {:else}
@@ -192,36 +318,45 @@
           {/if}
 
           <div class="projects-list">
-            {#each projects as project}
+            {#each projectRound.projects as project}
+              {@const projectGroups = groups.filter(
+                (g) => g.projectId === project.id
+              )}
+              {@const currentMembers = projectGroups.reduce(
+                (sum, g) => sum + g.members.length,
+                0
+              )}
+              {@const maxMembers = project.amount * project.maxMember}
+              {@const isMyProject = myProjectId === project.id}
+              {@const isFull = currentMembers >= maxMembers}
+
               <div
                 class="project-card"
                 onclick={() => handleProjectClick(project.id)}
               >
                 <div class="project-header">
-                  <h3 class="project-name">{project.name}</h3>
+                  <h3 class="project-name">{project.title}</h3>
                   <div class="project-badges">
-                    {#if project.isMyProject}
+                    {#if isMyProject}
                       <span class="badge badge-my-project">
                         Đề tài của tôi
                       </span>
                     {/if}
-                    {#if project.status === "available"}
-                      <span class="badge badge-available">Còn chỗ</span>
-                    {:else if project.status === "full"}
-                      <span class="badge badge-full">Đã đủ</span>
+                    {#if project.status === "approved"}
+                      <span class="badge badge-available">
+                        {isFull ? "Đã đủ" : "Còn chỗ"}
+                      </span>
+                    {:else if project.status === "ongoing"}
+                      <span class="badge badge-ongoing">Đang thực hiện</span>
+                    {:else if project.status === "completed"}
+                      <span class="badge badge-closed">Đã hoàn thành</span>
                     {:else}
-                      <span class="badge badge-closed">Đã khóa</span>
+                      <span class="badge badge-pending">Chờ duyệt</span>
                     {/if}
                   </div>
                 </div>
 
                 <p class="project-description">{project.description}</p>
-
-                <div class="project-tags">
-                  {#each project.tags as tag}
-                    <span class="tag">{tag}</span>
-                  {/each}
-                </div>
 
                 <div class="project-footer">
                   <div class="footer-item">
@@ -239,9 +374,7 @@
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                       <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <span
-                      >{project.currentStudents}/{project.maxStudents} sinh viên</span
-                    >
+                    <span>{currentMembers}/{maxMembers} sinh viên</span>
                   </div>
                   <div class="footer-item">
                     <svg
@@ -252,11 +385,11 @@
                       stroke="currentColor"
                       stroke-width="2"
                     >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
                       ></path>
-                      <circle cx="12" cy="7" r="4"></circle>
+                      <circle cx="9" cy="7" r="4"></circle>
                     </svg>
-                    <span>GVHD: {project.instructor}</span>
+                    <span>Số lượng nhóm: {project.amount}</span>
                   </div>
                 </div>
               </div>
@@ -265,70 +398,56 @@
         </div>
       {:else if activeTab === "reports"}
         <div class="reports-tab">
-          <div class="reports-timeline">
-            {#each reports as report, index}
-              {@const daysUntil = getDaysUntil(report.deadline)}
-              <div
-                class="timeline-item"
-                class:completed={report.status === "submitted"}
-              >
-                <div class="timeline-marker">
-                  {#if report.status === "submitted"}
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                  {:else if report.status === "pending"}
-                    <div class="marker-pending"></div>
-                  {:else}
-                    <div class="marker-upcoming"></div>
-                  {/if}
-                </div>
+          {#if myGroup}
+            <div class="reports-timeline">
+              {#each projectRound.reportPeriods as reportPeriod}
+                {@const myReport = myGroup.reports.find(
+                  (r) => r.reportPeriodId === reportPeriod.id
+                )}
+                {@const daysUntil = getDaysUntil(reportPeriod.endDate)}
+                {@const isSubmitted = !!myReport}
 
-                <div class="timeline-content">
-                  <div class="report-header">
-                    <h3 class="report-title">{report.title}</h3>
-                    {#if report.status === "submitted"}
-                      <span class="status-badge status-submitted">
-                        Đã nộp
-                      </span>
-                    {:else if report.status === "pending"}
-                      <span class="status-badge status-pending">
-                        Đang chờ nộp
-                      </span>
+                <div class="timeline-item" class:completed={isSubmitted}>
+                  <div class="timeline-marker">
+                    {#if isSubmitted}
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                    {:else if daysUntil >= 0 && daysUntil <= 7}
+                      <div class="marker-pending"></div>
                     {:else}
-                      <span class="status-badge status-upcoming">
-                        Sắp tới
-                      </span>
+                      <div class="marker-upcoming"></div>
                     {/if}
                   </div>
 
-                  <div class="report-details">
-                    <div class="detail-item">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"
-                        ></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                      </svg>
-                      <span>Hạn nộp: {formatDate(report.deadline)}</span>
+                  <div class="timeline-content">
+                    <div class="report-header">
+                      <h3 class="report-title">{reportPeriod.title}</h3>
+                      {#if isSubmitted}
+                        <span class="status-badge status-submitted">
+                          Đã nộp
+                        </span>
+                      {:else if daysUntil >= 0}
+                        <span class="status-badge status-pending">
+                          Chưa nộp
+                        </span>
+                      {:else}
+                        <span class="status-badge status-overdue">
+                          Quá hạn
+                        </span>
+                      {/if}
                     </div>
 
-                    {#if report.status === "submitted" && report.submittedDate}
-                      <div class="detail-item">
+                    <p class="report-description">{reportPeriod.description}</p>
+
+                    <div class="report-info">
+                      <div class="info-item">
                         <svg
                           width="16"
                           height="16"
@@ -337,46 +456,70 @@
                           stroke="currentColor"
                           stroke-width="2"
                         >
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"
+                          ></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        <span>Đã nộp: {formatDate(report.submittedDate)}</span>
+                        <span>Hạn nộp: {formatDate(reportPeriod.endDate)}</span>
                       </div>
-                    {:else if report.status === "pending"}
-                      <div class="detail-item" class:urgent={daysUntil <= 3}>
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <span>
-                          {#if daysUntil > 0}
-                            Còn {daysUntil} ngày
-                          {:else if daysUntil === 0}
-                            Hết hạn hôm nay
-                          {:else}
-                            Đã quá hạn {Math.abs(daysUntil)} ngày
-                          {/if}
-                        </span>
+
+                      {#if isSubmitted && myReport}
+                        <div class="info-item success">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                          </svg>
+                          <span>Đã nộp: {formatDate(myReport.createdAt)}</span>
+                        </div>
+                      {:else if daysUntil >= 0}
+                        <div class="info-item warning">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                          </svg>
+                          <span>Còn {daysUntil} ngày</span>
+                        </div>
+                      {:else}
+                        <div class="info-item error">
+                          <span>Đã quá hạn {Math.abs(daysUntil)} ngày</span>
+                        </div>
+                      {/if}
+                    </div>
+
+                    {#if isSubmitted && myReport?.feedback}
+                      <div class="feedback-box">
+                        <h4>Nhận xét từ giảng viên:</h4>
+                        <p>{myReport.feedback.content}</p>
+                        {#if myReport.feedback.grade}
+                          <p class="grade">Điểm: {myReport.feedback.grade}</p>
+                        {/if}
                       </div>
                     {/if}
                   </div>
-
-                  {#if report.status === "submitted"}
-                    <button class="btn-view-report">Xem báo cáo đã nộp</button>
-                  {:else if report.status === "pending"}
-                    <button class="btn-submit-report">Nộp báo cáo</button>
-                  {/if}
                 </div>
-              </div>
-            {/each}
-          </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="alert alert-info">
+              <p>Bạn chưa tham gia nhóm nào trong hạng mục này</p>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

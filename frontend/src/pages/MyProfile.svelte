@@ -341,6 +341,11 @@
                 <input
                   type="text"
                   bind:value={editedFullName}
+                  oninput={(e) =>
+                    console.log("Input value:", e.currentTarget.value)}
+                  autocomplete="name"
+                  spellcheck="false"
+                  style="text-transform: none !important;"
                   class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

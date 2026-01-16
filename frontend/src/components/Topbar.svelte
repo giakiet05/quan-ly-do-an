@@ -20,7 +20,7 @@
   let isAuthenticated = $derived($authStore.isAuthenticated);
 
   let avatarLetter = $derived(
-    user?.fullName?.charAt(0).toUpperCase() ||
+    user?.fullname?.charAt(0).toUpperCase() ||
       user?.email?.charAt(0).toUpperCase() ||
       "?"
   );
