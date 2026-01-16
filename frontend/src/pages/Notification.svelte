@@ -1,19 +1,31 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import NotificationList from "../components/NotificationList.svelte";
-    import { markAllAsRead, notifications } from "../stores/notification-store";
-    import { derived } from "svelte/store";
+    import { notificationStore } from "../stores/notification-store";
 
-    // Trạng thái lịch
+    // Khai báo các biến trạng thái cho Lịch
     let selectedDate = new Date();
-    let viewDate = new Date(); // Dùng để chuyển tháng
+    let viewDate = new Date();
 
-    // Lấy danh sách các ngày có thông báo (để đánh dấu đỏ)
-    $: datesWithNotifications = $notifications.map((n) => {
-        const d = new Date(n.timestamp || Date.now());
-        return d.toDateString();
+    // Lấy dữ liệu từ store
+    const {
+        notifications,
+        markAllAsRead,
+        fetchNotifications,
+        markAsRead,
+        remove,
+    } = notificationStore;
+
+    onMount(() => {
+        fetchNotifications();
     });
 
-    // Hàm tạo mảng các ngày trong tháng
+    // Tối ưu hóa việc đánh dấu các ngày có thông báo trên lịch (dùng Set để tìm kiếm O(1))
+    $: datesWithNotifications = new Set(
+        $notifications.map((n) => new Date(n.createdAt).toDateString()),
+    );
+
+    // Logic tạo ma trận ngày trong tháng
     function getDaysInMonth(date: Date) {
         const year = date.getFullYear();
         const month = date.getMonth();
@@ -21,8 +33,10 @@
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
         const days = [];
-        // Thêm khoảng trống cho các ngày trước mùng 1
-        for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
+        // Căn chỉnh để Thứ 2 là ngày đầu tuần
+        const offset = firstDay === 0 ? 6 : firstDay - 1;
+
+        for (let i = 0; i < offset; i++) {
             days.push(null);
         }
         for (let i = 1; i <= daysInMonth; i++) {
@@ -33,6 +47,7 @@
 
     $: days = getDaysInMonth(viewDate);
 
+    // Chuyển tháng
     const nextMonth = () =>
         (viewDate = new Date(
             viewDate.getFullYear(),
@@ -48,6 +63,15 @@
 
     function selectDate(d: Date | null) {
         if (d) selectedDate = d;
+    }
+
+    // Xử lý sự kiện từ List bắn lên
+    function handleMark(e: CustomEvent<{ id: string }>) {
+        markAsRead(e.detail.id);
+    }
+
+    function handleDelete(e: CustomEvent<{ id: string }>) {
+        remove(e.detail.id);
     }
 </script>
 
@@ -75,16 +99,21 @@
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    ><path d="M18 6 7 17l-5-5" /><path
-                        d="m22 10-7.5 7.5L13 16"
-                    /></svg
                 >
+                    <path d="M18 6 7 17l-5-5" /><path
+                        d="m22 10-7.5 7.5L13 16"
+                    />
+                </svg>
                 Đánh dấu tất cả đã đọc
             </button>
         </header>
 
         <div class="list-container">
-            <NotificationList filterDate={selectedDate} />
+            <NotificationList
+                filterDate={selectedDate}
+                on:mark={handleMark}
+                on:delete={handleDelete}
+            />
         </div>
     </main>
 
@@ -98,8 +127,12 @@
                     })}
                 </h3>
                 <div class="nav-btns">
-                    <button on:click={prevMonth}>&lt;</button>
-                    <button on:click={nextMonth}>&gt;</button>
+                    <button on:click={prevMonth} aria-label="Tháng trước"
+                        >&lt;</button
+                    >
+                    <button on:click={nextMonth} aria-label="Tháng sau"
+                        >&gt;</button
+                    >
                 </div>
             </div>
 
@@ -119,7 +152,7 @@
                             on:click={() => selectDate(d)}
                         >
                             {d.getDate()}
-                            {#if datesWithNotifications.includes(d.toDateString())}
+                            {#if datesWithNotifications.has(d.toDateString())}
                                 <span class="dot"></span>
                             {/if}
                         </button>
@@ -187,15 +220,18 @@
     .btn-mark-read:hover {
         background: #f1f5f9;
         border-color: #cbd5e1;
+        color: #1a56db;
     }
 
-    /* Calendar Styling */
+    /* Lịch */
     .calendar-card {
         background: white;
         border-radius: 20px;
         padding: 24px;
         border: 1px solid #e2e8f0;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 40px;
     }
 
     .calendar-header {
@@ -213,18 +249,25 @@
     }
 
     .nav-btns button {
-        background: none;
-        border: none;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
         cursor: pointer;
         font-weight: bold;
         color: #64748b;
-        padding: 5px 10px;
+        padding: 4px 10px;
+        transition: all 0.2s;
+    }
+
+    .nav-btns button:hover {
+        background: #f1f5f9;
+        color: #1a56db;
     }
 
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 8px;
+        gap: 4px;
         text-align: center;
     }
 
@@ -249,25 +292,28 @@
         cursor: pointer;
         position: relative;
         transition: all 0.2s;
+        color: #475569;
     }
 
-    .day:hover {
+    .day:hover:not(.active) {
         background: #f1f5f9;
+        color: #1e293b;
     }
 
     .day.active {
         background: #1a56db;
         color: white;
         font-weight: 700;
+        box-shadow: 0 4px 10px rgba(26, 86, 219, 0.3);
     }
 
     .dot {
-        width: 4px;
-        height: 4px;
-        background: #ef4444; /* Màu đỏ thông báo */
+        width: 5px;
+        height: 5px;
+        background: #ef4444;
         border-radius: 50%;
         position: absolute;
-        bottom: 6px;
+        bottom: 5px;
     }
 
     .day.active .dot {
@@ -275,31 +321,39 @@
     }
 
     .info-box {
-        margin-top: 20px;
+        margin-top: 24px;
         padding: 20px;
         background: #eff6ff;
         border-radius: 16px;
         color: #1e40af;
+        border: 1px solid #dbeafe;
     }
 
     .info-box h4 {
         margin: 0 0 8px 0;
         font-size: 14px;
+        font-weight: 700;
     }
 
     .info-box p {
         margin: 0;
         font-size: 13px;
-        line-height: 1.5;
-        opacity: 0.8;
+        line-height: 1.6;
+        opacity: 0.9;
     }
 
+    /* Responsive */
     @media (max-width: 1024px) {
         .notification-page {
             grid-template-columns: 1fr;
+            padding: 20px;
         }
         .sidebar {
-            display: none;
+            order: -1; /* Đưa lịch lên đầu trên mobile */
+        }
+        .calendar-card {
+            position: relative;
+            top: 0;
         }
     }
 </style>

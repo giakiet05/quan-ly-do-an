@@ -1,6 +1,9 @@
 // src/stores/class.store.ts
 import { writable, derived } from "svelte/store";
 import type { ClassItem } from "../types/class";
+import { getMyClassrooms } from "../services/classroom-service";
+import { mapClassroomToClassItem } from "../mappers/classroom-mapper";
+import type { ClassroomResponse } from "../dtos/classroom-dto";
 
 
 
@@ -69,6 +72,17 @@ function createClassStore() {
         classes.update((list) => list.filter((c) => c.name !== name));
     }
 
+    async function fetchMyClasses() {
+        try {
+            const data: ClassroomResponse[] = await getMyClassrooms();
+            const mapped = data.map(mapClassroomToClassItem);
+            setData(mapped);
+        } catch (err) {
+            console.error("Failed to fetch classrooms", err);
+            setData([]);
+        }
+    }
+
     return {
         // state
         classes,
@@ -89,6 +103,7 @@ function createClassStore() {
         addClass,
         updateClass,
         removeClass,
+        fetchMyClasses,
     };
 }
 

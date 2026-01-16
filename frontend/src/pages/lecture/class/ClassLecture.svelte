@@ -38,10 +38,13 @@
         removeClass,
     } = classStore;
 
-    onMount(() => {
-        setData(mockClasses);
+    onMount(async () => {
+        try {
+            classStore.fetchMyClasses();
+        } catch (error) {
+            console.error("Failed to load classrooms", error);
+        }
     });
-
     let showCreateModal = false;
     let showEditModal = false;
     let editingClass: ClassItem | null = null;
@@ -87,8 +90,8 @@
                     <th class="w-2/15">Tên Lớp học</th>
                     <th class="w-2/15">Trường</th>
                     <th class="w-4/15">Mô tả</th>
-                    <th class="w-1/15">Số lượng SV</th>
-                    <th class="w-2/15">Học kỳ</th>
+                    <th class="w-2/15">Số lượng SV</th>
+                    <th class="w-1/15">Học kỳ</th>
                     <th class="w-2/15">Trạng thái</th>
                     <th class="w-2/15">Hành động</th>
                 </tr>
