@@ -1,17 +1,41 @@
 <script lang="ts">
     import { createEventDispatcher } from "svelte";
-    import type { Notification } from "../stores/notification-store";
+    import type { NotificationItem } from "../types/notification";
 
-    export let item: Notification;
+    export let item: NotificationItem;
+
     const dispatch = createEventDispatcher();
 
-    const doMark = () => dispatch("mark", { id: item.id });
-    const doDelete = () => dispatch("delete", { id: item.id });
+    const doMark = () => {
+        dispatch("mark", { id: item.id });
+    };
+
+    const doDelete = () => {
+        dispatch("delete", { id: item.id });
+    };
+    function formatTime(dateStr: string) {
+        const date = new Date(dateStr);
+        const now = new Date();
+
+        if (date.toDateString() === now.toDateString()) {
+            return date.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+        }
+        if (date.getFullYear() === now.getFullYear()) {
+            return date.toLocaleDateString("vi-VN", {
+                day: "numeric",
+                month: "short",
+            });
+        }
+        return date.toLocaleDateString("vi-VN");
+    }
 </script>
 
 <div class="notification-item">
-    <div class="icon-wrapper {item.type}">
-        {#if item.type === "student_action"}
+    <div class="icon-wrapper {item.ui_type}">
+        {#if item.ui_type === "message"}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -28,7 +52,7 @@
                     r="4"
                 /></svg
             >
-        {:else if item.type === "deadline"}
+        {:else if item.ui_type === "deadline"}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -43,7 +67,7 @@
                     points="12 6 12 12 16 14"
                 /></svg
             >
-        {:else if item.type === "submission"}
+        {:else if item.ui_type === "submission"}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -58,6 +82,20 @@
                     d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
                 /><polyline points="14 2 14 8 20 8" /></svg
             >
+        {:else if item.ui_type === "class"}
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <path d="M22 10v6M2 10v6M6 6h12M6 18h12" />
+            </svg>
         {:else}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +130,9 @@
     </div>
 
     <div class="side-panel">
-        <span class="time">{item.date}</span>
+        <span class="time">
+            {formatTime(item.createdAt)}
+        </span>
 
         <div class="tool-panel">
             {#if !item.read}
@@ -165,7 +205,7 @@
         justify-content: center;
         flex-shrink: 0;
     }
-    .icon-wrapper.student {
+    .icon-wrapper.message {
         background: #eff6ff;
         color: #2563eb;
     }
@@ -180,6 +220,10 @@
     .icon-wrapper.system {
         background: #f8fafc;
         color: #64748b;
+    }
+    .icon-wrapper.class {
+        background: #fefce8;
+        color: #ca8a04;
     }
 
     /* Nội dung chính */
@@ -268,5 +312,10 @@
         background: #3b82f6;
         border-radius: 50%;
         flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+        .tool-panel {
+            opacity: 1;
+        }
     }
 </style>

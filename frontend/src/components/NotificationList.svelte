@@ -1,49 +1,57 @@
 <script lang="ts">
-    import {
-        notifications,
-        markAsRead,
-        removeNotification,
-    } from "../stores/notification-store";
-    import { derived } from "svelte/store";
+    import { notificationStore } from "../stores/notification-store";
     import NotificationItem from "./NotificationItem.svelte";
+    import { createEventDispatcher } from "svelte";
 
-    // Khai báo kiểu dữ liệu cho filter
+    const { notifications } = notificationStore;
+    const dispatch = createEventDispatcher();
+
     type FilterType =
         | "all"
         | "unread"
-        | "student"
+        | "message"
         | "deadline"
         | "submission"
         | "system";
 
     export let filter: FilterType = "all";
+    export let filterDate: Date | null = null;
 
-    // Logic lọc thông báo (đã tối ưu)
-    const filteredList = derived(notifications, ($n) => {
-        if (filter === "all") return $n;
-        if (filter === "unread") return $n.filter((x) => !x.read);
-        if (filter === "student")
-            return $n.filter((x) => x.type === "student_action");
-        if (filter === "deadline")
-            return $n.filter((x) => x.type === "deadline");
-        if (filter === "submission")
-            return $n.filter((x) => x.type === "submission");
-        return $n.filter((x) => x.type === "system");
-    });
+    // ✅ REACTIVE FILTER
+    $: filteredList = (() => {
+        let list = $notifications;
 
-    // Handlers
+        if (filter === "unread") {
+            list = list.filter((n) => !n.read);
+        } else if (filter !== "all") {
+            list = list.filter((n) => n.ui_type === filter);
+        }
+
+        if (filterDate) {
+            const target = filterDate.toDateString();
+            const today = new Date().toDateString();
+
+            if (target !== today) {
+                list = list.filter(
+                    (n) => new Date(n.createdAt).toDateString() === target,
+                );
+            }
+        }
+        return list;
+    })();
+
     function handleMark(e: CustomEvent<{ id: string }>) {
-        markAsRead(e.detail.id);
-    }
-    function handleDelete(e: CustomEvent<{ id: string }>) {
-        removeNotification(e.detail.id);
+        dispatch("mark", e.detail); // Bắn tiếp lên Page
     }
 
-    // Các nhãn hiển thị cho bộ lọc
+    function handleDelete(e: CustomEvent<{ id: string }>) {
+        dispatch("delete", e.detail); // Bắn tiếp lên Page
+    }
+
     const filterOptions: { label: string; value: FilterType }[] = [
         { label: "Tất cả", value: "all" },
         { label: "Chưa đọc", value: "unread" },
-        { label: "Sinh viên", value: "student" },
+        { label: "Tin nhắn", value: "message" },
         { label: "Deadline", value: "deadline" },
         { label: "Bài nộp", value: "submission" },
         { label: "Hệ thống", value: "system" },
@@ -64,34 +72,16 @@
     </div>
 
     <div class="cards-stack">
-        {#if $filteredList.length === 0}
+        {#if filteredList.length === 0}
             <div class="empty-state">
-                <div class="empty-icon">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="48"
-                        height="48"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                            d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"
-                        /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg
-                    >
-                </div>
-                <p>Không có thông báo nào trong mục này</p>
+                <p>Không có thông báo</p>
             </div>
         {:else}
-            {#each $filteredList as item (item.id)}
+            {#each filteredList as item (item.id)}
                 <NotificationItem
                     {item}
                     on:mark={handleMark}
                     on:delete={handleDelete}
-                    on:accept={handleMark}
-                    on:reject={handleDelete}
                 />
             {/each}
         {/if}
@@ -154,11 +144,6 @@
         background: white;
         border-radius: 16px;
         border: 1px dashed #cbd5e1;
-    }
-
-    .empty-icon {
-        color: #cbd5e1;
-        margin-bottom: 16px;
     }
 
     .empty-state p {

@@ -1,82 +1,64 @@
-import { writable, derived } from "svelte/store";
+// src/stores/notification-store.ts
+import { writable } from "svelte/store";
+import type { NotificationItem } from "../types/notification";
+import { getMyNotifications, markAllNotificationsAsRead } from "../services/notification-service";
+import { mapNotifications } from "../mappers/notification-mapper";
 
-export type NotificationType =
-    | "student_action"
-    | "deadline"
-    | "submission"
-    | "system";
+function createNotificationStore() {
+    const notifications = writable<NotificationItem[]>([]);
+    const loading = writable(false);
 
-export type Notification = {
-    id: string;
-    type: NotificationType;
-    title: string;
-    content?: string;
-    meta?: string;
-    tag?: string;
-    date: string;
-    datetime: string;
-    read: boolean;
-    actionable?: boolean;
-};
-
-const initial: Notification[] = [
-    {
-        id: "n1",
-        type: "student_action",
-        title: 'Sinh viên đăng ký đề tài',
-        content: 'Nguyễn Văn A đã đăng ký đề tài "Hệ thống quản lý thư viện"',
-        meta: 'Sinh viên: Nguyễn Văn A · Đề tài: Hệ thống quản lý thư viện',
-        tag: "Hành động sinh viên",
-        date: "10:30 30/11/2024",
-        datetime: "2024-11-30T10:30:00Z",
-        read: false,
-        actionable: true
-    },
-    {
-        id: "n2",
-        type: "deadline",
-        title: "Sắp đến hạn nộp báo cáo",
-        content: 'Hạng mục "Đề tài Web Application" sẽ đến hạn nộp báo cáo vào 02/12/2024',
-        tag: "Nhắc nhở deadline",
-        date: "09:15 30/11/2024",
-        datetime: "2024-11-30T09:15:00Z",
-        read: false,
-        actionable: false
-    },
-    {
-        id: "n3",
-        type: "submission",
-        title: "Báo cáo mới được nộp",
-        content: 'Trần Thị B đã nộp báo cáo cho đề tài "Website quản lý sinh viên"',
-        tag: "Nộp bài",
-        date: "16:45 29/11/2024",
-        datetime: "2024-11-29T16:45:00Z",
-        read: true,
-        actionable: false
+    async function fetchNotifications() {
+        loading.set(true);
+        try {
+            const res = await getMyNotifications();
+            console.log("Dữ liệu thô từ API:", res);
+            notifications.set(mapNotifications(res.notifications));
+        } finally {
+            loading.set(false);
+        }
     }
-];
 
-export const notifications = writable<Notification[]>(initial);
+    async function markAllAsRead() {
+        await markAllNotificationsAsRead();
+        notifications.update(list =>
+            list.map(n => ({ ...n, read: true }))
+        );
+    }
 
-export const unreadCount = derived(notifications, $n =>
-    $n.filter((x) => !x.read).length
-);
+    async function markAsRead(id: string) {
+        console.log("BE chưa có API, đang giả lập đọc cho ID:", id);
 
-function updateItem(id: string, patch: Partial<Notification>) {
-    notifications.update(list => list.map(it => it.id === id ? { ...it, ...patch } : it));
+        notifications.update(list =>
+            list.map(n => n.id === id ? { ...n, read: true } : n)
+        );
+
+        /* Khi nào BE có API thì mở cái này:
+        try {
+            await markNotificationAsRead(id);
+        } catch (err) {
+            // Nếu lỗi thì hoàn tác (rollback) trạng thái cũ ở đây
+        }
+        */
+    }
+
+    async function remove(id: string) {
+        console.log("BE chưa có API, đang giả lập xóa ID:", id);
+
+        notifications.update(list => list.filter(n => n.id !== id));
+        /* Khi nào BE xong thì thêm:
+        await deleteNotification(id);
+        */
+    }
+
+    return {
+        notifications,
+        loading,
+        fetchNotifications,
+        markAllAsRead,
+        markAsRead,
+        remove,
+    };
 }
 
-export const markAsRead = (id: string) => updateItem(id, { read: true });
-export const markAsUnread = (id: string) => updateItem(id, { read: false });
-export const markAllAsRead = () => notifications.update(list => list.map(n => ({ ...n, read: true })));
-export const removeNotification = (id: string) => notifications.update(list => list.filter(n => n.id !== id));
-export const addNotification = (n: Notification) => notifications.update(list => [n, ...list]);
-
-export default {
-    subscribe: notifications.subscribe,
-    markAsRead,
-    markAsUnread,
-    markAllAsRead,
-    removeNotification,
-    addNotification
-};
+export const notificationStore = createNotificationStore();
