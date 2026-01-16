@@ -78,7 +78,7 @@
     {
       id: "my-projects",
       label: "Đề tài của tôi",
-      route: "/my-projects",
+      route: "/my-projects*",
       icon: "/my_project.svg",
     },
     {
