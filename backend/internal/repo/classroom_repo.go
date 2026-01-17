@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
@@ -23,7 +24,7 @@ type ClassroomRepo interface {
 	GetByUniversity(ctx context.Context, universityID string, page, pageSize int) ([]model.Classroom, int64, error)
 	GetByLecturer(ctx context.Context, lecturerID string, page, pageSize int) ([]model.Classroom, int64, error)
 	GetByStudent(ctx context.Context, studentID string, page, pageSize int) ([]model.Classroom, int64, error)
-	
+
 	// Student management
 	AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error
 	RemoveStudent(ctx context.Context, classroomID, studentID string) error
@@ -204,12 +205,17 @@ func (c *classroomRepo) GetByStudent(ctx context.Context, studentID string, page
 		"students._id": studentObjectID,
 	}
 
+	log.Printf("🔍 GetByStudent - studentID: %s, filter: %+v", studentID, filter)
+
 	skip := int64((page - 1) * pageSize)
 
 	total, err := c.collection.CountDocuments(ctx, filter)
 	if err != nil {
+		log.Printf("❌ CountDocuments error: %v", err)
 		return nil, 0, err
 	}
+
+	log.Printf("📊 CountDocuments result: %d classrooms found", total)
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "created_at", Value: -1}}).
