@@ -183,12 +183,28 @@ func (g *groupService) GetGroupsFilter(query *dto.GetGroupsFilterQuery, requeste
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	ok, err := g.classroomRepo.IsLecturer(ctx, query.ClassroomID, requesterID)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, apperror.ErrForbidden
+	// If member_id is specified, check if requester is that member or is lecturer
+	if query.MemberID != nil && *query.MemberID != "" {
+		// Allow if requester is the member themselves
+		if *query.MemberID != requesterID {
+			// Or if requester is lecturer of the classroom
+			ok, err := g.classroomRepo.IsLecturer(ctx, query.ClassroomID, requesterID)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				return nil, apperror.ErrForbidden
+			}
+		}
+	} else {
+		// No member_id filter, only lecturer can view all groups
+		ok, err := g.classroomRepo.IsLecturer(ctx, query.ClassroomID, requesterID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, apperror.ErrForbidden
+		}
 	}
 
 	groups, err := g.groupRepo.GetFilter(ctx, query.ClassroomID, query.ProjectID, query.MemberID)
@@ -262,7 +278,6 @@ func (g *groupService) UpdateGroup(req *dto.UpdateGroupRequest, requesterID stri
 
 	return group, nil
 }
-
 
 func (g *groupService) DeleteGroup(groupID string, requesterID string) error {
 	ctx, cancel := util.NewDefaultDBContext()

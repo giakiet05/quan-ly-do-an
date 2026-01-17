@@ -39,10 +39,9 @@ export async function getMyClassrooms(): Promise<ClassroomResponse[]> {
 export async function getClassroom(
   classroomId: string
 ): Promise<ClassroomResponse> {
-  const response = await apiFetch<ApiResponse<ClassroomResponse>>(
+  return await apiFetch<ClassroomResponse>(
     `/api/classrooms/${classroomId}`
   );
-  return response.data!;
 }
 
 /**
@@ -208,10 +207,10 @@ export async function leaveClassroom(classroomId: string): Promise<void> {
  * Get all classrooms the student has joined
  */
 export async function getMyJoinedClassrooms(): Promise<ClassroomResponse[]> {
-  const response = await apiFetch<ApiResponse<ClassroomResponse[]>>(
+  const response = await apiFetch<{classrooms: ClassroomResponse[], total: number, page: number, page_size: number}>(
     "/api/classrooms/joined"
   );
-  return response.data || [];
+  return response.classrooms || [];
 }
 
 // ==================== LECTURER: JOIN REQUESTS ====================
@@ -268,10 +267,9 @@ export async function rejectJoinRequest(
 export async function getClassPosts(
   classroomId: string
 ): Promise<ClassPostResponse[]> {
-  const response = await apiFetch<ApiResponse<ClassPostResponse[]>>(
+  return await apiFetch<ClassPostResponse[]>(
     `/api/classrooms/${classroomId}/posts`
-  );
-  return response.data || [];
+  ) || [];
 }
 
 /**

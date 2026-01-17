@@ -26,10 +26,10 @@
   let projectRounds = $state<ProjectRound[]>([]); // Tách riêng khỏi classroom
   let loading = $state(true);
   let activeTab = $state<"overview" | "students" | "notifications" | "chat">(
-    "overview"
+    "overview",
   );
   let registrationFilter = $state<"all" | "registered" | "not-registered">(
-    "all"
+    "all",
   );
   let unreadNotifications = $state(1); // Mock số thông báo chưa đọc
 
@@ -276,7 +276,11 @@
       })) as any;
       */
     } catch (err) {
-      console.error("Error loading classroom:", err);
+      console.error("❌ StudentClassDetail - Error loading classroom:", err);
+      console.error(
+        "❌ StudentClassDetail - Error details:",
+        err instanceof Error ? err.message : String(err),
+      );
     } finally {
       loading = false;
     }
@@ -293,7 +297,7 @@
   async function handleLeaveClass() {
     if (
       !confirm(
-        "Bạn có chắc chắn muốn rời khỏi lớp học này? Bạn sẽ mất quyền truy cập vào tất cả tài liệu và đề tài."
+        "Bạn có chắc chắn muốn rời khỏi lớp học này? Bạn sẽ mất quyền truy cập vào tất cả tài liệu và đề tài.",
       )
     ) {
       return;
@@ -496,7 +500,7 @@
                       </svg>
                       <span
                         >{formatDate(round.startDate)} - {formatDate(
-                          round.endDate
+                          round.endDate,
                         )}</span
                       >
                     </div>
@@ -657,7 +661,7 @@
                           onclick={() =>
                             downloadAttachment(
                               attachment.fileURL,
-                              attachment.fileName
+                              attachment.fileName,
                             )}
                           class="attachment-item"
                         >
