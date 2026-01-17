@@ -14,7 +14,6 @@ export async function getMyNotifications(
         `/api/notifications?page=${page}&pageSize=${limit}`
     );
 
-    console.log("Dữ liệu thực tế sau apiFetch:", response);
 
     if (!response) {
         return {

@@ -1,15 +1,15 @@
 export interface ClassItem {
     id: string;
     name: string;
-    school: string;
     description?: string;
     studentCount: number;
+    avatar?: string;
     semester: string;
     status: "active" | "inactive"; // Add status field
 }
 export interface CreateClassRequest {
     name: string;
-    school: string;
+    avatar?: string;
     description?: string;
     semester: string;
     students: StudentInfo[];
@@ -22,14 +22,14 @@ export interface StudentInfo {
 }
 export interface ClassInfo {
     name: string;
-    school: string;
+    avatar?: string;
     description?: string;
     semester: string;
 }
 export interface ClassData {
     id: string;
     name: string;
-    school: string;
+    avatar?: string;
     description?: string;
     studentCount: number;
     semester: string;

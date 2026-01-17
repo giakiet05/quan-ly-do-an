@@ -45,12 +45,24 @@
             console.error("Failed to load classrooms", error);
         }
     });
-    let showCreateModal = false;
-    let showEditModal = false;
+    let showCreateModal = $state(false);
+    let isProcessing = $state(false);
+    let showEditModal = $state(false);
     let editingClass: ClassItem | null = null;
 
-    function handleCreateClass(classData: CreateClassRequest): void {
-        showCreateModal = false;
+    async function handleCreateClass(
+        classData: CreateClassRequest,
+    ): Promise<void> {
+        console.log(">>> PAGE ĐÃ NHẬN LỆNH TẠO LỚP:", classData);
+        isProcessing = true;
+        try {
+            await classStore.addClass(classData);
+            showCreateModal = false;
+        } catch (err) {
+            console.error("Failed to create class", err);
+        } finally {
+            isProcessing = false;
+        }
     }
 
     function openEditModal(cls: ClassItem): void {
@@ -87,72 +99,78 @@
         <table>
             <thead class="table-header">
                 <tr>
-                    <th class="w-2/15">Tên Lớp học</th>
-                    <th class="w-2/15">Trường</th>
+                    <th class="w-3/15">Thông tin Lớp học</th>
                     <th class="w-4/15">Mô tả</th>
-                    <th class="w-2/15">Số lượng SV</th>
-                    <th class="w-1/15">Học kỳ</th>
-                    <th class="w-2/15">Trạng thái</th>
-                    <th class="w-2/15">Hành động</th>
+                    <th class="w-2/15 text-center">Số lượng SV</th>
+                    <th class="w-2/15">Học kỳ</th>
+                    <th class="w-2/15 text-center">Trạng thái</th>
+                    <th class="w-2/15 text-center">Hành động</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
                 {#each $paginatedClasses as cls (cls.id)}
                     <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-medium">{cls.name}</td>
-                        <td class="px-6 py-4">{cls.school}</td>
-                        <td class="px-6 py-4 text-gray-600"
-                            >{cls.description}</td
-                        >
-                        <td class="px-6 py-4 text-center">{cls.studentCount}</td
-                        >
-                        <td class="px-6 py-4 text-gray-600">{cls.semester}</td>
                         <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <img
+                                    src={cls.avatar ||
+                                        `https://ui-avatars.com/api/?name=${cls.name}&background=random`}
+                                    alt=""
+                                    class="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0"
+                                />
+                                <span class="font-medium text-gray-900"
+                                    >{cls.name}</span
+                                >
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 text-gray-600 truncate"
+                            >{cls.description || "Không có thông tin mô tả"}</td
+                        >
+
+                        <td class="px-6 py-4 text-center">
+                            <span
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
+                            >
+                                {cls.studentCount} SV
+                            </span>
+                        </td>
+
+                        <td class="px-6 py-4 text-gray-600 text-sm"
+                            >{cls.semester}</td
+                        >
+
+                        <td class="px-6 py-4 text-center">
                             <span
                                 class="status-tag {cls.status === 'active'
                                     ? 'bg-green-100 text-green-700'
                                     : 'bg-red-100 text-red-700'}"
                             >
                                 {cls.status === "active"
-                                    ? "Đang hoạt động"
-                                    : "Ngừng hoạt động"}
+                                    ? "Đang chạy"
+                                    : "Tạm dừng"}
                             </span>
                         </td>
+
                         <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center justify-center gap-2">
                                 <button
                                     onclick={() =>
                                         push(`/lecture/my-classes/${cls.id}`)}
-                                    class="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                                    class="text-blue-600"
+                                    ><Eye size={18} /></button
                                 >
-                                    <Eye size={16} />
-                                </button>
-                                <span class="text-gray-300">|</span>
                                 <button
                                     onclick={() => openEditModal(cls)}
-                                    class="flex items-center gap-1 text-green-600 hover:text-green-800"
+                                    class="text-green-600"
+                                    ><Edit2 size={18} /></button
                                 >
-                                    <Edit2 size={16} />
-                                </button>
-                                <span class="text-gray-300">|</span>
                                 <button
                                     onclick={() => removeClass(cls.id)}
-                                    class="flex items-center gap-1 text-red-600 hover:text-red-800"
+                                    class="text-red-600"
+                                    ><Trash2 size={18} /></button
                                 >
-                                    <Trash2 size={16} />
-                                </button>
                             </div>
-                        </td>
-                    </tr>
-                {:else}
-                    <tr>
-                        <td
-                            colspan="7"
-                            class="px-6 py-12 text-center text-gray-500"
-                        >
-                            {$searchTerm
-                                ? "Không tìm thấy lớp học nào"
-                                : "Chưa có lớp học nào"}
                         </td>
                     </tr>
                 {/each}

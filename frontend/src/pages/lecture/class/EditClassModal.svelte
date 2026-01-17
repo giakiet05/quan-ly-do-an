@@ -1,7 +1,4 @@
 <script lang="ts">
-    /* =======================
-     * Imports
-     * ======================= */
     import {
         Plus,
         X,
@@ -9,58 +6,67 @@
         Search,
         Download,
         Upload,
+        Edit2 as Edit3,
     } from "../../../libs/Icons";
     import { mockStudents } from "../../../mocks/classes.mock";
     import type { ClassData, CreateClassRequest } from "../../../types/class";
     import { z } from "zod";
+    import ClassInfoSidebar from "../../../components/ClassInfoSidebar.svelte";
+    import StudentManagement from "../../../components/StudentManagement.svelte";
+    import { classStore } from "../../../stores/class-store";
 
-    /* =======================
-     * Props
-     * ======================= */
     const { onClose, onSubmit, classData } = $props<{
         classData: ClassData;
         onClose: () => void;
         onSubmit: (data: CreateClassRequest) => void;
     }>();
 
-    /* =======================
-     * Types & Constants
-     * ======================= */
     type ActiveTab = "list" | "excel" | "upload";
 
-    /* =======================
-     * Validation schema
-     * ======================= */
+    interface Student {
+        fullName: string;
+        studentCode: string;
+        email: string;
+        selected: boolean;
+    }
+
     const ClassSchema = z.object({
         name: z.string().min(1, "Tên lớp học là bắt buộc"),
         semester: z.string().min(1, "Học kỳ là bắt buộc"),
-        school: z.string().min(1, "Trường là bắt buộc"),
+        avatar: z.string().optional(),
         description: z.string().optional(),
+        students: z
+            .array(
+                z.object({
+                    fullName: z.string(),
+                    studentCode: z.string(),
+                    email: z.string().optional(),
+                }),
+            )
+            .optional(),
     });
 
-    /* =======================
-     * State: UI
-     * ======================= */
     let activeTab = $state<ActiveTab>("list");
     let searchTerm = $state("");
-    let selectAll = $state(false);
     let errors = $state<Record<string, string>>({});
 
-    /* =======================
-     * State: Form
-     * ======================= */
-    let formData: CreateClassRequest = {
-        name: classData.name || "",
-        semester: classData.semester || "",
-        school: classData.school || "",
-        description: classData.description || "",
-        students: classData.students || [],
-    };
+    let formData = $state<CreateClassRequest>({
+        name: "",
+        semester: "",
+        avatar: "",
+        description: "",
+        students: [],
+    });
 
-    /* =======================
-     * State: Students
-     * ======================= */
-    const students = $state(
+    $effect(() => {
+        formData.name = classData.name || "";
+        formData.semester = classData.semester || "";
+        formData.description = classData.description || "";
+        formData.students = classData.students || [];
+        formData.avatar = classData.avatar || "";
+    });
+
+    let students = $state<Student[]>(
         mockStudents.map((s) => ({
             ...s,
             selected: formData.students.some(
@@ -69,318 +75,325 @@
         })),
     );
 
-    /* =======================
-     * State: Add Student
-     * ======================= */
-    let newStudent = {
+    let newStudent = $state({
         fullName: "",
         studentCode: "",
         email: "",
-    };
+    });
 
-    /* =======================
-     * Derived
-     * ======================= */
+    const selectedCount = $derived(students.filter((s) => s.selected).length);
+
     const filteredStudents = $derived(
-        students.filter((s) =>
-            s.fullName.toLowerCase().includes(searchTerm.toLowerCase()),
+        students.filter(
+            (s) =>
+                s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                s.studentCode.toLowerCase().includes(searchTerm.toLowerCase()),
         ),
     );
 
-    /* =======================
-     * Handlers: Form
-     * ======================= */
-    function handleSubmit(
-        event: SubmitEvent & { currentTarget: HTMLFormElement },
-    ) {
+    const allSelected = $derived(
+        filteredStudents.length > 0 &&
+            filteredStudents.every((s) => s.selected),
+    );
+
+    const indeterminate = $derived(
+        !allSelected && filteredStudents.some((s) => s.selected),
+    );
+
+    // Cập nhật formData.students khi selected thay đổi
+    $effect(() => {
+        formData.students = students
+            .filter((s) => s.selected)
+            .map(({ fullName, studentCode, email }) => ({
+                fullName,
+                studentCode,
+                email: email || `${studentCode}@student.edu.vn`,
+            }));
+    });
+
+    function toggleAll() {
+        const value = !allSelected;
+        students.forEach((s) => (s.selected = value));
+    }
+
+    function handleFileChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files?.[0]) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (typeof e.target?.result === "string") {
+                formData.avatar = e.target.result;
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+
+    function addStudent() {
+        if (!newStudent.fullName.trim() || !newStudent.studentCode.trim())
+            return;
+
+        const email =
+            newStudent.email.trim() ||
+            `${newStudent.studentCode.trim()}@student.edu.vn`;
+
+        students = [
+            {
+                fullName: newStudent.fullName.trim(),
+                studentCode: newStudent.studentCode.trim(),
+                email,
+                selected: true,
+            },
+            ...students,
+        ];
+
+        newStudent = { fullName: "", studentCode: "", email: "" };
+    }
+
+    function removeSelected() {
+        if (selectedCount === 0) return;
+        if (!confirm(`Xóa ${selectedCount} sinh viên đã chọn?`)) return;
+
+        students = students.filter((s) => !s.selected);
+    }
+
+    function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
         errors = {};
 
         const result = ClassSchema.safeParse(formData);
         if (!result.success) {
             result.error.issues.forEach((issue) => {
-                const field = issue.path[0];
-                if (field) errors[field as string] = issue.message;
+                const field = issue.path[0] as string;
+                if (field) errors[field] = issue.message;
             });
             return;
         }
-
-        onSubmit(formData);
+        classStore
+            .updateClass(classData.id, formData)
+            .then(() => {
+                onSubmit(formData);
+                onClose();
+            })
+            .catch((err) => {
+                console.error(err);
+                alert("Lưu thay đổi thất bại!");
+            });
     }
 
-    /* =======================
-     * Handlers: Students
-     * ======================= */
-    function toggleStudent() {
-        syncSelectedStudents();
+    function stopPropagation(event: MouseEvent) {
+        event.stopPropagation();
     }
 
-    function toggleAllStudents() {
-        students.forEach((s) => (s.selected = selectAll));
-        syncSelectedStudents();
+    function handleModalKeydown(event: KeyboardEvent) {
+        event.stopPropagation();
     }
 
-    function syncSelectedStudents() {
-        formData.students = students
-            .filter((s) => s.selected)
-            .map(({ fullName, studentCode, email }) => ({
-                fullName,
-                studentCode,
-                email,
-            }));
-    }
-
-    /* =======================
-     * Handlers: Add Student
-     * ======================= */
-    function addStudent() {
-        if (
-            !newStudent.fullName ||
-            !newStudent.studentCode ||
-            !newStudent.email
-        ) {
-            alert("Vui lòng nhập đầy đủ thông tin sinh viên.");
-            return;
+    function handleKeydown(event: KeyboardEvent) {
+        if (event.key === "Escape") {
+            onClose();
         }
-
-        students.push({
-            ...newStudent,
-            selected: false,
-        });
-
-        // Clear input fields
-        newStudent = { fullName: "", studentCode: "", email: "" };
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+        }
     }
 </script>
 
 <div
-    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    class="modal-overlay"
+    onclick={onClose}
+    onkeydown={handleKeydown}
+    role="button"
+    tabindex="0"
 >
     <div
-        class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        class="modal-content"
+        onclick={stopPropagation}
+        onkeydown={handleModalKeydown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        tabindex="-1"
     >
-        <!-- Header -->
-        <div
-            class="flex justify-between items-center p-6 border-b border-gray-200"
-        >
+        <div class="modal-header">
             <div>
-                <h2 class="text-xl mb-1">Chỉnh Sửa Lớp Học</h2>
-                <p class="text-sm text-gray-600">
-                    Vui lòng chỉnh sửa thông tin lớp học.
-                </p>
+                <h2 id="modal-title">Chỉnh Sửa Lớp Học</h2>
+                <p>Chỉnh sửa thông tin lớp học và danh sách sinh viên</p>
             </div>
-            <button onclick={onClose} class="p-2 hover:bg-gray-100 rounded-lg">
-                <X size={20} />
+            <button class="close-btn" onclick={onClose}>
+                <X size={24} />
             </button>
         </div>
 
-        <!-- Form -->
-        <form onsubmit={handleSubmit} class="flex-1 overflow-y-auto">
-            <div class="p-6 space-y-6">
-                <!-- Basic info -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="class-name" class="block text-sm mb-2"
-                            >Tên lớp học</label
-                        >
-                        <input
-                            id="class-name"
-                            class="w-full px-4 py-2 border rounded-lg"
-                            class:border-red-500={errors.name}
-                            bind:value={formData.name}
-                        />
-                        {#if errors.name}
-                            <p class="text-red-500 text-sm mt-1">
-                                {errors.name}
-                            </p>
-                        {/if}
-                    </div>
+        <form onsubmit={handleSubmit} class="modal-body-wrapper">
+            <div class="main-layout">
+                <ClassInfoSidebar
+                    bind:formData
+                    {errors}
+                    onAvatarChange={handleFileChange}
+                />
 
-                    <div>
-                        <label for="semester" class="block text-sm mb-2"
-                            >Học kỳ</label
-                        >
-                        <input
-                            id="semester"
-                            class="w-full px-4 py-2 border rounded-lg"
-                            class:border-red-500={errors.semester}
-                            bind:value={formData.semester}
-                        />
-                        {#if errors.semester}
-                            <p class="text-red-500 text-sm mt-1">
-                                {errors.semester}
-                            </p>
-                        {/if}
-                    </div>
-                    <div>
-                        <label for="school" class="block text-sm mb-2"
-                            >Trường</label
-                        >
-                        <input
-                            id="school"
-                            class="w-full px-4 py-2 border rounded-lg"
-                            class:border-red-500={errors.school}
-                            bind:value={formData.school}
-                        />
-                        {#if errors.school}
-                            <p class="text-red-500 text-sm mt-1">
-                                {errors.school}
-                            </p>
-                        {/if}
-                    </div>
-                    <div>
-                        <label for="description" class="block text-sm mb-2"
-                            >Mô tả</label
-                        >
-                        <input
-                            id="description"
-                            class="w-full px-4 py-2 border rounded-lg"
-                            class:border-red-500={errors.description}
-                            bind:value={formData.description}
-                        />
-                        {#if errors.description}
-                            <p class="text-red-500 text-sm mt-1">
-                                {errors.description}
-                            </p>
-                        {/if}
-                    </div>
-                </div>
-
-                <!-- Tabs -->
-                <div class="flex gap-2">
-                    {#each ["list", "excel", "upload"] as tab}
-                        <button
-                            type="button"
-                            onclick={() => (activeTab = tab as ActiveTab)}
-                            class="px-4 py-2 rounded-lg"
-                            class:bg-blue-50={activeTab === tab}
-                            class:text-blue-600={activeTab === tab}
-                        >
-                            {tab === "list"
-                                ? "Danh sách sinh viên"
-                                : tab === "excel"
-                                  ? "Tải mẫu excel DSSV"
-                                  : "Tải lên DSSV"}
-                        </button>
-                    {/each}
-                </div>
-
-                <!-- List -->
-                {#if activeTab === "list"}
-                    <div class="space-y-4">
-                        <!-- Add Student Row -->
-                        <div class="flex gap-2 items-center">
-                            <input
-                                class="flex-1 px-4 py-2 border rounded-lg"
-                                placeholder="Tên sinh viên"
-                                bind:value={newStudent.fullName}
-                            />
-                            <input
-                                class="flex-1 px-4 py-2 border rounded-lg"
-                                placeholder="Mã số sinh viên"
-                                bind:value={newStudent.studentCode}
-                            />
-                            <input
-                                class="flex-1 px-4 py-2 border rounded-lg"
-                                placeholder="Email"
-                                bind:value={newStudent.email}
-                            />
-                            <button class="btn-add" onclick={addStudent}>
-                                <Plus size={16} /> Thêm
-                            </button>
-                        </div>
-
-                        <!-- Search and Actions -->
-                        <div class="flex gap-2">
-                            <div class="flex-1 relative">
-                                <Search
-                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                                    size={16}
-                                />
-                                <input
-                                    class="w-full pl-10 pr-4 py-2 border rounded-lg"
-                                    placeholder="Tìm kiếm"
-                                    bind:value={searchTerm}
-                                />
-                            </div>
-
-                            <button class="btn-delete" onclick={() => {}}>
-                                <Trash2 size={16} /> Xóa
-                            </button>
-                        </div>
-
-                        <!-- Student Table -->
-                        <table
-                            class="w-full border border-gray-200 border-rounded-lg mt-4"
-                        >
-                            <thead class="table-header">
-                                <tr>
-                                    <th>STT</th>
-                                    <th>MSSV</th>
-                                    <th>Tên sinh viên</th>
-                                    <th>Email</th>
-                                    <th>
-                                        <input
-                                            type="checkbox"
-                                            bind:checked={selectAll}
-                                            onchange={() => toggleAllStudents()}
-                                        />
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {#each filteredStudents as s, i}
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-3 py-2">{i + 1}</td>
-                                        <td class="px-3 py-2"
-                                            >{s.studentCode}</td
-                                        >
-                                        <td class="px-3 py-2">{s.fullName}</td>
-                                        <td class="px-3 py-2">{s.email}</td>
-                                        <td class="px-3 py-2 text-center">
-                                            <input
-                                                type="checkbox"
-                                                bind:checked={s.selected}
-                                                onchange={() => toggleStudent()}
-                                            />
-                                        </td>
-                                    </tr>
-                                {/each}
-                            </tbody>
-                        </table>
-                    </div>
-                {/if}
-
-                {#if activeTab === "excel"}
-                    <div
-                        class="flex flex-col items-center text-center p-8 border border-gray-200 rounded-lg"
-                    >
-                        <Download size={48} class="mx-auto text-gray-400" />
-                        <button class="btn-add bg-green-500"
-                            >Tải mẫu Excel</button
-                        >
-                    </div>
-                {/if}
-
-                {#if activeTab === "upload"}
-                    <div
-                        class="flex flex-col items-center text-center p-8 border-dashed border border-gray-200 rounded-lg"
-                    >
-                        <Upload size={48} class="mx-auto text-gray-400" />
-                        <button class="btn-add">Chọn file</button>
-                    </div>
-                {/if}
+                <StudentManagement
+                    {activeTab}
+                    {searchTerm}
+                    setSearchTerm={(value: string) => (searchTerm = value)}
+                    {students}
+                    {newStudent}
+                    {selectedCount}
+                    {filteredStudents}
+                    {allSelected}
+                    {indeterminate}
+                    {toggleAll}
+                    {addStudent}
+                    {removeSelected}
+                />
             </div>
 
-            <!-- Footer -->
-            <div
-                class="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50"
-            >
-                <button type="button" onclick={onClose} class="btn-cancel"
-                    >Hủy</button
-                >
-                <button type="submit" class="btn-add">Lưu thay đổi</button>
+            <div class="modal-footer">
+                <div class="stats">
+                    Tổng cộng: <span>{formData.students.length}</span> sinh viên
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-cancel" onclick={onClose}>
+                        Hủy
+                    </button>
+                    <button type="submit" class="btn-submit">
+                        Lưu thay đổi
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<style>
+    /* ──────────────── MODAL CONTAINER ──────────────── */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        z-index: 1000;
+        padding: 40px 60px 20px 20px;
+        overflow-y: auto;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 950px;
+        box-shadow:
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        display: flex;
+        flex-direction: column;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* Header */
+    .modal-header {
+        padding: 24px 32px;
+        border-bottom: 1px solid #edf2f7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a202c;
+        margin: 0;
+    }
+    .modal-header p {
+        font-size: 14px;
+        color: #718096;
+        margin-top: 4px;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #a0aec0;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 50%;
+        transition: 0.2s;
+    }
+    .close-btn:hover {
+        background: #f7fafc;
+        color: #4a5568;
+    }
+
+    /* Layout chính */
+    .main-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        min-height: 550px;
+    }
+
+    /* Footer */
+    .modal-footer {
+        padding: 24px 32px;
+        border-top: 1px solid #edf2f7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        border-radius: 0 0 12px 12px;
+    }
+
+    .stats {
+        font-size: 14px;
+        color: #718096;
+    }
+    .stats span {
+        font-weight: 800;
+        color: #0045b1;
+    }
+
+    .actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-cancel {
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        color: #718096;
+        background: #f7fafc;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-submit {
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        color: white;
+        background: #0045b1;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0, 69, 177, 0.3);
+    }
+
+    .btn-submit:hover {
+        background: #00358a;
+        transform: translateY(-1px);
+    }
+</style>

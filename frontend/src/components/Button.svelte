@@ -62,10 +62,6 @@
       </svg>
     </div>
   {/if}
-
-  <span class="content">
-    <slot />
-  </span>
 </button>
 
 <style>
@@ -86,7 +82,6 @@
     width: auto;
     box-sizing: border-box;
   }
-
   /* --- SIZES --- Định nghĩa kích thước rõ ràng */
 
   /* Size Medium (Mặc định - Dùng cho Login/Register Form) */
@@ -98,9 +93,10 @@
 
   /* Size Small (Mới - Dùng cho Navbar, Action nhỏ) */
   .sm {
-    padding: 8px 16px;
-    font-size: 14px;
-    height: 36px; /* Cố định chiều cao cho gọn */
+    padding: 6px 12px !important; /* override để khớp .action-group button cũ */
+    font-size: 12px !important;
+    height: auto;
+    gap: 6px;
   }
 
   /* Base disabled */

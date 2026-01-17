@@ -26,11 +26,17 @@ import type { ApiResponse, PaginatedResponse } from "../dtos/api-response-dto";
 /**
  * Get all classrooms where the user is the lecturer
  */
-export async function getMyClassrooms(): Promise<ClassroomResponse[]> {
-  const response = await apiFetch<ApiResponse<ClassroomResponse[]>>(
+export interface PaginatedClassrooms {
+  classrooms: ClassroomResponse[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export async function getMyClassrooms(): Promise<PaginatedClassrooms> {
+  return await apiFetch<PaginatedClassrooms>(
     "/api/classrooms/my"
   );
-  return response.data || [];
 }
 
 /**
@@ -51,14 +57,13 @@ export async function getClassroom(
 export async function createClassroom(
   data: CreateClassroomRequest
 ): Promise<ClassroomResponse> {
-  const response = await apiFetch<ApiResponse<ClassroomResponse>>(
+  return await apiFetch<ClassroomResponse>(
     "/api/classrooms",
     {
       method: "POST",
       body: JSON.stringify(data),
     }
   );
-  return response.data!;
 }
 
 /**
@@ -68,14 +73,13 @@ export async function updateClassroom(
   classroomId: string,
   data: UpdateClassroomRequest
 ): Promise<ClassroomResponse> {
-  const response = await apiFetch<ApiResponse<ClassroomResponse>>(
+  return await apiFetch<ClassroomResponse>(
     `/api/classrooms/${classroomId}`,
     {
       method: "PUT",
       body: JSON.stringify(data),
     }
   );
-  return response.data!;
 }
 
 /**

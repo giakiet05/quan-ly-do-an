@@ -84,8 +84,4 @@
         border: 1px solid #fecaca;
         text-align: center;
     }
-
-    :global(.w-full) {
-        width: 100% !important;
-    }
 </style>

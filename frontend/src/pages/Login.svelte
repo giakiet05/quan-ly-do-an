@@ -398,12 +398,4 @@
     color: #1e40af;
     text-decoration: underline;
   }
-
-  /* Utility */
-  :global(.w-full) {
-    width: 100% !important;
-
-    color: #9ca3af;
-    text-transform: lowercase;
-  }
 </style>

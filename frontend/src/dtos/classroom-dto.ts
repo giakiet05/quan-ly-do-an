@@ -4,7 +4,7 @@ export interface CreateClassroomRequest {
   name: string;
   description: string;
   avatar: string;
-  semester: string; // "Fall 2026", "Spring 2027"
+  semester: string;
   year: number;
   maxStudents?: number;
   autoApprove?: boolean;
