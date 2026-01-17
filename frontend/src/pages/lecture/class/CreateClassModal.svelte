@@ -209,6 +209,7 @@
 
                 <StudentManagement
                     {activeTab}
+                    setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
                     {searchTerm}
                     setSearchTerm={(value: string) => (searchTerm = value)}
                     {students}

@@ -355,3 +355,45 @@ export async function togglePinClassPost(
   );
   return response.data!;
 }
+
+// /api/classrooms/whitelist-template GET
+
+export async function downloadWhitelistTemplate(): Promise<void> {
+  // apiFetch trả về Response vì không phải JSON
+  const response = await apiFetch<Response>(
+    "/api/classrooms/whitelist-template",
+    {
+      method: "GET",
+    }
+  );
+
+  // Convert sang blob
+  const blob = await response.blob();
+
+  // Lấy filename từ header nếu backend có set
+  const disposition = response.headers.get("Content-Disposition");
+  let filename = "whitelist-template.xlsx";
+
+  if (disposition) {
+    const match = disposition.match(/filename="?(.+)"?/);
+    if (match?.[1]) {
+      filename = match[1];
+    }
+  }
+
+  // Trigger download
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+
+  document.body.appendChild(link);
+  link.click();
+
+  // Cleanup
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+

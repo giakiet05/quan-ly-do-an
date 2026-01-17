@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { Upload } from "@lucide/svelte";
     import {
         Plus,
         Search,
@@ -7,6 +8,7 @@
         Download,
     } from "../libs/Icons";
     import { fade } from "svelte/transition";
+    import { downloadWhitelistTemplate } from "../services/classroom-service";
 
     type ActiveTab = "list" | "excel" | "upload";
 
@@ -18,9 +20,11 @@
     }
 
     let allCheckbox = $state<HTMLInputElement>();
+    let uploadedFile: File | null = null;
 
     const props = $props<{
         activeTab: ActiveTab;
+        setActiveTab: (tab: ActiveTab) => void;
         searchTerm: string;
         students: Student[];
         setSearchTerm: (value: string) => void;
@@ -34,6 +38,26 @@
         removeSelected: () => void;
     }>();
 
+    async function downloadExcel() {
+        try {
+            await downloadWhitelistTemplate();
+        } catch (err) {
+            console.error(err);
+            alert("Không thể tải file mẫu");
+        }
+    }
+    const handleFileUpload = () => {
+        if (uploadedFile) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const content = event.target?.result;
+                console.log("Uploaded file content:", content);
+                // Process the uploaded file content here
+            };
+            reader.readAsText(uploadedFile);
+        }
+    };
+
     $effect(() => {
         if (allCheckbox) {
             allCheckbox.indeterminate = props.indeterminate;
@@ -46,23 +70,23 @@
         <button
             type="button"
             class:active={props.activeTab === "list"}
-            onclick={() => (props.activeTab = "list")}
+            onclick={() => props.setActiveTab("list")}
         >
             Thêm thủ công
         </button>
         <button
             type="button"
             class:active={props.activeTab === "excel"}
-            disabled
+            onclick={() => props.setActiveTab("excel")}
         >
-            Tải Excel (sắp ra)
+            Tải Excel
         </button>
         <button
             type="button"
             class:active={props.activeTab === "upload"}
-            disabled
+            onclick={() => props.setActiveTab("upload")}
         >
-            Upload File (sắp ra)
+            Upload File
         </button>
     </div>
 
@@ -163,10 +187,18 @@
                 </div>
             </div>
         </div>
-    {:else}
-        <div class="empty-state">
-            <Download size={48} />
-            <p>Chức năng đang được phát triển...</p>
+    {:else if props.activeTab === "excel"}
+        <div class="excel-tab">
+            <button type="button" onclick={downloadExcel}>
+                <Download size={20} /> Tải xuống mẫu Excel
+            </button>
+        </div>
+    {:else if props.activeTab === "upload"}
+        <div class="upload-tab">
+            <!-- <input type="file" accept=".csv, .xlsx" bind:files={uploadedFile} /> -->
+            <button type="button" onclick={handleFileUpload}>
+                <Upload size={20} /> Upload
+            </button>
         </div>
     {/if}
 </div>
@@ -392,5 +424,44 @@
     .btn-bulk-edit[disabled] {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+
+    .excel-tab,
+    .upload-tab {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        border: 1px solid #edf2f7;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .excel-tab button,
+    .upload-tab button {
+        background: #0045b1;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .excel-tab button:hover,
+    .upload-tab button:hover {
+        background: #00358a;
+    }
+
+    .upload-tab input {
+        padding: 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
     }
 </style>
