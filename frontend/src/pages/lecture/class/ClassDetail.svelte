@@ -28,7 +28,6 @@
     let classData = $state<ClassData>({
         id: "1",
         name: "Phát triển ứng dụng Web",
-        school: "Trường Đại học Bách Khoa",
         description:
             "Lớp học tập trung vào phát triển web với React, Node.js và REST API.",
         studentCount: 45,

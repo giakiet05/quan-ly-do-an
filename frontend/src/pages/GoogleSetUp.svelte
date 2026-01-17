@@ -10,14 +10,12 @@
     let loading = false;
     let error = "";
 
-    // Quan sát sự thay đổi của querystring để lấy setup_token
     $: if ($querystring) {
         const params = new URLSearchParams($querystring);
         setupToken = params.get("setup_token") || "";
     }
 
     onMount(() => {
-        // Fallback nếu querystring chưa kịp load, lấy từ window.location.hash
         if (!setupToken) {
             const hashParts = window.location.hash.split("?");
             if (hashParts.length > 1) {
@@ -47,7 +45,7 @@
             const res = await authService.completeGoogleSetup({
                 setup_token: setupToken,
                 full_name: fullName,
-                student_code: studentCode,
+                //student_code: studentCode,
             });
 
             if (res?.access_token) {
@@ -247,9 +245,5 @@
     }
     .link-text:hover {
         text-decoration: underline;
-    }
-
-    :global(.w-full) {
-        width: 100% !important;
     }
 </style>

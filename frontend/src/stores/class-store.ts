@@ -1,8 +1,8 @@
 // src/stores/class.store.ts
 import { writable, derived } from "svelte/store";
-import type { ClassItem } from "../types/class";
-import { getMyClassrooms } from "../services/classroom-service";
-import { mapClassroomToClassItem } from "../mappers/classroom-mapper";
+import type { ClassItem, CreateClassRequest } from "../types/class";
+import { createClassroom, getMyClassrooms, updateClassroom } from "../services/classroom-service";
+import { mapClassroomToClassItem, mapUIRequestToDTO } from "../mappers/classroom-mapper";
 import type { ClassroomResponse } from "../dtos/classroom-dto";
 
 
@@ -58,14 +58,33 @@ function createClassStore() {
         currentPage.set(1);
     }
 
-    function addClass(item: ClassItem) {
-        classes.update((list) => [...list, item]);
+    async function addClass(uiData: CreateClassRequest) {
+        try {
+            const dtoPayload = mapUIRequestToDTO(uiData);
+            const newClassRaw = await createClassroom(dtoPayload);
+            console.log("New class created:", newClassRaw);
+            const newClassMapped = mapClassroomToClassItem(newClassRaw);
+            classes.update((list) => [newClassMapped, ...list]);
+
+            return newClassMapped;
+        } catch (err) {
+            console.error("Failed to create classroom", err);
+            throw err;
+        }
     }
 
-    function updateClass(item: ClassItem) {
-        classes.update((list) =>
-            list.map((c) => (c.name === item.name ? item : c))
-        );
+    async function updateClass(id: string, uiData: CreateClassRequest) {
+        try {
+            const dtoPayload = mapUIRequestToDTO(uiData);
+            const response = await updateClassroom(id, dtoPayload);
+
+            console.log("API update response:", response);
+
+            await fetchMyClasses();
+        } catch (err) {
+            console.error("Failed to update classroom", err);
+            throw err;
+        }
     }
 
     function removeClass(name: string) {
@@ -74,12 +93,15 @@ function createClassStore() {
 
     async function fetchMyClasses() {
         try {
-            const data: ClassroomResponse[] = await getMyClassrooms();
-            const mapped = data.map(mapClassroomToClassItem);
+            const data = await getMyClassrooms();
+            console.log("Dữ liệu nhận được:", data);
+            const rawClasses = (data as any).classrooms || [];
+            const mapped = rawClasses.map(mapClassroomToClassItem);
             setData(mapped);
+
         } catch (err) {
             console.error("Failed to fetch classrooms", err);
-            setData([]);
+            setData([]); // Lỗi thì cho danh sách trống để không vỡ giao diện
         }
     }
 
