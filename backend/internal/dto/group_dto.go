@@ -62,7 +62,9 @@ type UpdateTaskRequest struct {
 }
 
 type CreateReportRequest struct {
+	ClassroomID    string       `json:"classroom_id"`
 	GroupID        string       `json:"group_id"`
+	ProjectRoundID string       `json:"project_round_id"`
 	ReportPeriodID string       `json:"report_period_id"`
 	Title          string       `json:"title"`
 	Content        string       `json:"content"`

@@ -36,6 +36,7 @@ type groupService struct {
 	classroomRepo repo.ClassroomRepo
 	channelRepo   repo.ChannelRepo
 	userRepo      repo.UserRepo
+	projectRepo   repo.ProjectRepo
 }
 
 func NewGroupService(
@@ -43,8 +44,15 @@ func NewGroupService(
 	classroomRepo repo.ClassroomRepo,
 	channelRepo repo.ChannelRepo,
 	userRepo repo.UserRepo,
+	projectRepo repo.ProjectRepo,
 ) GroupService {
-	return &groupService{groupRepo: groupRepo, classroomRepo: classroomRepo, channelRepo: channelRepo, userRepo: userRepo}
+	return &groupService{
+		groupRepo:     groupRepo,
+		classroomRepo: classroomRepo,
+		channelRepo:   channelRepo,
+		userRepo:      userRepo,
+		projectRepo:   projectRepo,
+	}
 }
 
 func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID string) (*model.Group, error) {
@@ -557,8 +565,7 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	if err != nil {
 		return nil, apperror.ErrBadRequest
 	}
-
-	// Check if requester is a member of the group
+	
 	ok, err := g.groupRepo.IsMember(ctx, req.GroupID, requesterID)
 	if err != nil {
 		return nil, err
@@ -567,7 +574,21 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 		return nil, apperror.ErrForbidden
 	}
 
-	// TODO Check if report for the period already exists and if report period is valid
+	ok, err = g.projectRepo.ReportPeriodExists(ctx, req.ClassroomID, req.ProjectRoundID, req.ReportPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, apperror.ErrReportPeriodNotFound
+	}
+
+	exists, err := g.projectRepo.ReportExistsByPeriod(ctx, req.ClassroomID, req.ReportPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, apperror.ErrReportAlreadyExists
+	}
 
 	now := time.Now()
 	report := model.Report{

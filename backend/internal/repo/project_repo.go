@@ -35,6 +35,9 @@ type ProjectRepo interface {
 	GetReportPeriodsByRoundID(ctx context.Context, classroomID, roundID string) ([]model.ReportPeriod, error)
 	ReplaceReportPeriod(ctx context.Context, reportPeriod *model.ReportPeriod) error
 	DeleteReportPeriod(ctx context.Context, classroomID string, roundID string, reportPeriodID string) error
+
+	ReportPeriodExists(ctx context.Context, classroomID string, roundID string, periodID string) (bool, error)
+	ReportExistsByPeriod(ctx context.Context, classroomID string, periodID string) (bool, error)
 }
 
 type projectRepo struct {
@@ -664,4 +667,73 @@ func (p *projectRepo) DeleteReportPeriod(ctx context.Context, classroomID, round
 		return apperror.ErrNotFound
 	}
 	return nil
+}
+
+func (p *projectRepo) ReportPeriodExists(
+	ctx context.Context,
+	classroomID string,
+	roundID string,
+	periodID string,
+) (bool, error) {
+
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return false, err
+	}
+
+	roundOID, err := primitive.ObjectIDFromHex(roundID)
+	if err != nil {
+		return false, err
+	}
+
+	periodOID, err := primitive.ObjectIDFromHex(periodID)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{
+		"_id": classroomOID,
+		"rounds": bson.M{
+			"$elemMatch": bson.M{
+				"_id":                roundOID,
+				"report_periods._id": periodOID,
+			},
+		},
+	}
+
+	count, err := p.classroomCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func (p *projectRepo) ReportExistsByPeriod(
+	ctx context.Context,
+	classroomID string,
+	periodID string,
+) (bool, error) {
+
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return false, err
+	}
+
+	periodOID, err := primitive.ObjectIDFromHex(periodID)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{
+		"_id":                        classroomOID,
+		"projects.reports.period_id": periodOID,
+	}
+
+	count, err := p.classroomCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
