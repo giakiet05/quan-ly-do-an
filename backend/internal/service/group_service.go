@@ -553,6 +553,11 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
+	reportPeriodOID, err := primitive.ObjectIDFromHex(req.ReportPeriodID)
+	if err != nil {
+		return nil, apperror.ErrBadRequest
+	}
+
 	// Check if requester is a member of the group
 	ok, err := g.groupRepo.IsMember(ctx, req.GroupID, requesterID)
 	if err != nil {
@@ -562,19 +567,19 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 		return nil, apperror.ErrForbidden
 	}
 
-	// Create new report
+	// TODO Check if report for the period already exists and if report period is valid
+
 	now := time.Now()
 	report := model.Report{
-		ID:        primitive.NewObjectID(),
-		Title:     req.Title,
-		Content:   req.Content,
-		Files:     req.Files,
-		Feedback:  model.ReportFeedback{},
-		CreatedAt: now,
-		UpdatedAt: now,
+		ReportPeriodID: reportPeriodOID,
+		Title:          req.Title,
+		Content:        req.Content,
+		Files:          req.Files,
+		Feedback:       model.ReportFeedback{},
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 
-	// Update group with new report
 	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
 	if err != nil {
 		return nil, apperror.ErrBadRequest

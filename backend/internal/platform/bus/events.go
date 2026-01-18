@@ -15,16 +15,33 @@ const (
 	TopicWSDisconnected = "ws.disconnected"
 	TopicWSPackageSend  = "ws.send"
 
-	TopicUserChangeAvatar = "user.avatar"
-
-	TopicNotificationCreated = "notification.created"
-
 	TopicNewMessage    = "message.new"
 	TopicMessageError  = "message.error"
 	TopicTypingMessage = "message.typing"
 	TopicInChatMessage = "message.in_chat"
 
+	TopicUserChangeAvatar = "user.avatar"
+
+	// Notification events
+	TopicNotificationCreated = "notification.created"
+	TopicNotificationUpdated = "notification.updated"
+	TopicNotificationDeleted = "notification.deleted"
+
+	// Group
 	TopicGroupInvitation = "group.invitation"
+	TopicReportOpened    = "report.opened"
+	TopicReportDeadline  = "report.deadline"
+	TopicReportSubmitted = "report.submitted"
+	TopicReportGraded    = "report.graded"
+	TopicReportExpired   = "report.expired"
+
+	// Project
+	TopicProjectRegistrationOpened   = "project.registration.opened"
+	TopicProjectRegistrationDeadline = "project.registration.deadline"
+	TopicProjectRegistrationExpired  = "project.registration.expired"
+
+	// Class
+	TopicClassUpdated = "class.updated"
 )
 
 type BroadcastEventType string
