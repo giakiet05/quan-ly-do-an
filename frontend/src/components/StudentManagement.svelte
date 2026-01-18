@@ -20,7 +20,7 @@
     }
 
     let allCheckbox = $state<HTMLInputElement>();
-    let uploadedFile: File | null = null;
+    let uploadedFile = $state<File | null>(null);
 
     const props = $props<{
         activeTab: ActiveTab;
@@ -46,16 +46,22 @@
             alert("Không thể tải file mẫu");
         }
     }
-    const handleFileUpload = () => {
-        if (uploadedFile) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const content = event.target?.result;
-                console.log("Uploaded file content:", content);
-                // Process the uploaded file content here
-            };
-            reader.readAsText(uploadedFile);
-        }
+
+    const loadFileUpload = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".xlsx, .xls";
+        input.onchange = (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            if (target.files && target.files.length > 0) {
+                uploadedFile = target.files[0];
+            }
+        };
+        input.click();
+    };
+
+    const clearUploadedFile = () => {
+        uploadedFile = null;
     };
 
     $effect(() => {
@@ -195,10 +201,21 @@
         </div>
     {:else if props.activeTab === "upload"}
         <div class="upload-tab">
-            <!-- <input type="file" accept=".csv, .xlsx" bind:files={uploadedFile} /> -->
-            <button type="button" onclick={handleFileUpload}>
-                <Upload size={20} /> Upload
-            </button>
+            {#if uploadedFile}
+                <div class="uploaded-file">
+                    <span>{uploadedFile.name}</span>
+                    <button type="button" onclick={loadFileUpload}>
+                        Thay file
+                    </button>
+                    <button type="button" onclick={clearUploadedFile}>
+                        Xóa
+                    </button>
+                </div>
+            {:else}
+                <button type="button" onclick={loadFileUpload}>
+                    <Upload size={20} /> Upload
+                </button>
+            {/if}
         </div>
     {/if}
 </div>
@@ -463,5 +480,27 @@
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         font-size: 14px;
+    }
+
+    .uploaded-file {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 14px;
+        color: #4a5568;
+    }
+
+    .uploaded-file button {
+        background: #0045b1;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .uploaded-file button:hover {
+        background: #00358a;
     }
 </style>
