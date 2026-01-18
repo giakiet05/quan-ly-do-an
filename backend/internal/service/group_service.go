@@ -36,6 +36,7 @@ type groupService struct {
 	classroomRepo repo.ClassroomRepo
 	channelRepo   repo.ChannelRepo
 	userRepo      repo.UserRepo
+	projectRepo   repo.ProjectRepo
 }
 
 func NewGroupService(
@@ -43,8 +44,15 @@ func NewGroupService(
 	classroomRepo repo.ClassroomRepo,
 	channelRepo repo.ChannelRepo,
 	userRepo repo.UserRepo,
+	projectRepo repo.ProjectRepo,
 ) GroupService {
-	return &groupService{groupRepo: groupRepo, classroomRepo: classroomRepo, channelRepo: channelRepo, userRepo: userRepo}
+	return &groupService{
+		groupRepo:     groupRepo,
+		classroomRepo: classroomRepo,
+		channelRepo:   channelRepo,
+		userRepo:      userRepo,
+		projectRepo:   projectRepo,
+	}
 }
 
 func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID string) (*model.Group, error) {
@@ -553,7 +561,11 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// Check if requester is a member of the group
+	reportPeriodOID, err := primitive.ObjectIDFromHex(req.ReportPeriodID)
+	if err != nil {
+		return nil, apperror.ErrBadRequest
+	}
+	
 	ok, err := g.groupRepo.IsMember(ctx, req.GroupID, requesterID)
 	if err != nil {
 		return nil, err
@@ -562,19 +574,33 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 		return nil, apperror.ErrForbidden
 	}
 
-	// Create new report
-	now := time.Now()
-	report := model.Report{
-		ID:        primitive.NewObjectID(),
-		Title:     req.Title,
-		Content:   req.Content,
-		Files:     req.Files,
-		Feedback:  model.ReportFeedback{},
-		CreatedAt: now,
-		UpdatedAt: now,
+	ok, err = g.projectRepo.ReportPeriodExists(ctx, req.ClassroomID, req.ProjectRoundID, req.ReportPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, apperror.ErrReportPeriodNotFound
 	}
 
-	// Update group with new report
+	exists, err := g.projectRepo.ReportExistsByPeriod(ctx, req.ClassroomID, req.ReportPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, apperror.ErrReportAlreadyExists
+	}
+
+	now := time.Now()
+	report := model.Report{
+		ReportPeriodID: reportPeriodOID,
+		Title:          req.Title,
+		Content:        req.Content,
+		Files:          req.Files,
+		Feedback:       model.ReportFeedback{},
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
 	groupOID, err := primitive.ObjectIDFromHex(req.GroupID)
 	if err != nil {
 		return nil, apperror.ErrBadRequest

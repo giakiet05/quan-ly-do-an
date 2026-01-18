@@ -44,6 +44,7 @@ type Report struct {
 }
 
 type ReportFeedback struct {
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
 	Content     string             `bson:"content" json:"content"`
 	Grade       string             `bson:"grade" json:"grade"`
 	LecturerID  primitive.ObjectID `bson:"lecturer_id" json:"lecturer_id"`

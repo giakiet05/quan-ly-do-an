@@ -28,6 +28,7 @@ type Repos struct {
 	repo.EmailVerificationRepo
 	repo.PasswordResetRepo
 	repo.ClassroomJoinRequestRepo
+	repo.ProjectRepo
 }
 
 type Services struct {
@@ -40,6 +41,7 @@ type Services struct {
 	service.ClassroomJoinService
 	service.ClassroomService
 	service.ClassPostService
+	service.ProjectService
 }
 
 type Controllers struct {
@@ -53,6 +55,7 @@ type Controllers struct {
 	controller.ClassroomJoinController
 	controller.ClassroomController
 	controller.ClassPostController
+	controller.ProjectController
 }
 
 func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
@@ -67,6 +70,7 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 		ClassroomRepo:            repo.NewClassroomRepo(db),
 		ClassroomJoinRequestRepo: repo.NewClassroomJoinRequestRepo(db),
 		ClassPostRepo:            repo.NewClassPostRepo(db),
+		ProjectRepo:              repo.NewProjectRepo(db),
 	}
 }
 
@@ -81,6 +85,7 @@ func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sen
 		ClassroomJoinService: service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
 		ClassroomService:     service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
 		ClassPostService:     service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
+		ProjectService:       service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo),
 	}
 }
 
@@ -96,6 +101,7 @@ func initControllers(services *Services, wsHub *ws.Hub) *Controllers {
 		ClassroomJoinController: *controller.NewClassroomJoinController(services.ClassroomJoinService),
 		ClassroomController:     *controller.NewClassroomController(services.ClassroomService),
 		ClassPostController:     *controller.NewClassPostController(services.ClassPostService),
+		ProjectController:       *controller.NewProjectController(services.ProjectService),
 	}
 }
 
@@ -119,6 +125,7 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 	route.RegisterClassroomJoinRoutes(api, &controllers.ClassroomJoinController)
 	route.RegisterClassPostRoutes(api, &controllers.ClassPostController)
 	route.RegisterGroupRoutes(api, &controllers.GroupController)
+	route.RegisterProjectRoutes(api, &controllers.ProjectController)
 }
 
 func Init() (*gin.Engine, error) {
