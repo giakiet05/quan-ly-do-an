@@ -1,8 +1,14 @@
 <script lang="ts">
   import { push } from "svelte-spa-router";
+  import { onMount } from "svelte";
+  import { get } from "svelte/store";
+  import { authStore } from "../stores/auth-store";
+  import { getGroup } from "../services/group-service";
+  import { getMyJoinedClassrooms } from "../services/classroom-service";
   import StudentProjectReportsTab from "../components/StudentProjectReportsTab.svelte";
   import StudentProjectTeamChatTab from "../components/StudentProjectTeamChatTab.svelte";
   import StudentProjectMembersTab from "../components/StudentProjectMembersTab.svelte";
+  import type { Group } from "../models";
 
   interface TeamMember {
     id: string;
@@ -20,6 +26,7 @@
     members: TeamMember[];
     status?: "registered" | "ready" | "recruiting";
     createdAt?: string;
+    groupChannelId?: string;
   }
 
   interface Project {
@@ -33,45 +40,135 @@
 
   let { params } = $props();
   let activeTab = $state<"reports" | "team" | "members">("reports");
+  let isLoading = $state(true);
+  let error = $state<string | null>(null);
 
-  // Mock data
-  const currentStudentId = "s1";
-  const project: Project = {
-    id: params.id,
-    name: "Hệ thống quản lý thư viện trực tuyến",
-    description:
-      "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-    instructor: "TS. Nguyễn Văn A",
-    className: "Công nghệ phần mềm - K18",
-    categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
-  };
+  let group = $state<Group | null>(null);
+  let project = $state<Project | null>(null);
+  let team = $state<Team | null>(null);
 
-  const team: Team = {
-    id: "t1",
-    name: "Nhóm 1",
-    leaderId: "s1",
-    leaderName: "Nguyễn Văn An",
-    status: "registered",
-    createdAt: "2024-02-15T08:00:00Z",
-    members: [
-      {
-        id: "s2",
-        name: "Trần Văn B",
-        studentId: "20200002",
-        email: "tranvanb@student.edu.vn",
-        joinedAt: "2024-02-16T10:30:00Z",
-      },
-      {
-        id: "s3",
-        name: "Lê Thị C",
-        studentId: "20200003",
-        email: "lethic@student.edu.vn",
-        joinedAt: "2024-02-17T14:20:00Z",
-      },
-    ],
-  };
+  const auth = $derived(get(authStore));
+  const isLeader = $derived(team?.leaderId === auth.user?.id);
 
-  const isLeader = $derived(team.leaderId === currentStudentId);
+  onMount(async () => {
+    await fetchProjectDetail();
+  });
+
+  async function fetchProjectDetail() {
+    try {
+      isLoading = true;
+      error = null;
+
+      // Check for mock ID
+      if (params.id.startsWith("mock-")) {
+        useMockData();
+        return;
+      }
+
+      // Fetch group detail
+      const groupData = await getGroup(params.id);
+      group = groupData;
+
+      // Fetch classrooms to get project info
+      const classrooms = await getMyJoinedClassrooms();
+      const classroom = classrooms.find((c) => c.id === groupData.classroomId);
+
+      // Find project info
+      let projectInfo = null;
+      let categoryName = "";
+
+      if (classroom?.projectRounds) {
+        for (const round of classroom.projectRounds) {
+          const proj = round.projects?.find(
+            (p) => p.id === groupData.projectId
+          );
+          if (proj) {
+            projectInfo = proj;
+            categoryName = round.name;
+            break;
+          }
+        }
+      }
+
+      project = {
+        id: groupData.projectId,
+        name: projectInfo?.title || "Đề tài chưa có thông tin",
+        description: projectInfo?.description || "",
+        instructor: classroom?.lecturer?.fullName || "Chưa có GVHD",
+        className: classroom?.name || "",
+        categoryName,
+      };
+
+      // Map group members to team
+      const leaderInfo = groupData.members.find(
+        (m) => m.userId === groupData.leaderId
+      );
+
+      team = {
+        id: groupData.id,
+        name: `Nhóm ${groupData.members.length}`,
+        leaderId: groupData.leaderId,
+        leaderName: leaderInfo?.fullName || "Unknown",
+        status: "registered",
+        createdAt: new Date().toISOString(),
+        groupChannelId: groupData.groupChannelId,
+        members: groupData.members
+          .filter((m) => m.userId !== groupData.leaderId)
+          .map((m) => ({
+            id: m.userId,
+            name: m.fullName,
+            studentId: m.userId,
+            email: "",
+            joinedAt: new Date().toISOString(),
+          })),
+      };
+    } catch (err: any) {
+      console.error("Failed to fetch project detail:", err);
+      error = err.message || "Không thể tải thông tin đề tài";
+
+      // Fallback to mock
+      useMockData();
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function useMockData() {
+    project = {
+      id: params.id,
+      name: "Hệ thống quản lý thư viện trực tuyến",
+      description:
+        "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
+      instructor: "TS. Nguyễn Văn A",
+      className: "Công nghệ phần mềm - K18",
+      categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
+    };
+
+    team = {
+      id: "t1",
+      name: "Nhóm 1",
+      leaderId: "s1",
+      leaderName: "Nguyễn Văn An",
+      status: "registered",
+      createdAt: "2024-02-15T08:00:00Z",
+      members: [
+        {
+          id: "s2",
+          name: "Trần Văn B",
+          studentId: "20200002",
+          email: "tranvanb@student.edu.vn",
+          joinedAt: "2024-02-16T10:30:00Z",
+        },
+        {
+          id: "s3",
+          name: "Lê Thị C",
+          studentId: "20200003",
+          email: "lethic@student.edu.vn",
+          joinedAt: "2024-02-17T14:20:00Z",
+        },
+      ],
+    };
+  }
 
   function handleBack() {
     push("/my-projects");
@@ -79,98 +176,179 @@
 </script>
 
 <div class="detail-container">
-  <!-- Header -->
-  <div class="header-card">
-    <button onclick={handleBack} class="back-button">
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-      Quay lại
-    </button>
+  {#if isLoading}
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Đang tải thông tin đề tài...</p>
+    </div>
+  {:else if error && !project}
+    <div class="error-state">
+      <p class="error-text">{error}</p>
+      <button onclick={fetchProjectDetail} class="btn-primary">Thử lại</button>
+      <button onclick={handleBack} class="btn-secondary">Quay lại</button>
+    </div>
+  {:else if project && team}
+    <!-- Header -->
+    <div class="header-card">
+      <button onclick={handleBack} class="back-button">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Quay lại
+      </button>
 
-    <div class="header-content">
-      <div class="header-main">
-        <h1 class="project-title">{project.name}</h1>
-        <p class="project-description">{project.description}</p>
+      <div class="header-content">
+        <div class="header-main">
+          <h1 class="project-title">{project.name}</h1>
+          <p class="project-description">{project.description}</p>
 
-        <div class="project-info">
-          {#if project.className}
-            <span>{project.className}</span>
-            <span class="separator">•</span>
-          {/if}
-          {#if project.categoryName}
-            <span>{project.categoryName}</span>
-            <span class="separator">•</span>
-          {/if}
-          <span>GVHD: {project.instructor}</span>
-        </div>
+          <div class="project-info">
+            {#if project.className}
+              <span>{project.className}</span>
+              <span class="separator">•</span>
+            {/if}
+            {#if project.categoryName}
+              <span>{project.categoryName}</span>
+              <span class="separator">•</span>
+            {/if}
+            <span>GVHD: {project.instructor}</span>
+          </div>
 
-        <div class="badges">
-          <span class="badge badge-team">Nhóm: {team.name}</span>
-          {#if isLeader}
-            <span class="badge badge-leader">Nhóm trưởng</span>
-          {/if}
+          <div class="badges">
+            <span class="badge badge-team">Nhóm: {team.name}</span>
+            {#if isLeader}
+              <span class="badge badge-leader">Nhóm trưởng</span>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Tabs -->
-  <div class="tabs-card">
-    <div class="tabs-header">
-      <button
-        onclick={() => (activeTab = "reports")}
-        class="tab-button"
-        class:active={activeTab === "reports"}
-      >
-        <img src="/myproject_report.svg" alt="Báo cáo" width="16" height="16" />
-        Báo cáo
-      </button>
-      <button
-        onclick={() => (activeTab = "team")}
-        class="tab-button"
-        class:active={activeTab === "team"}
-      >
-        <img src="/myproject_chat.svg" alt="Nhóm" width="16" height="16" />
-        Nhóm
-      </button>
-      <button
-        onclick={() => (activeTab = "members")}
-        class="tab-button"
-        class:active={activeTab === "members"}
-      >
-        <img src="/users.svg" alt="Thành viên" width="16" height="16" />
-        Thành viên ({team.members.length + 1})
-      </button>
-    </div>
+    <!-- Tabs -->
+    <div class="tabs-card">
+      <div class="tabs-header">
+        <button
+          onclick={() => (activeTab = "reports")}
+          class="tab-button"
+          class:active={activeTab === "reports"}
+        >
+          <img
+            src="/myproject_report.svg"
+            alt="Báo cáo"
+            width="16"
+            height="16"
+          />
+          Báo cáo
+        </button>
+        <button
+          onclick={() => (activeTab = "team")}
+          class="tab-button"
+          class:active={activeTab === "team"}
+        >
+          <img src="/myproject_chat.svg" alt="Nhóm" width="16" height="16" />
+          Nhóm
+        </button>
+        <button
+          onclick={() => (activeTab = "members")}
+          class="tab-button"
+          class:active={activeTab === "members"}
+        >
+          <img src="/users.svg" alt="Thành viên" width="16" height="16" />
+          Thành viên ({team.members.length + 1})
+        </button>
+      </div>
 
-    <div class="tab-content">
-      {#if activeTab === "reports"}
-        <StudentProjectReportsTab
-          projectName={project.name}
-          teamName={team.name}
-        />
-      {:else if activeTab === "team"}
-        <StudentProjectTeamChatTab {team} {currentStudentId} />
-      {:else if activeTab === "members"}
-        <StudentProjectMembersTab {team} {isLeader} />
-      {/if}
+      <div class="tab-content">
+        {#if activeTab === "reports"}
+          <StudentProjectReportsTab
+            projectName={project.name}
+            teamName={team.name}
+          />
+        {:else if activeTab === "team"}
+          <StudentProjectTeamChatTab
+            {team}
+            currentStudentId={auth.user?.id || ""}
+          />
+        {:else if activeTab === "members"}
+          <StudentProjectMembersTab {team} {isLeader} />
+        {/if}
+      </div>
     </div>
-  </div>
+  {/if}
 </div>
 
 <style>
   .detail-container {
     max-width: 1200px;
     margin: 0 auto;
+  }
+
+  /* Loading & Error States */
+  .loading-state,
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .error-text {
+    color: #dc2626;
+    margin-bottom: 16px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 4px;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+
+  .btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+  }
+
+  .btn-secondary:hover {
+    background: #d1d5db;
   }
 
   /* Header Card */

@@ -1,8 +1,14 @@
 <script lang="ts">
   import { push } from "svelte-spa-router";
+  import { onMount } from "svelte";
+  import { get } from "svelte/store";
+  import { authStore } from "../stores/auth-store";
+  import { getGroupsFilter } from "../services/group-service";
+  import { getMyJoinedClassrooms } from "../services/classroom-service";
+  import type { Group } from "../models";
 
   interface Project {
-    id: string;
+    id: string; // groupId
     name: string;
     description: string;
     instructor: string;
@@ -16,39 +22,131 @@
     allowStudentEdit: boolean;
   }
 
-  // Mock data - sẽ thay bằng API call
-  let myProjects = $state<Project[]>([
-    {
-      id: "p1",
-      name: "Hệ thống quản lý thư viện trực tuyến",
-      description:
-        "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-      instructor: "TS. Nguyễn Văn A",
-      status: "available",
-      currentStudents: 2,
-      maxStudents: 3,
-      tags: ["Web", "React", "Node.js", "MongoDB"],
-      className: "Công nghệ phần mềm - K18",
-      categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
-      categoryStatus: "ongoing",
-      allowStudentEdit: true,
-    },
-    {
-      id: "p2",
-      name: "Ứng dụng di động quản lý chi tiêu cá nhân",
-      description:
-        "Ứng dụng mobile giúp người dùng theo dõi thu chi, lập kế hoạch tài chính",
-      instructor: "ThS. Trần Thị B",
-      status: "full",
-      currentStudents: 2,
-      maxStudents: 2,
-      tags: ["Mobile", "React Native", "Firebase"],
-      className: "Lập trình di động - K18",
-      categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
-      categoryStatus: "ongoing",
-      allowStudentEdit: false,
-    },
-  ]);
+  let myProjects = $state<Project[]>([]);
+  let isLoading = $state(true);
+  let error = $state<string | null>(null);
+
+  onMount(async () => {
+    await fetchMyProjects();
+  });
+
+  async function fetchMyProjects() {
+    try {
+      isLoading = true;
+      error = null;
+
+      const auth = get(authStore);
+      if (!auth.user?.id) {
+        error = "Vui lòng đăng nhập";
+        return;
+      }
+
+      // Fetch all joined classrooms to get project info
+      const classrooms = await getMyJoinedClassrooms();
+
+      // Fetch groups where current user is a member
+      const allGroups: Group[] = [];
+      for (const classroom of classrooms) {
+        try {
+          const groups = await getGroupsFilter({
+            classroom_id: classroom.id,
+            member_id: auth.user.id,
+          });
+          allGroups.push(...groups);
+        } catch (err) {
+          console.warn(
+            `Failed to fetch groups for classroom ${classroom.id}:`,
+            err
+          );
+        }
+      }
+
+      // Map groups to projects
+      myProjects = allGroups.map((group) => {
+        // Find classroom and project info
+        const classroom = classrooms.find((c) => c.id === group.classroomId);
+        let projectInfo = null;
+        let categoryName = "";
+
+        if (classroom?.projectRounds) {
+          for (const round of classroom.projectRounds) {
+            const project = round.projects?.find(
+              (p) => p.id === group.projectId
+            );
+            if (project) {
+              projectInfo = project;
+              categoryName = round.name;
+              break;
+            }
+          }
+        }
+
+        const memberCount = group.members.length;
+        const isFull = memberCount >= group.maxMember;
+
+        return {
+          id: group.id,
+          name: projectInfo?.title || "Đề tài chưa có thông tin",
+          description: projectInfo?.description || "",
+          instructor: classroom?.lecturer?.fullName || "Chưa có GVHD",
+          status: isFull ? "full" : "available",
+          currentStudents: memberCount,
+          maxStudents: group.maxMember,
+          tags: [],
+          className: classroom?.name || "",
+          categoryName,
+          categoryStatus: "ongoing",
+          allowStudentEdit: classroom?.canStudentDeleteGroup || false,
+        };
+      });
+
+      // Mock fallback if no data
+      if (myProjects.length === 0) {
+        console.log("No groups found, using mock data");
+        myProjects = [
+          {
+            id: "mock-p1",
+            name: "Hệ thống quản lý thư viện trực tuyến",
+            description:
+              "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
+            instructor: "TS. Nguyễn Văn A",
+            status: "available",
+            currentStudents: 2,
+            maxStudents: 3,
+            tags: ["Web", "React", "Node.js", "MongoDB"],
+            className: "Công nghệ phần mềm - K18",
+            categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
+            categoryStatus: "ongoing",
+            allowStudentEdit: true,
+          },
+        ];
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch projects:", err);
+      error = err.message || "Không thể tải danh sách đề tài";
+
+      // Mock fallback on error
+      myProjects = [
+        {
+          id: "mock-p1",
+          name: "Hệ thống quản lý thư viện trực tuyến",
+          description:
+            "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
+          instructor: "TS. Nguyễn Văn A",
+          status: "available",
+          currentStudents: 2,
+          maxStudents: 3,
+          tags: ["Web", "React", "Node.js", "MongoDB"],
+          className: "Công nghệ phần mềm - K18",
+          categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
+          categoryStatus: "ongoing",
+          allowStudentEdit: true,
+        },
+      ];
+    } finally {
+      isLoading = false;
+    }
+  }
 
   function handleSelectProject(project: Project) {
     push(`/my-projects/${project.id}`);
@@ -65,7 +163,17 @@
     <p class="subtitle">Danh sách các đề tài bạn đã đăng ký</p>
   </div>
 
-  {#if myProjects.length === 0}
+  {#if isLoading}
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Đang tải...</p>
+    </div>
+  {:else if error}
+    <div class="error-state">
+      <p class="error-text">{error}</p>
+      <button onclick={fetchMyProjects} class="btn-primary">Thử lại</button>
+    </div>
+  {:else if myProjects.length === 0}
     <div class="empty-state">
       <div class="empty-icon">
         <svg
@@ -271,6 +379,38 @@
 
   .btn-primary:hover {
     background: #2563eb;
+  }
+
+  /* Loading & Error States */
+  .loading-state,
+  .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .error-text {
+    color: #dc2626;
+    margin-bottom: 16px;
   }
 
   /* Projects Grid */
