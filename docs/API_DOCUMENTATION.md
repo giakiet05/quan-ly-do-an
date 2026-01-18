@@ -2146,6 +2146,487 @@ Authorization: Bearer <access_token>
 
 ---
 
+## Projects
+
+### Tạo report period
+**Endpoint:** `POST /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods`
+
+**Mô tả:** Tạo một report period mới cho project round.
+
+**Request Body:**
+```json
+{
+  "name": "Báo cáo tuần 1",
+  "description": "Mô tả báo cáo",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-01-07T23:59:59Z"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo report period thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439030",
+    "name": "Báo cáo tuần 1",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-01-07T23:59:59Z"
+  }
+}
+```
+
+---
+
+### Tạo nhiều report periods
+**Endpoint:** `POST /api/projects/classrooms/:classroom_id/report-periods/bulk`
+
+**Mô tả:** Tạo nhiều report periods một lúc.
+
+**Request Body:**
+```json
+{
+  "round_id": "507f1f77bcf86cd799439021",
+  "report_periods": [
+    {
+      "name": "Báo cáo tuần 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-01-07T23:59:59Z"
+    },
+    {
+      "name": "Báo cáo tuần 2",
+      "start_date": "2024-01-08T00:00:00Z",
+      "end_date": "2024-01-14T23:59:59Z"
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo report periods thành công",
+  "data": {
+    "created_count": 2,
+    "report_periods": [...]
+  }
+}
+```
+
+---
+
+### Lấy thông tin report period
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods/:period_id`
+
+**Mô tả:** Lấy chi tiết một report period.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy report period thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439030",
+    "name": "Báo cáo tuần 1",
+    "description": "Mô tả báo cáo",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-01-07T23:59:59Z"
+  }
+}
+```
+
+---
+
+### Lấy danh sách report periods
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods`
+
+**Mô tả:** Lấy danh sách report periods theo round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách report periods thành công",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439030",
+      "name": "Báo cáo tuần 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-01-07T23:59:59Z"
+    }
+  ]
+}
+```
+
+---
+
+### Cập nhật report period
+**Endpoint:** `PUT /api/projects/report-periods`
+
+**Mô tả:** Cập nhật thông tin report period.
+
+**Request Body:**
+```json
+{
+  "period_id": "507f1f77bcf86cd799439030",
+  "name": "Báo cáo tuần 1 (Updated)",
+  "description": "Mô tả mới",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-01-10T23:59:59Z"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Cập nhật report period thành công",
+  "data": {...}
+}
+```
+
+---
+
+### Xóa report period
+**Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods/:period_id`
+
+**Mô tả:** Xóa report period.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa report period thành công",
+  "data": null
+}
+```
+
+---
+
+### Tạo project
+**Endpoint:** `POST /api/projects`
+
+**Mô tả:** Tạo project mới.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "round_id": "507f1f77bcf86cd799439021",
+  "name": "Hệ thống quản lý thư viện",
+  "description": "Mô tả đồ án",
+  "requirements": "Yêu cầu chức năng..."
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo project thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439020",
+    "name": "Hệ thống quản lý thư viện",
+    "description": "Mô tả đồ án",
+    "requirements": "Yêu cầu chức năng..."
+  }
+}
+```
+
+---
+
+### Tạo nhiều projects
+**Endpoint:** `POST /api/projects/bulk`
+
+**Mô tả:** Tạo nhiều projects một lúc.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "round_id": "507f1f77bcf86cd799439021",
+  "projects": [
+    {
+      "name": "Project 1",
+      "description": "Mô tả 1"
+    },
+    {
+      "name": "Project 2",
+      "description": "Mô tả 2"
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo projects thành công",
+  "data": {
+    "created_count": 2,
+    "projects": [...]
+  }
+}
+```
+
+---
+
+### Lấy thông tin project
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/:project_id`
+
+**Mô tả:** Lấy chi tiết một project.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy project thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439020",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "round_id": "507f1f77bcf86cd799439021",
+    "name": "Hệ thống quản lý thư viện",
+    "description": "Mô tả đồ án",
+    "requirements": "Yêu cầu chức năng..."
+  }
+}
+```
+
+---
+
+### Lấy danh sách projects
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/projects`
+
+**Mô tả:** Lấy danh sách projects theo round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách projects thành công",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439020",
+      "name": "Hệ thống quản lý thư viện",
+      "description": "Mô tả đồ án"
+    }
+  ]
+}
+```
+
+---
+
+### Cập nhật project
+**Endpoint:** `PUT /api/projects`
+
+**Mô tả:** Cập nhật thông tin project.
+
+**Request Body:**
+```json
+{
+  "project_id": "507f1f77bcf86cd799439020",
+  "name": "Hệ thống quản lý thư viện (Updated)",
+  "description": "Mô tả mới",
+  "requirements": "Yêu cầu mới..."
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Cập nhật project thành công",
+  "data": {...}
+}
+```
+
+---
+
+### Xóa project
+**Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/:project_id`
+
+**Mô tả:** Xóa project.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa project thành công",
+  "data": null
+}
+```
+
+---
+
+### Tạo project round
+**Endpoint:** `POST /api/projects/rounds`
+
+**Mô tả:** Tạo project round mới cho lớp học.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "name": "Đợt 1",
+  "description": "Đợt đồ án học kỳ 1",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-05-31T23:59:59Z",
+  "max_members_per_group": 5
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo project round thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439021",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "name": "Đợt 1",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-05-31T23:59:59Z",
+    "max_members_per_group": 5
+  }
+}
+```
+
+---
+
+### Tạo nhiều project rounds
+**Endpoint:** `POST /api/projects/rounds/bulk`
+
+**Mô tả:** Tạo nhiều project rounds một lúc.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "rounds": [
+    {
+      "name": "Đợt 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-05-31T23:59:59Z",
+      "max_members_per_group": 5
+    },
+    {
+      "name": "Đợt 2",
+      "start_date": "2024-06-01T00:00:00Z",
+      "end_date": "2024-10-31T23:59:59Z",
+      "max_members_per_group": 5
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo project rounds thành công",
+  "data": {
+    "created_count": 2,
+    "rounds": [...]
+  }
+}
+```
+
+---
+
+### Lấy thông tin project round
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id`
+
+**Mô tả:** Lấy chi tiết một project round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy project round thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439021",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "name": "Đợt 1",
+    "description": "Đợt đồ án học kỳ 1",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-05-31T23:59:59Z",
+    "max_members_per_group": 5
+  }
+}
+```
+
+---
+
+### Lấy danh sách project rounds
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds`
+
+**Mô tả:** Lấy danh sách project rounds theo lớp học.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách project rounds thành công",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439021",
+      "name": "Đợt 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-05-31T23:59:59Z"
+    }
+  ]
+}
+```
+
+---
+
+### Cập nhật project round
+**Endpoint:** `PUT /api/projects/rounds`
+
+**Mô tả:** Cập nhật thông tin project round.
+
+**Request Body:**
+```json
+{
+  "round_id": "507f1f77bcf86cd799439021",
+  "name": "Đợt 1 (Updated)",
+  "description": "Mô tả mới",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-06-30T23:59:59Z",
+  "max_members_per_group": 6
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Cập nhật project round thành công",
+  "data": {...}
+}
+```
+
+---
+
+### Xóa project round
+**Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/rounds/:round_id`
+
+**Mô tả:** Xóa project round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa project round thành công",
+  "data": null
+}
+```
+
+---
+
 ## Common Error Codes
 
 | Error Code | HTTP Status | Mô tả |
