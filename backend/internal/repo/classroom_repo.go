@@ -39,11 +39,6 @@ type ClassroomRepo interface {
 	ClearWhitelistStudentCode(ctx context.Context, classroomID string) error
 	RegenerateInvitationCode(ctx context.Context, classroomID, newCode string) error
 
-	// Rounds
-	CreateRound(ctx context.Context, classroomID string, round *model.ProjectRound) error
-	GetRound(ctx context.Context, classroomID, roundID string) (*model.ProjectRound, error)
-	ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error)
-
 	// Stats
 	//GetProjectStats(ctx context.Context, classroomID, roundID, projectID string) (*model.ProjectStats, error)
 	//GetRoundStats(ctx context.Context, classroomID, roundID string) (*model.RoundStats, error)
@@ -232,107 +227,6 @@ func (c *classroomRepo) GetByStudent(ctx context.Context, studentID string, page
 	cursor.All(ctx, &classrooms)
 
 	return classrooms, total, nil
-}
-
-// ==================== ROUNDS ====================
-func (c *classroomRepo) CreateRound(ctx context.Context, classroomID string, round *model.ProjectRound) error {
-	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
-	if err != nil {
-		return err
-	}
-
-	round.ID = primitive.NewObjectID()
-	round.CreatedAt = time.Now()
-
-	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{"$push": bson.M{"rounds": round}}
-
-	_, err = c.collection.UpdateOne(ctx, filter, update)
-	return err
-}
-
-func (c *classroomRepo) GetRound(ctx context.Context, classroomID, roundID string) (*model.ProjectRound, error) {
-	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
-	if err != nil {
-		return nil, err
-	}
-	roundObjectID, err := primitive.ObjectIDFromHex(roundID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Aggregation pipeline để lấy round cụ thể
-	pipeline := []bson.M{
-		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "$rounds"},
-		{"$match": bson.M{"rounds._id": roundObjectID}},
-		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
-	}
-
-	cursor, err := c.collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var round model.ProjectRound
-	if !cursor.Next(ctx) {
-		return nil, apperror.ErrRoundNotFound
-	}
-	cursor.Decode(&round)
-	return &round, nil
-}
-func (c *classroomRepo) ListRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error) {
-	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	skip := (page - 1) * pageSize
-
-	pipeline := []bson.M{
-		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "$rounds"},
-		{"$sort": bson.D{{Key: "rounds.created_at", Value: -1}}},
-		{"$skip": skip},
-		{"$limit": pageSize},
-		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
-	}
-
-	cursor, err := c.collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer cursor.Close(ctx)
-
-	var rounds []model.ProjectRound
-	if err := cursor.All(ctx, &rounds); err != nil {
-		return nil, 0, err
-	}
-
-	// COUNT TOTAL (pipeline riêng KHÔNG có skip/limit)
-	countPipeline := []bson.M{
-		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "$rounds"},
-		{"$count": "total"},
-	}
-
-	countCursor, err := c.collection.Aggregate(ctx, countPipeline)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer countCursor.Close(ctx)
-
-	var countResult []bson.M
-	if err := countCursor.All(ctx, &countResult); err != nil {
-		return nil, 0, err
-	}
-	total := int64(0)
-	if len(countResult) > 0 {
-		total = countResult[0]["total"].(int64)
-	}
-
-	return rounds, total, nil
 }
 
 func (c *classroomRepo) AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error {
