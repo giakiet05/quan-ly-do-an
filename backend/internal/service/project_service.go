@@ -6,12 +6,16 @@ import (
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
+	"github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProjectService interface {
+	Start()
+
 	CreateProjectRound(req *dto.CreateProjectRoundRequest, requesterID string) (*model.ProjectRound, error)
 	CreateProjectRounds(req *dto.CreateProjectRoundsRequest, requesterID string) ([]model.ProjectRound, error)
 	GetProjectRoundByID(classroomID, roundID string) (*model.ProjectRound, error)
@@ -37,14 +41,39 @@ type ProjectService interface {
 type projectService struct {
 	projectRepo   repo.ProjectRepo
 	classroomRepo repo.ClassroomRepo
+	eventBus      *bus.EventBus
+	cron          *cron.Cron
 }
 
-func NewProjectService(projectRepo repo.ProjectRepo, classroomRepo repo.ClassroomRepo) ProjectService {
+func NewProjectService(projectRepo repo.ProjectRepo, classroomRepo repo.ClassroomRepo, eventBus *bus.EventBus, cron *cron.Cron) ProjectService {
 	return &projectService{
 		projectRepo:   projectRepo,
 		classroomRepo: classroomRepo,
+		eventBus:      eventBus,
+		cron:          cron,
 	}
 }
+
+func (p *projectService) Start() {
+	p.cron.AddFunc("@daily", p.checkReportOpened)
+	p.cron.AddFunc("@daily", p.checkReportDeadlines)
+}
+
+func (p *projectService) checkReportOpened() {
+	//ctx, cancel := util.NewDefaultDBContext()
+	//defer cancel()
+	//
+	//now := time.Now()
+	//rounds, err := p.projectRepo.GetJustOpenProjectRounds(ctx, now)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//for _, round := range rounds {
+	//}
+}
+
+func (p *projectService) checkReportDeadlines() {}
 
 func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, requesterID string) (*model.ProjectRound, error) {
 	ctx, cancel := util.NewDefaultDBContext()
@@ -73,7 +102,6 @@ func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, 
 		StartDate:     startDate,
 		EndDate:       endDate,
 		Description:   req.Description,
-		Projects:      []model.Project{},
 		ReportPeriods: []model.ReportPeriod{},
 	}
 
@@ -114,7 +142,6 @@ func (p *projectService) CreateProjectRounds(req *dto.CreateProjectRoundsRequest
 			StartDate:     startDate,
 			EndDate:       endDate,
 			Description:   r.Description,
-			Projects:      []model.Project{},
 			ReportPeriods: []model.ReportPeriod{},
 		})
 	}

@@ -88,7 +88,7 @@ func initServices(
 	tokenService *auth.TokenService,
 ) *Services {
 	return &Services{
-		GroupService:               service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo, repos.ProjectRepo),
+		GroupService:               service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo, repos.ProjectRepo, eventBus, cron),
 		AuthService:                service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
 		UserService:                service.NewUserService(repos.UserRepo, eventBus, redisClient),
 		NotificationService:        service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
@@ -98,7 +98,7 @@ func initServices(
 		ClassroomService:           service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
 		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
 		ClassPostService:           service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
-		ProjectService:             service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo),
+		ProjectService:             service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo, eventBus, cron),
 	}
 }
 

@@ -56,30 +56,6 @@ db.classrooms.insertOne({
       start_date: new Date("2024-09-01T00:00:00.000Z"),
       end_date: new Date("2024-11-30T23:59:59.000Z"),
       description: "Đợt đăng ký đồ án giữa kỳ - Sinh viên thực hiện xây dựng ứng dụng web theo đề tài đã chọn",
-      projects: [
-        {
-          _id: project1Id,
-          classroom_id: classroomId,
-          project_round_id: projectRoundId,
-          title: "Hệ thống quản lý thư viện trực tuyến",
-          amount: 5,
-          description: "Xây dựng hệ thống quản lý thư viện với các tính năng: mượn/trả sách, tìm kiếm nâng cao, đặt chỗ, quản lý thành viên, báo cáo thống kê. Hệ thống cho phép người dùng tra cứu sách, đặt mượn online và nhận thông báo.",
-          min_member: 2,
-          max_member: 3,
-          status: "approved"
-        },
-        {
-          _id: project2Id,
-          classroom_id: classroomId,
-          project_round_id: projectRoundId,
-          title: "Website thương mại điện tử bán hàng trực tuyến",
-          amount: 3,
-          description: "Xây dựng website bán hàng trực tuyến với giỏ hàng, thanh toán VNPay/MoMo, quản lý đơn hàng, sản phẩm, khách hàng. Tích hợp chatbot hỗ trợ khách hàng và hệ thống đánh giá sản phẩm.",
-          min_member: 2,
-          max_member: 4,
-          status: "approved"
-        }
-      ],
       report_periods: [
         {
           _id: reportPeriod1Id,
@@ -108,7 +84,37 @@ db.classrooms.insertOne({
 
 print("✅ Classroom created!");
 
-// 2. Tạo Channel cho classroom
+// 2. Tạo Projects trong collection riêng
+db.projects.insertMany([
+  {
+    _id: project1Id,
+    classroom_id: classroomId,
+    project_round_id: projectRoundId,
+    title: "Hệ thống quản lý thư viện trực tuyến",
+    amount: 5,
+    description: "Xây dựng hệ thống quản lý thư viện với các tính năng: mượn/trả sách, tìm kiếm nâng cao, đặt chỗ, quản lý thành viên, báo cáo thống kê. Hệ thống cho phép người dùng tra cứu sách, đặt mượn online và nhận thông báo.",
+    min_member: 2,
+    max_member: 3,
+    status: "approved",
+    created_at: new Date()
+  },
+  {
+    _id: project2Id,
+    classroom_id: classroomId,
+    project_round_id: projectRoundId,
+    title: "Website thương mại điện tử bán hàng trực tuyến",
+    amount: 3,
+    description: "Xây dựng website bán hàng trực tuyến với giỏ hàng, thanh toán VNPay/MoMo, quản lý đơn hàng, sản phẩm, khách hàng. Tích hợp chatbot hỗ trợ khách hàng và hệ thống đánh giá sản phẩm.",
+    min_member: 2,
+    max_member: 4,
+    status: "approved",
+    created_at: new Date()
+  }
+]);
+
+print("✅ Projects created!");
+
+// 3. Tạo Channel cho classroom
 db.channels.insertOne({
   _id: channelId,
   name: "general",
@@ -127,7 +133,7 @@ db.channels.insertOne({
 
 print("✅ Channel created!");
 
-// 3. Tạo Group để user đăng ký project
+// 4. Tạo Group để user đăng ký project
 const groupId = ObjectId();
 const groupChannelId = ObjectId();
 

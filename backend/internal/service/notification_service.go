@@ -28,7 +28,12 @@ type notificationService struct {
 	redisClient      *redis.Client
 }
 
-func NewNotificationService(notificationRepo repo.NotificationRepo, userRepo repo.UserRepo, bus *bus.EventBus, redis *redis.Client) NotificationService {
+func NewNotificationService(
+	notificationRepo repo.NotificationRepo,
+	userRepo repo.UserRepo,
+	bus *bus.EventBus,
+	redis *redis.Client,
+) NotificationService {
 	return &notificationService{
 		notificationRepo: notificationRepo,
 		userRepo:         userRepo,
@@ -39,7 +44,7 @@ func NewNotificationService(notificationRepo repo.NotificationRepo, userRepo rep
 
 func (s *notificationService) Start() {
 	eventChannel := make(bus.EventListener, 100)
-
+	
 	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
 	s.eventBus.Subscribe(bus.TopicGroupInvitation, eventChannel)
 	s.eventBus.Subscribe(bus.TopicClassroomInvitation, eventChannel)

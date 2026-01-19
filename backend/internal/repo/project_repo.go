@@ -7,6 +7,7 @@ import (
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,6 +22,9 @@ type ProjectRepo interface {
 	GetProjectRoundsByClassroomID(ctx context.Context, classroomID string) ([]model.ProjectRound, error)
 	ListProjectRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error)
 	DeleteProjectRound(ctx context.Context, classroomID, roundID string) error
+
+	//GetJustOpenReportPeriods(ctx context.Context, now time.Time) ([]dto.ReportPeriodWithProjectRound, error)
+	GetJustOpenProjectRounds(ctx context.Context, now time.Time) ([]dto.ProjectRoundWithClassroom, error)
 
 	CreateProject(ctx context.Context, project *model.Project) error
 	CreateProjects(ctx context.Context, projects []model.Project) error
@@ -37,15 +41,18 @@ type ProjectRepo interface {
 	DeleteReportPeriod(ctx context.Context, classroomID string, roundID string, reportPeriodID string) error
 
 	ReportPeriodExists(ctx context.Context, classroomID string, roundID string, periodID string) (bool, error)
-	ReportExistsByPeriod(ctx context.Context, classroomID string, periodID string) (bool, error)
 }
 
 type projectRepo struct {
 	classroomCollection *mongo.Collection
+	projectCollection   *mongo.Collection
 }
 
 func NewProjectRepo(db *mongo.Database) ProjectRepo {
-	return &projectRepo{classroomCollection: db.Collection(config.ClassroomColName)}
+	return &projectRepo{
+		classroomCollection: db.Collection(config.ClassroomColName),
+		projectCollection:   db.Collection(config.ProjectColName),
+	}
 }
 
 func (p *projectRepo) CreateProjectRound(ctx context.Context, classroomID string, round *model.ProjectRound) error {
@@ -267,34 +274,76 @@ func (p *projectRepo) DeleteProjectRound(
 	return nil
 }
 
-func (p *projectRepo) CreateProject(ctx context.Context, project *model.Project) error {
-	filter := bson.M{"_id": project.ClassroomID, "rounds._id": project.ProjectRoundID}
-	update := bson.M{"$push": bson.M{"rounds.$.projects": project}}
+func (p *projectRepo) GetJustOpenProjectRounds(
+	ctx context.Context,
+	now time.Time,
+) ([]dto.ProjectRoundWithClassroom, error) {
 
-	res, err := p.classroomCollection.UpdateOne(ctx, filter, update)
+	loc := now.Location()
+
+	startOfDay := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		0, 0, 0, 0,
+		loc,
+	)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	pipeline := mongo.Pipeline{
+		// 1️⃣ explode rounds
+		{{Key: "$unwind", Value: "$rounds"}},
+
+		// 2️⃣ filter by day + not deleted
+		{{Key: "$match", Value: bson.M{
+			"rounds.start_date": bson.M{
+				"$gte": startOfDay,
+				"$lt":  endOfDay,
+			},
+			"rounds.is_deleted": false,
+		}}},
+
+		// 3️⃣ shape result
+		{{Key: "$project", Value: bson.M{
+			"_id":            0,
+			"classroom_id":   "$_id",
+			"classroom_name": "$name",
+			"round":          "$rounds",
+		}}},
+	}
+
+	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if res.ModifiedCount == 0 {
-		return apperror.ErrRoundNotFound
+	defer cursor.Close(ctx)
+
+	var results []dto.ProjectRoundWithClassroom
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
-	return nil
+
+	return results, nil
+}
+
+func (p *projectRepo) CreateProject(ctx context.Context, project *model.Project) error {
+	project.CreatedAt = time.Now()
+	_, err := p.projectCollection.InsertOne(ctx, project)
+	return err
 }
 
 func (p *projectRepo) CreateProjects(ctx context.Context, projects []model.Project) error {
-	for i := range projects {
-		filter := bson.M{"_id": projects[i].ClassroomID, "rounds._id": projects[i].ProjectRoundID}
-		update := bson.M{"$push": bson.M{"rounds.$.projects": projects[i]}}
-
-		res, err := p.classroomCollection.UpdateOne(ctx, filter, update)
-		if err != nil {
-			return err
-		}
-		if res.ModifiedCount == 0 {
-			return apperror.ErrRoundNotFound
-		}
+	if len(projects) == 0 {
+		return nil
 	}
-	return nil
+
+	now := time.Now()
+	docs := make([]interface{}, len(projects))
+	for i := range projects {
+		projects[i].CreatedAt = now
+		docs[i] = projects[i]
+	}
+
+	_, err := p.projectCollection.InsertMany(ctx, docs)
+	return err
 }
 
 func (p *projectRepo) GetProjectByID(
@@ -313,32 +362,17 @@ func (p *projectRepo) GetProjectByID(
 		return nil, apperror.ErrBadRequest
 	}
 
-	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: bson.M{
-			"_id": classroomOID,
-		}}},
-		{{Key: "$unwind", Value: "$rounds"}},
-		{{Key: "$unwind", Value: "$rounds.projects"}},
-		{{Key: "$match", Value: bson.M{
-			"rounds.projects._id": projectOID,
-		}}},
-		{{Key: "$replaceRoot", Value: bson.M{
-			"newRoot": "$rounds.projects",
-		}}},
-	}
-
-	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	if !cursor.Next(ctx) {
-		return nil, apperror.ErrProjectNotFound
+	filter := bson.M{
+		"_id":          projectOID,
+		"classroom_id": classroomOID,
 	}
 
 	var project model.Project
-	if err := cursor.Decode(&project); err != nil {
+	err = p.projectCollection.FindOne(ctx, filter).Decode(&project)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, apperror.ErrProjectNotFound
+		}
 		return nil, err
 	}
 
@@ -360,53 +394,29 @@ func (p *projectRepo) GetProjectsByRoundID(
 		return nil, apperror.ErrBadRequest
 	}
 
-	var result struct {
-		Rounds []struct {
-			Projects []model.Project `bson:"projects"`
-		} `bson:"rounds"`
+	filter := bson.M{
+		"classroom_id":     classroomOID,
+		"project_round_id": roundOID,
 	}
 
-	err = p.classroomCollection.FindOne(
-		ctx,
-		bson.M{"_id": classroomOID},
-		options.FindOne().SetProjection(bson.M{
-			"rounds": bson.M{
-				"$filter": bson.M{
-					"input": "$rounds",
-					"as":    "r",
-					"cond": bson.M{
-						"$eq": []interface{}{"$$r._id", roundOID},
-					},
-				},
-			},
-		}),
-	).Decode(&result)
-
+	cursor, err := p.projectCollection.Find(ctx, filter)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, apperror.ErrClassroomNotFound
-		}
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var projects []model.Project
+	if err := cursor.All(ctx, &projects); err != nil {
 		return nil, err
 	}
 
-	if len(result.Rounds) == 0 {
-		return nil, apperror.ErrRoundNotFound
-	}
-
-	return result.Rounds[0].Projects, nil
+	return projects, nil
 }
 
 func (p *projectRepo) ReplaceProject(ctx context.Context, project *model.Project) error {
-	// find any classroom that contains this project
-	filter := bson.M{"rounds.projects._id": project.ID}
-	update := bson.M{"$set": bson.M{"rounds.$[r].projects.$[p]": project}}
-	arrayFilters := options.ArrayFilters{Filters: []interface{}{
-		bson.M{"r._id": project.ProjectRoundID},
-		bson.M{"p._id": project.ID},
-	}}
-	opts := options.Update().SetArrayFilters(arrayFilters)
-
-	res, err := p.classroomCollection.UpdateOne(ctx, filter, update, opts)
+	filter := bson.M{"_id": project.ID}
+	
+	res, err := p.projectCollection.ReplaceOne(ctx, filter, project)
 	if err != nil {
 		return err
 	}
@@ -432,24 +442,16 @@ func (p *projectRepo) DeleteProject(
 	}
 
 	filter := bson.M{
-		"_id":                 classroomOID,
-		"rounds.projects._id": projectOID,
+		"_id":          projectOID,
+		"classroom_id": classroomOID,
 	}
 
-	update := bson.M{
-		"$pull": bson.M{
-			"rounds.$[].projects": bson.M{
-				"_id": projectOID,
-			},
-		},
-	}
-
-	res, err := p.classroomCollection.UpdateOne(ctx, filter, update)
+	res, err := p.projectCollection.DeleteOne(ctx, filter)
 	if err != nil {
 		return err
 	}
 
-	if res.ModifiedCount == 0 {
+	if res.DeletedCount == 0 {
 		return apperror.ErrProjectNotFound
 	}
 
@@ -699,35 +701,6 @@ func (p *projectRepo) ReportPeriodExists(
 				"report_periods._id": periodOID,
 			},
 		},
-	}
-
-	count, err := p.classroomCollection.CountDocuments(ctx, filter)
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
-}
-
-func (p *projectRepo) ReportExistsByPeriod(
-	ctx context.Context,
-	classroomID string,
-	periodID string,
-) (bool, error) {
-
-	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
-	if err != nil {
-		return false, err
-	}
-
-	periodOID, err := primitive.ObjectIDFromHex(periodID)
-	if err != nil {
-		return false, err
-	}
-
-	filter := bson.M{
-		"_id":                        classroomOID,
-		"projects.reports.period_id": periodOID,
 	}
 
 	count, err := p.classroomCollection.CountDocuments(ctx, filter)

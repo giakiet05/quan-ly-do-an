@@ -6,13 +6,17 @@ import (
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
+	"github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type GroupService interface {
+	Start()
+
 	CreateGroup(req *dto.CreateGroupRequest, requesterID string) (*model.Group, error)
 	GetGroupByID(groupID string, requesterID string) (*model.Group, error)
 	GetGroupsFilter(query *dto.GetGroupsFilterQuery, requesterID string) ([]model.Group, error)
@@ -26,6 +30,7 @@ type GroupService interface {
 	CreateReport(req *dto.CreateReportRequest, requesterID string) (*model.Report, error)
 	UpdateReport(req *dto.UpdateReportRequest, requesterID string) (*model.Report, error)
 	DeleteReport(groupID string, reportID string, requesterID string) error
+
 	CreateReportFeedback(req *dto.CreateReportFeedbackRequest, requesterID string) (*model.ReportFeedback, error)
 	UpdateReportFeedback(req *dto.UpdateReportFeedbackRequest, groupID string, reportID string) error
 	DeleteReportFeedback(groupID string, reportID string, requesterID string) error
@@ -37,6 +42,8 @@ type groupService struct {
 	channelRepo   repo.ChannelRepo
 	userRepo      repo.UserRepo
 	projectRepo   repo.ProjectRepo
+	eventBus      *bus.EventBus
+	cron          *cron.Cron
 }
 
 func NewGroupService(
@@ -45,6 +52,8 @@ func NewGroupService(
 	channelRepo repo.ChannelRepo,
 	userRepo repo.UserRepo,
 	projectRepo repo.ProjectRepo,
+	eventBus *bus.EventBus,
+	cron *cron.Cron,
 ) GroupService {
 	return &groupService{
 		groupRepo:     groupRepo,
@@ -52,8 +61,12 @@ func NewGroupService(
 		channelRepo:   channelRepo,
 		userRepo:      userRepo,
 		projectRepo:   projectRepo,
+		eventBus:      eventBus,
+		cron:          cron,
 	}
 }
+
+func (g *groupService) Start() {}
 
 func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID string) (*model.Group, error) {
 	ctx, cancel := util.NewDefaultDBContext()
@@ -117,30 +130,23 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		return nil, err
 	}
 
-	// Tìm ProjectGroup theo ID
-	var groupFound *model.ProjectRound
-	for i, group := range classroom.ProjectRounds {
-		if group.ID.Hex() == req.ProjectRoundID && !group.IsDeleted {
-			groupFound = &classroom.ProjectRounds[i]
+	// Tìm ProjectRound theo ID
+	var roundFound *model.ProjectRound
+	for i, round := range classroom.ProjectRounds {
+		if round.ID.Hex() == req.ProjectRoundID && !round.IsDeleted {
+			roundFound = &classroom.ProjectRounds[i]
 			break
 		}
 	}
 
-	if groupFound == nil {
+	if roundFound == nil {
 		return nil, apperror.ErrProjectGroupNotFound
 	}
 
-	// Tìm Project trong ProjectGroup
-	var projectFound *model.Project
-	for i, project := range groupFound.Projects {
-		if project.ID.Hex() == req.ProjectID {
-			projectFound = &groupFound.Projects[i]
-			break
-		}
-	}
-
-	if projectFound == nil {
-		return nil, apperror.ErrProjectNotFound // không tìm thấy project
+	// Tìm Project từ collection riêng
+	projectFound, err := g.projectRepo.GetProjectByID(ctx, req.ClassroomID, req.ProjectID)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(req.MemberIDs) < projectFound.MinMember || len(req.MemberIDs) > projectFound.MaxMember {
@@ -565,7 +571,7 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	if err != nil {
 		return nil, apperror.ErrBadRequest
 	}
-	
+
 	ok, err := g.groupRepo.IsMember(ctx, req.GroupID, requesterID)
 	if err != nil {
 		return nil, err
@@ -582,7 +588,7 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 		return nil, apperror.ErrReportPeriodNotFound
 	}
 
-	exists, err := g.projectRepo.ReportExistsByPeriod(ctx, req.ClassroomID, req.ReportPeriodID)
+	exists, err := g.groupRepo.ReportExistsByPeriod(ctx, req.ClassroomID, req.ReportPeriodID)
 	if err != nil {
 		return nil, err
 	}
@@ -620,6 +626,13 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	if err != nil {
 		return nil, err
 	}
+
+	g.eventBus.Publish(bus.TopicReportSubmittedEvent{
+		ClassroomID: req.ClassroomID,
+		GroupID:     req.GroupID,
+		ReportID:    report.ID.Hex(),
+		SubmittedAt: now,
+	})
 
 	return &report, nil
 }
@@ -843,6 +856,13 @@ func (g *groupService) CreateReportFeedback(req *dto.CreateReportFeedbackRequest
 	if err != nil {
 		return nil, err
 	}
+
+	g.eventBus.Publish(bus.TopicReportGradedEvent{
+		ClassroomID: group.ClassroomID.Hex(),
+		GroupID:     req.GroupID,
+		ReportID:    req.ReportID,
+		GradedAt:    now,
+	})
 
 	return &feedback, nil
 }

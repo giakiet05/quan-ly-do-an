@@ -22,57 +22,68 @@ db.classrooms.updateOne(
         description: "Phát triển ứng dụng web full-stack",
         start_date: new Date("2024-02-01T00:00:00.000Z"),
         end_date: new Date("2024-05-31T23:59:59.000Z"),
-        projects: [
-          {
-            _id: projectId,
-            classroom_id: classroomId,
-            project_round_id: projectRoundId,
-            title: "Hệ thống quản lý thư viện trực tuyến",
-            amount: 5,
-            description: "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt trước",
-            min_member: 2,
-            max_member: 4,
-            status: "approved",
-            is_deleted: false
-          },
-          {
-            _id: ObjectId(),
-            classroom_id: classroomId,
-            project_round_id: projectRoundId,
-            title: "Website bán hàng trực tuyến",
-            amount: 3,
-            description: "Xây dựng website thương mại điện tử với giỏ hàng, thanh toán",
-            min_member: 2,
-            max_member: 4,
-            status: "approved",
-            is_deleted: false
-          },
-          {
-            _id: ObjectId(),
-            classroom_id: classroomId,
-            project_round_id: projectRoundId,
-            title: "Ứng dụng quản lý công việc nhóm",
-            amount: 4,
-            description: "Task management app với real-time collaboration",
-            min_member: 2,
-            max_member: 3,
-            status: "approved",
-            is_deleted: false
-          }
-        ]
+        report_periods: [],
+        created_at: new Date(),
+        is_deleted: false
       }
     }
   }
 );
 
-print("✅ Project Round đã tạo với 3 projects");
-print(`   - Project Round ID: ${projectRoundId}`);
+print("✅ Project Round đã tạo");
+print(`   - Project Round ID: ${projectRoundId}\n`);
+
+// ============================================
+// BƯỚC 2: Thêm Projects vào collection riêng
+// ============================================
+print("📁 Bước 2: Tạo Projects...");
+
+db.projects.insertMany([
+  {
+    _id: projectId,
+    classroom_id: classroomId,
+    project_round_id: projectRoundId,
+    title: "Hệ thống quản lý thư viện trực tuyến",
+    amount: 5,
+    description: "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt trước",
+    min_member: 2,
+    max_member: 4,
+    status: "approved",
+    created_at: new Date()
+  },
+  {
+    _id: ObjectId(),
+    classroom_id: classroomId,
+    project_round_id: projectRoundId,
+    title: "Website bán hàng trực tuyến",
+    amount: 3,
+    description: "Xây dựng website thương mại điện tử với giỏ hàng, thanh toán",
+    min_member: 2,
+    max_member: 4,
+    status: "approved",
+    created_at: new Date()
+  },
+  {
+    _id: ObjectId(),
+    classroom_id: classroomId,
+    project_round_id: projectRoundId,
+    title: "Ứng dụng quản lý công việc nhóm",
+    amount: 4,
+    description: "Task management app với real-time collaboration",
+    min_member: 2,
+    max_member: 3,
+    status: "approved",
+    created_at: new Date()
+  }
+]);
+
+print("✅ Projects đã tạo trong collection 'projects'");
 print(`   - Project ID (sẽ dùng): ${projectId}\n`);
 
 // ============================================
-// BƯỚC 2: Tạo Group cho User
+// BƯỚC 3: Tạo Group cho User
 // ============================================
-print("👥 Bước 2: Tạo Group...");
+print("👥 Bước 3: Tạo Group...");
 
 const groupId = ObjectId();
 const groupChannelId = ObjectId();
