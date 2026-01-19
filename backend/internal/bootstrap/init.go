@@ -91,14 +91,14 @@ func initServices(
 		GroupService:               service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo, repos.ProjectRepo, eventBus, cron),
 		AuthService:                service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
 		UserService:                service.NewUserService(repos.UserRepo, eventBus, redisClient),
-		NotificationService:        service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
+		NotificationService:        service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, repos.ClassroomRepo, repos.GroupRepo, eventBus, redisClient),
 		ChannelService:             service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
 		MessageService:             service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
 		ClassroomJoinService:       service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
 		ClassroomService:           service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
 		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
 		ClassPostService:           service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
-		ProjectService:             service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo, eventBus, cron),
+		ProjectService:             service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo, repos.GroupRepo, eventBus, cron),
 	}
 }
 
@@ -181,12 +181,11 @@ func Init() (*gin.Engine, error) {
 
 	// Start background services
 	go wsHub.Start()
+	cronService.Start()
 	services.NotificationService.Start()
 	services.MessageService.Start()
 	services.ChannelService.Start()
-	//services.GroupService.Start()
-	//services.ProjectService.Start()
-	cronService.Start()
+	services.ProjectService.Start()
 
 	return router, nil
 }

@@ -132,6 +132,142 @@ func (g *GroupController) DeleteGroup(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Group deleted successfully", nil)
 }
 
+// Join Request Operations
+
+func (g *GroupController) CreateJoinRequest(ctx *gin.Context) {
+	var req *dto.CreateJoinGroupRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	joinRequest, err := g.groupService.CreateJoinRequest(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusCreated, "Join request created successfully", joinRequest)
+}
+
+func (g *GroupController) AcceptJoinRequest(ctx *gin.Context) {
+	var req *dto.UpdateJoinGroupRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.AcceptJoinRequest(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Join request accepted successfully", nil)
+}
+
+func (g *GroupController) RejectJoinRequest(ctx *gin.Context) {
+	var req *dto.UpdateJoinGroupRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.RejectJoinRequest(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Join request rejected successfully", nil)
+}
+
+// Invitation Operations
+
+func (g *GroupController) InviteToGroup(ctx *gin.Context) {
+	var req *dto.CreateGroupInvitationRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	invitation, err := g.groupService.InviteToGroup(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusCreated, "Invitation sent successfully", invitation)
+}
+
+func (g *GroupController) AcceptInvitation(ctx *gin.Context) {
+	var req *dto.UpdateGroupInvitationRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.AcceptInvitation(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Invitation accepted successfully", nil)
+}
+
+func (g *GroupController) RejectInvitation(ctx *gin.Context) {
+	var req *dto.UpdateGroupInvitationRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.RejectInvitation(req, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Invitation rejected successfully", nil)
+}
+
 // Task Operations
 
 func (g *GroupController) CreateTask(ctx *gin.Context) {
