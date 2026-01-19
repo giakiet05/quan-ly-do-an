@@ -196,7 +196,7 @@ func (g *groupService) GetGroupsFilter(query *dto.GetGroupsFilterQuery, requeste
 		// Allow if requester is the member themselves
 		if *query.MemberID != requesterID {
 			// Or if requester is lecturer of the classroom
-			ok, err := g.classroomRepo.IsLecturer(ctx, query.ClassroomID, requesterID)
+			ok, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, query.ClassroomID, requesterID)
 			if err != nil {
 				return nil, err
 			}
@@ -206,7 +206,7 @@ func (g *groupService) GetGroupsFilter(query *dto.GetGroupsFilterQuery, requeste
 		}
 	} else {
 		// No member_id filter, only lecturer can view all groups
-		ok, err := g.classroomRepo.IsLecturer(ctx, query.ClassroomID, requesterID)
+		ok, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, query.ClassroomID, requesterID)
 		if err != nil {
 			return nil, err
 		}
@@ -781,7 +781,7 @@ func (g *groupService) CreateReportFeedback(req *dto.CreateReportFeedbackRequest
 		return nil, err
 	}
 
-	ok, err := g.classroomRepo.IsLecturer(ctx, group.ClassroomID.Hex(), requesterID)
+	ok, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, group.ClassroomID.Hex(), requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -925,7 +925,7 @@ func (g *groupService) DeleteReportFeedback(groupID string, reportID string, req
 		return err
 	}
 
-	ok, err := g.classroomRepo.IsLecturer(ctx, group.ClassroomID.Hex(), requesterID)
+	ok, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, group.ClassroomID.Hex(), requesterID)
 	if err != nil {
 		return err
 	}

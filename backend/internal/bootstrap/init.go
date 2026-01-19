@@ -28,6 +28,7 @@ type Repos struct {
 	repo.EmailVerificationRepo
 	repo.PasswordResetRepo
 	repo.ClassroomJoinRequestRepo
+	repo.ClassroomInvitationRepo
 	repo.ProjectRepo
 }
 
@@ -40,6 +41,7 @@ type Services struct {
 	service.MessageService
 	service.ClassroomJoinService
 	service.ClassroomService
+	service.ClassroomInvitationService
 	service.ClassPostService
 	service.ProjectService
 }
@@ -54,6 +56,7 @@ type Controllers struct {
 	controller.GroupController
 	controller.ClassroomJoinController
 	controller.ClassroomController
+	controller.ClassroomInvitationController
 	controller.ClassPostController
 	controller.ProjectController
 }
@@ -69,6 +72,7 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 		PasswordResetRepo:        repo.NewPasswordResetRepo(db),
 		ClassroomRepo:            repo.NewClassroomRepo(db),
 		ClassroomJoinRequestRepo: repo.NewClassroomJoinRequestRepo(db),
+		ClassroomInvitationRepo:  repo.NewClassroomInvitationRepo(db),
 		ClassPostRepo:            repo.NewClassPostRepo(db),
 		ProjectRepo:              repo.NewProjectRepo(db),
 	}
@@ -76,32 +80,34 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 
 func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus, tokenService *auth.TokenService) *Services {
 	return &Services{
-		GroupService:         service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo),
-		AuthService:          service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
-		UserService:          service.NewUserService(repos.UserRepo, eventBus, redisClient),
-		NotificationService:  service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
-		ChannelService:       service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
-		MessageService:       service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
-		ClassroomJoinService: service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
-		ClassroomService:     service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
-		ClassPostService:     service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
-		ProjectService:       service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo),
+		GroupService:                service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo, repos.ProjectRepo),
+		AuthService:                 service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
+		UserService:                 service.NewUserService(repos.UserRepo, eventBus, redisClient),
+		NotificationService:         service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, eventBus, redisClient),
+		ChannelService:              service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
+		MessageService:              service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
+		ClassroomJoinService:        service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
+		ClassroomService:            service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
+		ClassroomInvitationService:  service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
+		ClassPostService:            service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
+		ProjectService:              service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo),
 	}
 }
 
 func initControllers(services *Services, wsHub *ws.Hub) *Controllers {
 	return &Controllers{
-		GroupController:         *controller.NewGroupController(services.GroupService),
-		AuthController:          *controller.NewAuthController(services.AuthService),
-		UserController:          *controller.NewUserController(services.UserService),
-		NotificationController:  *controller.NewNotificationController(services.NotificationService),
-		WebSocketController:     *controller.NewWebSocketController(wsHub),
-		ChannelController:       *controller.NewChannelController(services.ChannelService),
-		MessageController:       *controller.NewMessageController(services.MessageService),
-		ClassroomJoinController: *controller.NewClassroomJoinController(services.ClassroomJoinService),
-		ClassroomController:     *controller.NewClassroomController(services.ClassroomService),
-		ClassPostController:     *controller.NewClassPostController(services.ClassPostService),
-		ProjectController:       *controller.NewProjectController(services.ProjectService),
+		GroupController:                *controller.NewGroupController(services.GroupService),
+		AuthController:                 *controller.NewAuthController(services.AuthService),
+		UserController:                 *controller.NewUserController(services.UserService),
+		NotificationController:         *controller.NewNotificationController(services.NotificationService),
+		WebSocketController:            *controller.NewWebSocketController(wsHub),
+		ChannelController:              *controller.NewChannelController(services.ChannelService),
+		MessageController:              *controller.NewMessageController(services.MessageService),
+		ClassroomJoinController:        *controller.NewClassroomJoinController(services.ClassroomJoinService),
+		ClassroomController:            *controller.NewClassroomController(services.ClassroomService),
+		ClassroomInvitationController:  *controller.NewClassroomInvitationController(services.ClassroomInvitationService),
+		ClassPostController:            *controller.NewClassPostController(services.ClassPostService),
+		ProjectController:              *controller.NewProjectController(services.ProjectService),
 	}
 }
 
@@ -121,7 +127,7 @@ func initRoutes(controllers *Controllers, r *gin.Engine) {
 	route.RegisterWebSocketRoutes(api, &controllers.WebSocketController)
 	route.RegisterChannelRoutes(api, &controllers.ChannelController)
 	route.RegisterMessageRoutes(api, &controllers.MessageController)
-	route.RegisterClassroomRoutes(api, &controllers.ClassroomController)
+	route.RegisterClassroomRoutes(api, &controllers.ClassroomController, &controllers.ClassroomInvitationController)
 	route.RegisterClassroomJoinRoutes(api, &controllers.ClassroomJoinController)
 	route.RegisterClassPostRoutes(api, &controllers.ClassPostController)
 	route.RegisterGroupRoutes(api, &controllers.GroupController)

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterClassroomRoutes(router *gin.RouterGroup, controller *controller.ClassroomController) {
+func RegisterClassroomRoutes(router *gin.RouterGroup, controller *controller.ClassroomController, invitationController *controller.ClassroomInvitationController) {
 	classrooms := router.Group("/classrooms")
 	classrooms.Use(middleware.RequireAuth())
 	{
@@ -17,12 +17,18 @@ func RegisterClassroomRoutes(router *gin.RouterGroup, controller *controller.Cla
 		classrooms.GET("/:id", controller.GetClassroomByID)
 		classrooms.PUT("/:id", controller.UpdateClassroom)
 		classrooms.DELETE("/:id", controller.DeleteClassroom)
-		
+
 		// Status management
 		classrooms.PATCH("/:id/status", controller.UpdateClassroomStatus)
-		
+
+		// Leave classroom
+		classrooms.POST("/:id/leave", controller.LeaveClassroom)
+
 		// Student management
 		classrooms.DELETE("/:id/students/:student_id", controller.RemoveStudentFromClassroom)
+
+		// Co-lecturer management
+		classrooms.DELETE("/:id/co-lecturers/:co_lecturer_id", controller.RemoveCoLecturerFromClassroom)
 
 		// Whitelist management
 		classrooms.GET("/whitelist-template", controller.DownloadWhitelistTemplate)
@@ -31,8 +37,22 @@ func RegisterClassroomRoutes(router *gin.RouterGroup, controller *controller.Cla
 		classrooms.POST("/:id/whitelist-student-code/upload", controller.UploadWhitelistStudentCodeExcel)
 		classrooms.PATCH("/:id/whitelist-student-code", controller.UpdateWhitelistStudentCode)
 		classrooms.DELETE("/:id/whitelist-student-code", controller.ClearWhitelistStudentCode)
-		
+
 		// Invitation code
 		classrooms.POST("/:id/regenerate-code", controller.RegenerateInvitationCode)
+
+		// Classroom invitations (invite co-lecturers)
+		classrooms.POST("/:id/invitations", invitationController.InviteToClassroom)
+		classrooms.GET("/:id/invitations", invitationController.GetClassroomInvitations)
+	}
+
+	// User's classroom invitations
+	invitations := router.Group("/classroom-invitations")
+	invitations.Use(middleware.RequireAuth())
+	{
+		invitations.GET("/my", invitationController.GetMyInvitations)
+		invitations.POST("/:id/accept", invitationController.AcceptInvitation)
+		invitations.POST("/:id/reject", invitationController.RejectInvitation)
+		invitations.DELETE("/:id", invitationController.CancelInvitation)
 	}
 }

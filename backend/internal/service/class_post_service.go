@@ -47,7 +47,7 @@ func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomI
 	defer cancel()
 
 	// Check if user is lecturer of the classroom
-	isLecturer, err := s.classroomRepo.IsLecturer(ctx, classroomID, authorID)
+	isLecturer, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, authorID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s *classPostService) GetPostsByClassroom(classroomID string, userID string
 	defer cancel()
 
 	// Check if user is in classroom (student or lecturer)
-	isLecturer, _ := s.classroomRepo.IsLecturer(ctx, classroomID, userID)
+	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, userID)
 	isStudent, _ := s.classroomRepo.IsStudentInClassroom(ctx, classroomID, userID)
 
 	if !isLecturer && !isStudent {
@@ -128,7 +128,7 @@ func (s *classPostService) UpdatePost(req dto.UpdateClassPostRequest, postID str
 	}
 
 	// Check if user is the author or lecturer
-	isLecturer, _ := s.classroomRepo.IsLecturer(ctx, post.ClassroomID.Hex(), userID)
+	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
 	isAuthor := post.Author.ID.Hex() == userID
 
 	if !isLecturer && !isAuthor {
@@ -189,7 +189,7 @@ func (s *classPostService) DeletePost(postID string, userID string) error {
 	}
 
 	// Only lecturer can delete
-	isLecturer, err := s.classroomRepo.IsLecturer(ctx, post.ClassroomID.Hex(), userID)
+	isLecturer, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (s *classPostService) TogglePinPost(postID string, userID string, isPinned 
 	}
 
 	// Only lecturer can pin/unpin
-	isLecturer, err := s.classroomRepo.IsLecturer(ctx, post.ClassroomID.Hex(), userID)
+	isLecturer, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func (s *classPostService) AddAttachment(postID string, userID string, attachmen
 	}
 
 	// Check if user is the author or lecturer
-	isLecturer, _ := s.classroomRepo.IsLecturer(ctx, post.ClassroomID.Hex(), userID)
+	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
 	isAuthor := post.Author.ID.Hex() == userID
 
 	if !isLecturer && !isAuthor {
@@ -258,7 +258,7 @@ func (s *classPostService) RemoveAttachment(postID string, userID string, fileUR
 	}
 
 	// Check if user is the author or lecturer
-	isLecturer, _ := s.classroomRepo.IsLecturer(ctx, post.ClassroomID.Hex(), userID)
+	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
 	isAuthor := post.Author.ID.Hex() == userID
 
 	if !isLecturer && !isAuthor {
