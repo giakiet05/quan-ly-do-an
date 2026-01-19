@@ -14,6 +14,9 @@
     import ClassInfoSidebar from "../../../components/ClassInfoSidebar.svelte";
     import StudentManagement from "../../../components/StudentManagement.svelte";
     import { classStore } from "../../../stores/class-store";
+    import { getClassroom } from "../../../services/classroom-service";
+    import type { Classroom } from "../../../models";
+    import type { ClassroomResponse } from "../../../dtos";
 
     const { onClose, onSubmit, classData } = $props<{
         classData: ClassData;
@@ -45,9 +48,23 @@
             )
             .optional(),
     });
+    let detail = $state<ClassroomResponse>({} as ClassroomResponse);
+
+    $effect(() => {
+        getClassroom(classData.id)
+            .then((res) => {
+                detail = res; // Đảm bảo `res` có dữ liệu hợp lệ
+                console.log(
+                    "Fetched class detail:",
+                    res.whitelist_student_code,
+                );
+            })
+            .catch((err) => {
+                console.error("Failed to fetch class detail:", err);
+            });
+    });
 
     let activeTab = $state<ActiveTab>("list");
-    let searchTerm = $state("");
     let errors = $state<Record<string, string>>({});
 
     let formData = $state<CreateClassRequest>({
@@ -75,31 +92,6 @@
         })),
     );
 
-    let newStudent = $state({
-        fullName: "",
-        studentCode: "",
-        email: "",
-    });
-
-    const selectedCount = $derived(students.filter((s) => s.selected).length);
-
-    const filteredStudents = $derived(
-        students.filter(
-            (s) =>
-                s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                s.studentCode.toLowerCase().includes(searchTerm.toLowerCase()),
-        ),
-    );
-
-    const allSelected = $derived(
-        filteredStudents.length > 0 &&
-            filteredStudents.every((s) => s.selected),
-    );
-
-    const indeterminate = $derived(
-        !allSelected && filteredStudents.some((s) => s.selected),
-    );
-
     // Cập nhật formData.students khi selected thay đổi
     $effect(() => {
         formData.students = students
@@ -110,11 +102,6 @@
                 email: email || `${studentCode}@student.edu.vn`,
             }));
     });
-
-    function toggleAll() {
-        const value = !allSelected;
-        students.forEach((s) => (s.selected = value));
-    }
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -127,34 +114,6 @@
             }
         };
         reader.readAsDataURL(input.files[0]);
-    }
-
-    function addStudent() {
-        if (!newStudent.fullName.trim() || !newStudent.studentCode.trim())
-            return;
-
-        const email =
-            newStudent.email.trim() ||
-            `${newStudent.studentCode.trim()}@student.edu.vn`;
-
-        students = [
-            {
-                fullName: newStudent.fullName.trim(),
-                studentCode: newStudent.studentCode.trim(),
-                email,
-                selected: true,
-            },
-            ...students,
-        ];
-
-        newStudent = { fullName: "", studentCode: "", email: "" };
-    }
-
-    function removeSelected() {
-        if (selectedCount === 0) return;
-        if (!confirm(`Xóa ${selectedCount} sinh viên đã chọn?`)) return;
-
-        students = students.filter((s) => !s.selected);
     }
 
     function handleSubmit(event: SubmitEvent) {
@@ -232,20 +191,10 @@
                     {errors}
                     onAvatarChange={handleFileChange}
                 />
-
                 <StudentManagement
+                    classDetail={detail}
                     {activeTab}
-                    {searchTerm}
-                    setSearchTerm={(value: string) => (searchTerm = value)}
-                    {students}
-                    {newStudent}
-                    {selectedCount}
-                    {filteredStudents}
-                    {allSelected}
-                    {indeterminate}
-                    {toggleAll}
-                    {addStudent}
-                    {removeSelected}
+                    setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
                 />
             </div>
 

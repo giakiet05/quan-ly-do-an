@@ -9,34 +9,30 @@
     } from "../libs/Icons";
     import { fade } from "svelte/transition";
     import { downloadWhitelistTemplate } from "../services/classroom-service";
+    import * as XLSX from "xlsx";
+    import type { ClassroomResponse } from "../dtos";
 
     type ActiveTab = "list" | "excel" | "upload";
 
-    interface Student {
-        fullName: string;
-        studentCode: string;
-        email: string;
-        selected: boolean;
-    }
-
     let allCheckbox = $state<HTMLInputElement>();
-    let uploadedFile = $state<File | null>(null);
+    let uploadedData = $state<string[]>([]);
 
-    const props = $props<{
+    const {
+        classDetail,
+        activeTab,
+        setActiveTab,
+        uploadedFile,
+        setUploadedFile,
+    } = $props<{
+        classDetail?: ClassroomResponse;
         activeTab: ActiveTab;
         setActiveTab: (tab: ActiveTab) => void;
-        searchTerm: string;
-        students: Student[];
-        setSearchTerm: (value: string) => void;
-        newStudent: { fullName: string; studentCode: string; email: string };
-        selectedCount: number;
-        filteredStudents: Student[];
-        allSelected: boolean;
-        indeterminate: boolean;
-        toggleAll: () => void;
-        addStudent: () => void;
-        removeSelected: () => void;
+        uploadedFile?: File | null;
+        setUploadedFile?: (file: File) => void;
     }>();
+    const whitelistStudents = $derived(
+        classDetail?.whitelistStudentCodes ?? [],
+    );
 
     async function downloadExcel() {
         try {
@@ -51,155 +47,108 @@
         const input = document.createElement("input");
         input.type = "file";
         input.accept = ".xlsx, .xls";
-        input.onchange = (e: Event) => {
+        input.onchange = async (e: Event) => {
             const target = e.target as HTMLInputElement;
             if (target.files && target.files.length > 0) {
-                uploadedFile = target.files[0];
+                const file = target.files[0];
+                setUploadedFile(file);
+
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: "array" });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                    header: 1,
+                });
+
+                // Extract only the "Student Code" column
+                uploadedData = jsonData
+                    .slice(1)
+                    .map((row: any) => row[0])
+                    .filter(Boolean);
             }
         };
         input.click();
     };
 
     const clearUploadedFile = () => {
-        uploadedFile = null;
+        setUploadedFile(null);
+        uploadedData = [];
     };
-
-    $effect(() => {
-        if (allCheckbox) {
-            allCheckbox.indeterminate = props.indeterminate;
-        }
-    });
 </script>
 
 <div class="content-area">
     <div class="tabs">
         <button
             type="button"
-            class:active={props.activeTab === "list"}
-            onclick={() => props.setActiveTab("list")}
+            class:active={activeTab === "list"}
+            onclick={() => setActiveTab("list")}
         >
-            Thêm thủ công
+            Danh sách sinh viên
         </button>
         <button
             type="button"
-            class:active={props.activeTab === "excel"}
-            onclick={() => props.setActiveTab("excel")}
+            class:active={activeTab === "excel"}
+            onclick={() => setActiveTab("excel")}
         >
             Tải Excel
         </button>
         <button
             type="button"
-            class:active={props.activeTab === "upload"}
-            onclick={() => props.setActiveTab("upload")}
+            class:active={activeTab === "upload"}
+            onclick={() => setActiveTab("upload")}
         >
-            Upload File
+            Upload Excel
         </button>
     </div>
-
-    {#if props.activeTab === "list"}
+    {#if activeTab === "list"}
         <div class="student-manager">
-            <div class="quick-add">
+            <!-- <div class="search-bar">
+                <Search size={18} />
                 <input
-                    placeholder="MSSV"
-                    bind:value={props.newStudent.studentCode}
+                    type="text"
+                    placeholder="Tìm kiếm MSSV..."
+                    bind:value={searchTerm}
                 />
-                <input
-                    placeholder="Họ tên"
-                    bind:value={props.newStudent.fullName}
-                />
-                <button
-                    type="button"
-                    class="add-btn"
-                    onclick={props.addStudent}
-                >
-                    <Plus size={20} />
-                </button>
-            </div>
-
-            <div class="search-bar">
-                <Search size={16} />
-                <input
-                    placeholder="Tìm theo tên hoặc MSSV..."
-                    value={props.searchTerm}
-                    oninput={(e) => props.setSearchTerm(e.currentTarget.value)}
-                />
-            </div>
+            </div> -->
 
             <div class="table-wrapper">
-                {#if props.selectedCount > 0}
-                    <div
-                        class="bulk-actions-bar"
-                        transition:fade={{ duration: 150 }}
-                    >
-                        <div class="selected-info">
-                            <span class="count">{props.selectedCount}</span> đã chọn
-                        </div>
-                        <div class="action-group">
-                            <button
-                                type="button"
-                                class="btn-bulk-edit"
-                                disabled={props.selectedCount != 1}
-                            >
-                                <Edit3 size={14} /> Sửa
-                            </button>
-                            <button
-                                type="button"
-                                class="btn-bulk-delete"
-                                onclick={props.removeSelected}
-                            >
-                                <Trash2 size={14} /> Xóa
-                            </button>
-                        </div>
-                    </div>
-                {/if}
-
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>
-                                    <input
-                                        type="checkbox"
-                                        bind:this={allCheckbox}
-                                        checked={props.allSelected}
-                                        onchange={props.toggleAll}
-                                    />
-                                </th>
                                 <th>MSSV</th>
-                                <th>Họ tên</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {#each props.filteredStudents as student (student.studentCode)}
-                                <tr class:selected={student.selected}>
-                                    <td>
-                                        <input
-                                            type="checkbox"
-                                            bind:checked={student.selected}
-                                        />
-                                    </td>
-                                    <td class="code">{student.studentCode}</td>
-                                    <td class="name">{student.fullName}</td>
+                            {#each whitelistStudents as studentCode (studentCode)}
+                                <tr>
+                                    <td class="code">{studentCode}</td>
                                 </tr>
                             {/each}
                         </tbody>
                     </table>
 
-                    {#if props.filteredStudents.length === 0}
+                    {#if whitelistStudents.length === 0}
                         <div class="empty-table">
-                            Không tìm thấy sinh viên nào
+                            <!-- {searchTerm
+                                ? "Không tìm thấy MSSV nào khớp"
+                                : "Lớp học chưa có sinh viên nào trong danh sách"} -->
+                            <div class="empty-state">
+                                <p>Không có sinh viên nào trong danh sách</p>
+                            </div>
                         </div>
                     {/if}
                 </div>
             </div>
         </div>
-    {:else if props.activeTab === "excel"}
+    {:else if activeTab === "excel"}
         <div class="excel-tab">
             <button type="button" onclick={downloadExcel}>
                 <Download size={20} /> Tải xuống mẫu Excel
             </button>
         </div>
-    {:else if props.activeTab === "upload"}
+    {:else if activeTab === "upload"}
         <div class="upload-tab">
             {#if uploadedFile}
                 <div class="uploaded-file">
@@ -211,6 +160,26 @@
                         Xóa
                     </button>
                 </div>
+                {#if uploadedData.length > 0}
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {#each uploadedData as studentCode}
+                                    <tr>
+                                        <td>{studentCode}</td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {:else}
+                    <p class="empty-table">Không có dữ liệu để hiển thị.</p>
+                {/if}
             {:else}
                 <button type="button" onclick={loadFileUpload}>
                     <Upload size={20} /> Upload
@@ -376,6 +345,7 @@
         border: 1px solid #edf2f7;
         border-radius: 12px;
         overflow: hidden;
+        margin-top: 16px;
     }
 
     table {
@@ -432,6 +402,7 @@
         text-align: center;
         color: #718096;
         font-style: italic;
+        margin-top: 16px;
     }
 
     input[type="checkbox"] {

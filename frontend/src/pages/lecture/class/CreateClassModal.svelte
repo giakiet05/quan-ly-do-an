@@ -16,7 +16,7 @@
 
     const { onClose, onSubmit } = $props<{
         onClose: () => void;
-        onSubmit: (data: CreateClassRequest) => void;
+        onSubmit: (data: CreateClassRequest, file?: File) => void;
     }>();
 
     type ActiveTab = "list" | "excel" | "upload";
@@ -43,8 +43,8 @@
             )
             .optional(),
     });
-
-    let activeTab = $state<ActiveTab>("list");
+    let uploadedFile = $state<File | null>(null);
+    let activeTab = $state<ActiveTab>("excel");
     let searchTerm = $state("");
     let errors = $state<Record<string, string>>({});
 
@@ -60,14 +60,6 @@
         mockStudents.map((s) => ({ ...s, selected: false })),
     );
 
-    let newStudent = $state({
-        fullName: "",
-        studentCode: "",
-        email: "",
-    });
-
-    const selectedCount = $derived(students.filter((s) => s.selected).length);
-
     const filteredStudents = $derived(
         students.filter(
             (s) =>
@@ -79,10 +71,6 @@
     const allSelected = $derived(
         filteredStudents.length > 0 &&
             filteredStudents.every((s) => s.selected),
-    );
-
-    const indeterminate = $derived(
-        !allSelected && filteredStudents.some((s) => s.selected),
     );
 
     // Cập nhật formData.students khi danh sách selected thay đổi
@@ -114,34 +102,6 @@
         reader.readAsDataURL(input.files[0]);
     }
 
-    function addStudent() {
-        if (!newStudent.fullName.trim() || !newStudent.studentCode.trim())
-            return;
-
-        const email =
-            newStudent.email.trim() ||
-            `${newStudent.studentCode.trim()}@student.edu.vn`;
-
-        students = [
-            {
-                fullName: newStudent.fullName.trim(),
-                studentCode: newStudent.studentCode.trim(),
-                email,
-                selected: true,
-            },
-            ...students,
-        ];
-
-        newStudent = { fullName: "", studentCode: "", email: "" };
-    }
-
-    function removeSelected() {
-        if (selectedCount === 0) return;
-        if (!confirm(`Xóa ${selectedCount} sinh viên đã chọn?`)) return;
-
-        students = students.filter((s) => !s.selected);
-    }
-
     function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
         errors = {};
@@ -155,7 +115,7 @@
             return;
         }
 
-        onSubmit(formData);
+        onSubmit(formData, uploadedFile);
     }
     function stopPropagation(event: MouseEvent) {
         event.stopPropagation();
@@ -210,17 +170,8 @@
                 <StudentManagement
                     {activeTab}
                     setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
-                    {searchTerm}
-                    setSearchTerm={(value: string) => (searchTerm = value)}
-                    {students}
-                    {newStudent}
-                    {selectedCount}
-                    {filteredStudents}
-                    {allSelected}
-                    {indeterminate}
-                    {toggleAll}
-                    {addStudent}
-                    {removeSelected}
+                    {uploadedFile}
+                    setUploadedFile={(file: File) => (uploadedFile = file)}
                 />
             </div>
 

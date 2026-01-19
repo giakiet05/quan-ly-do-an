@@ -211,7 +211,7 @@ export async function leaveClassroom(classroomId: string): Promise<void> {
  * Get all classrooms the student has joined
  */
 export async function getMyJoinedClassrooms(): Promise<ClassroomResponse[]> {
-  const response = await apiFetch<{classrooms: ClassroomResponse[], total: number, page: number, page_size: number}>(
+  const response = await apiFetch<{ classrooms: ClassroomResponse[], total: number, page: number, page_size: number }>(
     "/api/classrooms/joined"
   );
   return response.classrooms || [];
@@ -394,4 +394,22 @@ export async function downloadWhitelistTemplate(): Promise<void> {
   window.URL.revokeObjectURL(url);
 }
 
+
+//`POST /api/classrooms/:id/whitelist-student-code/upload upload file excel danh sách mã sinh viên`
+export async function uploadWhitelistStudentCodeFile(
+  classroomId: string,
+  file: File
+): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append("file", file);  // Thêm file vào formData
+
+  const response = await apiFetch<ApiResponse<{ message: string }>>(
+    `/api/classrooms/${classroomId}/whitelist-student-code/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+  return response.data!;
+}
 

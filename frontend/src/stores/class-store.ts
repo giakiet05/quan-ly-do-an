@@ -1,7 +1,7 @@
 // src/stores/class.store.ts
 import { writable, derived } from "svelte/store";
 import type { ClassItem, CreateClassRequest } from "../types/class";
-import { createClassroom, getMyClassrooms, updateClassroom } from "../services/classroom-service";
+import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile } from "../services/classroom-service";
 import { mapClassroomToClassItem, mapUIRequestToDTO } from "../mappers/classroom-mapper";
 import type { ClassroomResponse } from "../dtos/classroom-dto";
 
@@ -58,10 +58,13 @@ function createClassStore() {
         currentPage.set(1);
     }
 
-    async function addClass(uiData: CreateClassRequest) {
+    async function addClass(uiData: CreateClassRequest, file?: File) {
         try {
             const dtoPayload = mapUIRequestToDTO(uiData);
             const newClassRaw = await createClassroom(dtoPayload);
+            if (file) {
+                await uploadWhitelistStudentCodeFile(newClassRaw.id, file);
+            }
             console.log("New class created:", newClassRaw);
             const newClassMapped = mapClassroomToClassItem(newClassRaw);
             classes.update((list) => [newClassMapped, ...list]);
@@ -87,8 +90,15 @@ function createClassStore() {
         }
     }
 
-    function removeClass(name: string) {
-        classes.update((list) => list.filter((c) => c.name !== name));
+    // xóa gọi api xóa lớp học thật sự 
+    async function removeClass(id: string) {
+        try {
+            deleteClassroom(id);
+            classes.update((list) => list.filter((c) => c.id !== id));
+        } catch (err) {
+            console.error("Failed to delete classroom", err);
+            throw err;
+        }
     }
 
     async function fetchMyClasses() {

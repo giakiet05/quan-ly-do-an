@@ -48,15 +48,16 @@
     let showCreateModal = $state(false);
     let isProcessing = $state(false);
     let showEditModal = $state(false);
-    let editingClass: ClassItem | null = null;
+    let editingClass = $state<ClassItem | null>(null);
 
     async function handleCreateClass(
         classData: CreateClassRequest,
+        file?: File,
     ): Promise<void> {
         console.log(">>> PAGE ĐÃ NHẬN LỆNH TẠO LỚP:", classData);
         isProcessing = true;
         try {
-            await classStore.addClass(classData);
+            await classStore.addClass(classData, file);
             showCreateModal = false;
         } catch (err) {
             console.error("Failed to create class", err);
@@ -68,6 +69,16 @@
     function openEditModal(cls: ClassItem): void {
         editingClass = cls;
         showEditModal = true;
+    }
+
+    async function handleDeleteClass(id: string) {
+        if (
+            confirm(
+                "Bạn có chắc chắn muốn xóa lớp học này? Hành động này không thể hoàn tác.",
+            )
+        ) {
+            await removeClass(id);
+        }
     }
 </script>
 
@@ -166,7 +177,7 @@
                                     ><Edit2 size={18} /></button
                                 >
                                 <button
-                                    onclick={() => removeClass(cls.id)}
+                                    onclick={() => handleDeleteClass(cls.id)}
                                     class="text-red-600"
                                     ><Trash2 size={18} /></button
                                 >
