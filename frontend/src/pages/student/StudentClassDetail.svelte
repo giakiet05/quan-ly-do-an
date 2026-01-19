@@ -81,19 +81,6 @@
                     description: "Phát triển ứng dụng web hoàn chỉnh",
                     startDate: "2024-02-01T00:00:00Z",
                     endDate: "2024-05-31T23:59:59Z",
-                    projects: [
-                      {
-                        id: "proj1",
-                        classroomId: params.id,
-                        projectRoundId: "round1",
-                        title: "Hệ thống quản lý thư viện",
-                        amount: 5,
-                        description: "Xây dựng hệ thống quản lý thư viện",
-                        minMember: 2,
-                        maxMember: 4,
-                        status: "approved",
-                      },
-                    ],
                     reportPeriods: [
                       {
                         id: "rp1",
@@ -115,7 +102,6 @@
                     description: "Nghiên cứu và ứng dụng AI",
                     startDate: "2024-02-01T00:00:00Z",
                     endDate: "2024-05-31T23:59:59Z",
-                    projects: [],
                     reportPeriods: [],
                     createdAt: "2024-01-15T00:00:00Z",
                     isDeleted: false,
