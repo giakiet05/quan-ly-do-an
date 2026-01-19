@@ -153,7 +153,7 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 
 	broadcastEvent := bus.BroadcastEvent{
 		RecipientIDs: recipientIDs,
-		EventType:    bus.BroadcastEventMessageCreated,
+		EventType:    bus.BroadcastEventReportOpened,
 		TempID:       tempMessageID,
 		Data:         dto.FromMessage(message),
 	}

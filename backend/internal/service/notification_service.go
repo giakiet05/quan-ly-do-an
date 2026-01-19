@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -44,7 +45,7 @@ func NewNotificationService(
 
 func (s *notificationService) Start() {
 	eventChannel := make(bus.EventListener, 100)
-	
+
 	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
 	s.eventBus.Subscribe(bus.TopicGroupInvitation, eventChannel)
 	s.eventBus.Subscribe(bus.TopicClassroomInvitation, eventChannel)
@@ -72,73 +73,255 @@ func (s *notificationService) handleBroadcast(event bus.Event) {
 	defer cancel()
 
 	payload := event.Payload()
-	recipientIDs, _ := payload["recipient_ids"].([]string)
-	eventType, _ := payload["event_type"].(bus.BroadcastEventType)
-	data := payload["data"]
 
+	recipientIDs, _ := payload["recipient_ids"].([]string)
 	if len(recipientIDs) == 0 {
 		return
 	}
 
+	eventType, _ := payload["event_type"].(bus.BroadcastEventType)
+	data := payload["data"]
+
 	switch eventType {
 	case bus.BroadcastEventMessageCreated:
-		var messageData dto.MessageResponse
-		if err := util.DecodeJson(data, &messageData); err != nil {
-			log.Printf("Failed to decode message: %v", err)
-			return
-		}
+		s.handleMessageCreated(ctx, recipientIDs, data)
 
-		senderObjectID, err := primitive.ObjectIDFromHex(messageData.SenderID)
-		if err != nil {
-			return
-		}
+	case bus.BroadcastEventReportOpened:
+		s.handleReportOpened(ctx, recipientIDs, data)
 
-		// Redis key for active users
-		key := fmt.Sprintf(config.RedisActiveUsersKey, messageData.ChannelID)
-		for _, rid := range recipientIDs {
-			if rid == messageData.SenderID {
-				continue
-			}
+	case bus.BroadcastReportNearDeadline:
+		s.handleReportNearDeadline(ctx, recipientIDs, data)
 
-			// Check if user is currently active in this chat
-			rctx, rcancel := util.NewDefaultDBContext()
-			isInChat, err := s.redisClient.SIsMember(rctx, key, rid).Result()
-			defer rcancel()
-			if err != nil {
-				log.Printf("Failed to check active users: %v", err)
-				continue
-			}
-			if isInChat {
-				continue
-			}
+	case bus.BroadcastEventProjectRegistrationOpened:
+		s.handleProjectRegistrationOpened(ctx, recipientIDs, data)
 
-			recipientObjectID, err := primitive.ObjectIDFromHex(rid)
-			if err != nil {
-				continue
-			}
-
-			notification := &model.Notification{
-				RecipientID: recipientObjectID,
-				ActorID:     senderObjectID,
-				Type:        model.NotificationTypeNewMessage,
-				Message:     fmt.Sprintf("Tin nhắn mới từ %s", messageData.SenderUsername),
-				Link:        fmt.Sprintf("/channels/%s", messageData.ChannelID),
-				IsRead:      false,
-				CreatedAt:   time.Now(),
-			}
-			createdNotification, err := s.notificationRepo.Create(ctx, notification)
-			if err != nil {
-				log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
-				continue
-			}
-
-			// Publish event for each recipient
-			s.eventBus.Publish(bus.NotificationCreatedEvent{
-				RecipientID:  rid,
-				Notification: dto.FromNotification(createdNotification),
-			})
-		}
+	case bus.BroadcastEventProjectRegistrationDeadline:
+		s.handleProjectRegistrationDeadline(ctx, recipientIDs, data)
 	}
+}
+
+func (s *notificationService) handleMessageCreated(
+	ctx context.Context,
+	recipientIDs []string,
+	data interface{},
+) {
+	var messageData dto.MessageResponse
+	if err := util.DecodeJson(data, &messageData); err != nil {
+		log.Printf("Failed to decode message: %v", err)
+		return
+	}
+
+	senderOID, err := primitive.ObjectIDFromHex(messageData.SenderID)
+	if err != nil {
+		return
+	}
+
+	key := fmt.Sprintf(config.RedisActiveUsersKey, messageData.ChannelID)
+
+	for _, rid := range recipientIDs {
+		if rid == messageData.SenderID {
+			continue
+		}
+
+		if s.isUserActiveInChannel(key, rid) {
+			continue
+		}
+
+		recipientOID, err := primitive.ObjectIDFromHex(rid)
+		if err != nil {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: recipientOID,
+			ActorID:     senderOID,
+			Type:        model.NotificationTypeNewMessage,
+			Message:     fmt.Sprintf("Tin nhắn mới từ %s", messageData.SenderUsername),
+			Link:        fmt.Sprintf("/channels/%s", messageData.ChannelID),
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
+
+		s.createAndPublish(ctx, rid, notification)
+	}
+}
+
+func (s *notificationService) handleReportOpened(
+	ctx context.Context,
+	recipientIDs []string,
+	data interface{},
+) {
+	var reportData map[string]interface{}
+	if err := util.DecodeJson(data, &reportData); err != nil {
+		log.Printf("Failed to decode report opened data: %v", err)
+		return
+	}
+
+	reportTitle, _ := reportData["report_period_title"].(string)
+	projectRoundName, _ := reportData["project_round_name"].(string)
+	classroomID, _ := reportData["classroom_id"].(string)
+	reportPeriodID, _ := reportData["report_period_id"].(string)
+
+	for _, rid := range recipientIDs {
+		recipientOID, err := primitive.ObjectIDFromHex(rid)
+		if err != nil {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: recipientOID,
+			Type:        model.NotificationTypeReportOpened,
+			Message:     fmt.Sprintf("Đợt báo cáo '%s' của %s đã mở", reportTitle, projectRoundName),
+			Link:        fmt.Sprintf("/classrooms/%s/reports/%s", classroomID, reportPeriodID),
+			IsRead:      false,
+			Metadata:    reportData,
+			CreatedAt:   time.Now(),
+		}
+
+		s.createAndPublish(ctx, rid, notification)
+	}
+}
+
+func (s *notificationService) handleReportNearDeadline(
+	ctx context.Context,
+	recipientIDs []string,
+	data interface{},
+) {
+	var reportData map[string]interface{}
+	if err := util.DecodeJson(data, &reportData); err != nil {
+		log.Printf("Failed to decode report deadline data: %v", err)
+		return
+	}
+
+	reportTitle, _ := reportData["report_period_title"].(string)
+	daysRemaining, _ := reportData["days_remaining"].(int)
+	classroomID, _ := reportData["classroom_id"].(string)
+	reportPeriodID, _ := reportData["report_period_id"].(string)
+
+	for _, rid := range recipientIDs {
+		recipientOID, err := primitive.ObjectIDFromHex(rid)
+		if err != nil {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: recipientOID,
+			Type:        model.NotificationTypeReportDeadline,
+			Message: fmt.Sprintf("Báo cáo '%s' sắp đến hạn nộp (còn %d ngày)",
+				reportTitle,
+				daysRemaining,
+			),
+			Link:      fmt.Sprintf("/classrooms/%s/reports/%s", classroomID, reportPeriodID),
+			IsRead:    false,
+			Metadata:  reportData,
+			CreatedAt: time.Now(),
+		}
+
+		s.createAndPublish(ctx, rid, notification)
+	}
+}
+
+func (s *notificationService) handleProjectRegistrationOpened(
+	ctx context.Context,
+	recipientIDs []string,
+	data interface{},
+) {
+	var projectData map[string]interface{}
+	if err := util.DecodeJson(data, &projectData); err != nil {
+		log.Printf("Failed to decode project registration opened data: %v", err)
+		return
+	}
+
+	projectRoundName, _ := projectData["project_round_name"].(string)
+	classroomID, _ := projectData["classroom_id"].(string)
+	projectRoundID, _ := projectData["project_round_id"].(string)
+
+	for _, rid := range recipientIDs {
+		recipientOID, err := primitive.ObjectIDFromHex(rid)
+		if err != nil {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: recipientOID,
+			Type:        model.NotificationTypeProjectRegistrationOpened,
+			Message:     fmt.Sprintf("Đợt đăng ký đồ án '%s' đã mở", projectRoundName),
+			Link:        fmt.Sprintf("/classrooms/%s/project-rounds/%s", classroomID, projectRoundID),
+			IsRead:      false,
+			Metadata:    projectData,
+			CreatedAt:   time.Now(),
+		}
+
+		s.createAndPublish(ctx, rid, notification)
+	}
+}
+
+func (s *notificationService) handleProjectRegistrationDeadline(
+	ctx context.Context,
+	recipientIDs []string,
+	data interface{},
+) {
+	var projectData map[string]interface{}
+	if err := util.DecodeJson(data, &projectData); err != nil {
+		log.Printf("Failed to decode project registration deadline data: %v", err)
+		return
+	}
+
+	projectRoundName, _ := projectData["project_round_name"].(string)
+	daysRemaining, _ := projectData["days_remaining"].(int)
+	classroomID, _ := projectData["classroom_id"].(string)
+	projectRoundID, _ := projectData["project_round_id"].(string)
+
+	for _, rid := range recipientIDs {
+		recipientOID, err := primitive.ObjectIDFromHex(rid)
+		if err != nil {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: recipientOID,
+			Type:        model.NotificationTypeProjectRegistrationDeadline,
+			Message: fmt.Sprintf("Đợt đăng ký đồ án '%s' sắp kết thúc (còn %d ngày)",
+				projectRoundName,
+				daysRemaining,
+			),
+			Link:      fmt.Sprintf("/classrooms/%s/project-rounds/%s", classroomID, projectRoundID),
+			IsRead:    false,
+			Metadata:  projectData,
+			CreatedAt: time.Now(),
+		}
+
+		s.createAndPublish(ctx, rid, notification)
+	}
+}
+
+func (s *notificationService) isUserActiveInChannel(redisKey, userID string) bool {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	isMember, err := s.redisClient.SIsMember(ctx, redisKey, userID).Result()
+	if err != nil {
+		log.Printf("Redis check failed: %v", err)
+		return false
+	}
+	return isMember
+}
+
+func (s *notificationService) createAndPublish(
+	ctx context.Context,
+	recipientID string,
+	notification *model.Notification,
+) {
+	created, err := s.notificationRepo.Create(ctx, notification)
+	if err != nil {
+		log.Printf("Failed to create notification: %v", err)
+		return
+	}
+
+	s.eventBus.Publish(bus.NotificationCreatedEvent{
+		RecipientID:  recipientID,
+		Notification: dto.FromNotification(created),
+	})
 }
 
 func (s *notificationService) handleGroupInvitation(event bus.Event) {
@@ -212,6 +395,19 @@ func (s *notificationService) handleClassroomInvitation(event bus.Event) {
 		RecipientID:  inviteeID,
 		Notification: dto.FromNotification(createdNotification),
 	})
+}
+
+func (s *notificationService) handleReportPeriodOpened(event bus.Event) {
+	// This event is published by project service but notifications are sent via BroadcastEvent
+	// Just log for monitoring purposes
+	payload := event.Payload()
+	classroomID, _ := payload["classroom_id"].(string)
+	projectRoundName, _ := payload["project_round_name"].(string)
+	reportPeriodTitle, _ := payload["report_period_title"].(string)
+	endDate, _ := payload["end_date"].(time.Time)
+
+	log.Printf("Report period opened: %s - %s in classroom %s (deadline: %s)",
+		projectRoundName, reportPeriodTitle, classroomID, endDate.Format("2006-01-02"))
 }
 
 func (s *notificationService) GetNotifications(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error) {

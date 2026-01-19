@@ -46,14 +46,3 @@ type Classroom struct {
 
 	CreatedAt time.Time `bson:"created_at" json:"created_at"`
 }
-
-type ProjectRound struct {
-	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name          string             `bson:"name" json:"name"`
-	StartDate     time.Time          `bson:"start_date" json:"start_date"`
-	EndDate       time.Time          `bson:"end_date" json:"end_date"`
-	Description   string             `bson:"description" json:"description"`
-	ReportPeriods []ReportPeriod     `bson:"report_periods" json:"report_periods"`
-	CreatedAt     time.Time          `bson:"created_at" json:"created_at"`
-	IsDeleted     bool               `bson:"is_deleted" json:"is_deleted"`
-}

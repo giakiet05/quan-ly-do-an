@@ -23,8 +23,10 @@ type ProjectRepo interface {
 	ListProjectRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error)
 	DeleteProjectRound(ctx context.Context, classroomID, roundID string) error
 
-	//GetJustOpenReportPeriods(ctx context.Context, now time.Time) ([]dto.ReportPeriodWithProjectRound, error)
+	GetJustOpenReportPeriods(ctx context.Context, now time.Time) ([]dto.ReportPeriodWithProjectRound, error)
+	GetNearDeadlineReportPeriods(ctx context.Context, now time.Time, daysBeforeDeadline int) ([]dto.ReportPeriodWithProjectRound, error)
 	GetJustOpenProjectRounds(ctx context.Context, now time.Time) ([]dto.ProjectRoundWithClassroom, error)
+	GetNearDeadlineProjectRounds(ctx context.Context, now time.Time, daysBeforeDeadline int) ([]dto.ProjectRoundWithClassroom, error)
 
 	CreateProject(ctx context.Context, project *model.Project) error
 	CreateProjects(ctx context.Context, projects []model.Project) error
@@ -274,6 +276,106 @@ func (p *projectRepo) DeleteProjectRound(
 	return nil
 }
 
+func (p *projectRepo) GetJustOpenReportPeriods(ctx context.Context, now time.Time) ([]dto.ReportPeriodWithProjectRound, error) {
+	loc := now.Location()
+
+	startOfDay := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		0, 0, 0, 0,
+		loc,
+	)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	pipeline := mongo.Pipeline{
+		// 1️⃣ explode rounds
+		{{Key: "$unwind", Value: "$rounds"}},
+
+		// 2️⃣ explode report_periods
+		{{Key: "$unwind", Value: "$rounds.report_periods"}},
+
+		// 3️⃣ filter by day + not deleted
+		{{Key: "$match", Value: bson.M{
+			"rounds.report_periods.start_date": bson.M{
+				"$gte": startOfDay,
+				"$lt":  endOfDay,
+			},
+			"rounds.is_deleted": false,
+		}}},
+
+		// 4️⃣ shape result
+		{{Key: "$project", Value: bson.M{
+			"_id":               0,
+			"classroom_id":      "$_id",
+			"project_round_id":  "$rounds._id",
+			"project_round_name": "$rounds.name",
+			"report_periods":    "$rounds.report_periods",
+		}}},
+	}
+
+	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []dto.ReportPeriodWithProjectRound
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (p *projectRepo) GetNearDeadlineReportPeriods(ctx context.Context, now time.Time, daysBeforeDeadline int) ([]dto.ReportPeriodWithProjectRound, error) {
+	loc := now.Location()
+
+	startOfToday := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		0, 0, 0, 0,
+		loc,
+	)
+	endOfDeadlineDay := startOfToday.AddDate(0, 0, daysBeforeDeadline).Add(24 * time.Hour)
+
+	pipeline := mongo.Pipeline{
+		// 1️⃣ explode rounds
+		{{Key: "$unwind", Value: "$rounds"}},
+
+		// 2️⃣ explode report_periods
+		{{Key: "$unwind", Value: "$rounds.report_periods"}},
+
+		// 3️⃣ filter by deadline range + not deleted
+		{{Key: "$match", Value: bson.M{
+			"rounds.report_periods.end_date": bson.M{
+				"$gte": startOfToday,
+				"$lte": endOfDeadlineDay,
+			},
+			"rounds.is_deleted": false,
+		}}},
+
+		// 4️⃣ shape result
+		{{Key: "$project", Value: bson.M{
+			"_id":                0,
+			"classroom_id":       "$_id",
+			"project_round_id":   "$rounds._id",
+			"project_round_name": "$rounds.name",
+			"report_periods":     "$rounds.report_periods",
+		}}},
+	}
+
+	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []dto.ReportPeriodWithProjectRound
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
 func (p *projectRepo) GetJustOpenProjectRounds(
 	ctx context.Context,
 	now time.Time,
@@ -289,10 +391,8 @@ func (p *projectRepo) GetJustOpenProjectRounds(
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		// 1️⃣ explode rounds
 		{{Key: "$unwind", Value: "$rounds"}},
 
-		// 2️⃣ filter by day + not deleted
 		{{Key: "$match", Value: bson.M{
 			"rounds.start_date": bson.M{
 				"$gte": startOfDay,
@@ -301,7 +401,49 @@ func (p *projectRepo) GetJustOpenProjectRounds(
 			"rounds.is_deleted": false,
 		}}},
 
-		// 3️⃣ shape result
+		{{Key: "$project", Value: bson.M{
+			"_id":            0,
+			"classroom_id":   "$_id",
+			"classroom_name": "$name",
+			"round":          "$rounds",
+		}}},
+	}
+
+	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []dto.ProjectRoundWithClassroom
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (p *projectRepo) GetNearDeadlineProjectRounds(ctx context.Context, now time.Time, daysBeforeDeadline int) ([]dto.ProjectRoundWithClassroom, error) {
+	loc := now.Location()
+
+	startOfToday := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		0, 0, 0, 0,
+		loc,
+	)
+	endOfDeadlineDay := startOfToday.AddDate(0, 0, daysBeforeDeadline).Add(24 * time.Hour)
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$unwind", Value: "$rounds"}},
+
+		{{Key: "$match", Value: bson.M{
+			"rounds.end_date": bson.M{
+				"$gte": startOfToday,
+				"$lte": endOfDeadlineDay,
+			},
+			"rounds.is_deleted": false,
+		}}},
+
 		{{Key: "$project", Value: bson.M{
 			"_id":            0,
 			"classroom_id":   "$_id",
@@ -415,7 +557,7 @@ func (p *projectRepo) GetProjectsByRoundID(
 
 func (p *projectRepo) ReplaceProject(ctx context.Context, project *model.Project) error {
 	filter := bson.M{"_id": project.ID}
-	
+
 	res, err := p.projectCollection.ReplaceOne(ctx, filter, project)
 	if err != nil {
 		return err
