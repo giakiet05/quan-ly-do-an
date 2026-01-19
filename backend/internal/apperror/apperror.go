@@ -152,4 +152,7 @@ var (
 	ErrInvalidEmailDomain          = AppError{Code: "INVALID_EMAIL_DOMAIN", Message: "Email domain not allowed for this classroom"}
 	ErrJoinRequestNotFound         = AppError{Code: "JOIN_REQUEST_NOT_FOUND", Message: "Join request not found"}
 	ErrJoinRequestAlreadyProcessed = AppError{Code: "JOIN_REQUEST_ALREADY_PROCESSED", Message: "Join request has already been processed"}
+	ErrAlreadyCoLecturer           = AppError{Code: "ALREADY_CO_LECTURER", Message: "User is already a co-lecturer of this classroom"}
+	ErrAlreadyLecturer             = AppError{Code: "ALREADY_LECTURER", Message: "User is already the lecturer of this classroom"}
+	ErrCannotInviteSelf            = AppError{Code: "CANNOT_INVITE_SELF", Message: "Cannot invite yourself"}
 )

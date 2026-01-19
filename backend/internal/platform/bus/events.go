@@ -41,7 +41,8 @@ const (
 	TopicProjectRegistrationExpired  = "project.registration.expired"
 
 	// Class
-	TopicClassUpdated = "class.updated"
+	TopicClassUpdated         = "class.updated"
+	TopicClassroomInvitation  = "classroom.invitation"
 )
 
 type BroadcastEventType string
@@ -247,5 +248,28 @@ func (e GroupInvitationEvent) Payload() map[string]interface{} {
 		"is_accepted":  e.IsAccepted,
 		"sent_at":      e.SentAt,
 		"responded_at": e.RespondedAt,
+	}
+}
+
+type ClassroomInvitationEvent struct {
+	InvitationID  string `json:"invitation_id"`
+	ClassroomID   string `json:"classroom_id"`
+	ClassroomName string `json:"classroom_name"`
+	InviterID     string `json:"inviter_id"`
+	InviterName   string `json:"inviter_name"`
+	InviteeID     string `json:"invitee_id"`
+}
+
+func (e ClassroomInvitationEvent) Topic() string {
+	return TopicClassroomInvitation
+}
+func (e ClassroomInvitationEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"invitation_id":  e.InvitationID,
+		"classroom_id":   e.ClassroomID,
+		"classroom_name": e.ClassroomName,
+		"inviter_id":     e.InviterID,
+		"inviter_name":   e.InviterName,
+		"invitee_id":     e.InviteeID,
 	}
 }

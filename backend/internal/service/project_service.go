@@ -50,7 +50,7 @@ func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, 
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (p *projectService) CreateProjectRounds(req *dto.CreateProjectRoundsRequest
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (p *projectService) UpdateProjectRound(req *dto.UpdateProjectRoundRequest, 
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (p *projectService) DeleteProjectRound(classroomID, roundID string, request
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, classroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (p *projectService) CreateProject(req *dto.CreateProjectRequest, requesterI
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (p *projectService) CreateProjects(req *dto.CreateProjectsRequest, requeste
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (p *projectService) UpdateProject(req *dto.UpdateProjectRequest, requesterI
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,7 @@ func (p *projectService) DeleteProject(classroomID, projectID string, requesterI
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, classroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
 	if err != nil {
 		return err
 	}
@@ -356,7 +356,7 @@ func (p *projectService) CreateReportPeriod(req *dto.CreateReportPeriodRequest, 
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, classroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func (p *projectService) CreateReportPeriods(req *dto.CreateReportPeriodsRequest
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, classroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +450,7 @@ func (p *projectService) UpdateReportPeriod(req *dto.UpdateReportPeriodRequest, 
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, req.ClassroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, req.ClassroomID, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +499,7 @@ func (p *projectService) DeleteReportPeriod(classroomID, roundID, reportPeriodID
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	isLecturer, err := p.classroomRepo.IsLecturer(ctx, classroomID, requesterID)
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
 	if err != nil {
 		return err
 	}
