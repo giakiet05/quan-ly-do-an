@@ -1,4 +1,5 @@
 import type { ApiResponse } from "../dtos/api-response-dto";
+import { convertKeysToCamel, convertKeysToSnake } from "./case-converter";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -104,6 +105,16 @@ export async function apiFetch<T = any>(
   // Only set Content-Type to JSON if not FormData (FormData needs browser to set multipart/form-data with boundary)
   if (!(fetchOptions.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
+    
+    // Convert request body from camelCase to snake_case for backend
+    if (fetchOptions.body && typeof fetchOptions.body === 'string') {
+      try {
+        const parsed = JSON.parse(fetchOptions.body);
+        fetchOptions.body = JSON.stringify(convertKeysToSnake(parsed));
+      } catch {
+        // Keep original if not valid JSON
+      }
+    }
   }
 
   // Add authorization header if not skipping auth
@@ -168,14 +179,17 @@ export async function apiFetch<T = any>(
   if (contentType?.includes("application/json")) {
     const jsonResponse: ApiResponse<T> = await response.json();
     
+    // Convert response from snake_case to camelCase
+    const convertedResponse = convertKeysToCamel<ApiResponse<T>>(jsonResponse);
+    
     // Backend wraps all responses in ApiResponse { success, message, data }
     // Extract and return only the data field
-    if (jsonResponse.data !== undefined) {
-      return jsonResponse.data as T;
+    if (convertedResponse.data !== undefined) {
+      return convertedResponse.data as T;
     }
     
     // If no data field, return the whole response (e.g., for error responses)
-    return jsonResponse as any;
+    return convertedResponse as any;
   }
 
   // For non-JSON responses (e.g., file downloads)
