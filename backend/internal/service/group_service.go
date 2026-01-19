@@ -385,6 +385,16 @@ func (g *groupService) CreateJoinRequest(req *dto.CreateJoinGroupRequest, reques
 		return nil, err
 	}
 
+	// Publish event for notification to group leader
+	g.eventBus.Publish(bus.GroupJoinRequestEvent{
+		GroupID:     req.GroupID,
+		RequesterID: requesterID,
+		LeaderID:    group.LeaderID.Hex(),
+		Message:     req.Message,
+		Status:      string(model.RequestPending),
+		RequestedAt: joinRequest.RequestedAt,
+	})
+
 	return &joinRequest, nil
 }
 
@@ -392,7 +402,6 @@ func (g *groupService) AcceptJoinRequest(req *dto.UpdateJoinGroupRequest, reques
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// Only group leader can accept join requests
 	ok, err := g.groupRepo.IsLeader(ctx, req.GroupID, requesterID)
 	if err != nil {
 		return err
@@ -409,12 +418,6 @@ func (g *groupService) AcceptJoinRequest(req *dto.UpdateJoinGroupRequest, reques
 	requestOID, err := primitive.ObjectIDFromHex(req.RequestID)
 	if err != nil {
 		return apperror.ErrInvalidID
-	}
-
-	// Get group and join request
-	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
-	if err != nil {
-		return err
 	}
 
 	joinRequest, err := g.groupRepo.GetJoinRequestByID(ctx, groupOID, requestOID)
@@ -435,38 +438,45 @@ func (g *groupService) AcceptJoinRequest(req *dto.UpdateJoinGroupRequest, reques
 		return apperror.ErrBadRequest
 	}
 
-	// Get user info
 	user, err := g.userRepo.GetByID(ctx, joinRequest.UserID.Hex())
 	if err != nil {
 		return err
 	}
 
-	userInfo := model.UserInfo{
-		ID:          user.ID,
-		FullName:    user.FullName,
-		Avatar:      user.Avatar,
-		StudentCode: user.StudentCode,
-	}
-
-	// Add user to group and update request status
 	err = g.groupRepo.AddMember(ctx, req.GroupID, user)
 	if err != nil {
 		return err
 	}
 
-	// Update request status
 	filter := repo.Filter{
-		"_id":                groupOID,
+		"_id":               groupOID,
 		"join_requests._id": requestOID,
 	}
+	now := time.Now()
 	update := repo.UpdateDocument{
 		"$set": bson.M{
-			"join_requests.$.status":      model.RequestAccepted,
-			"join_requests.$.updated_at": time.Now(),
+			"join_requests.$.status":     model.RequestAccepted,
+			"join_requests.$.updated_at": now,
 		},
 	}
 
-	return g.groupRepo.Update(ctx, filter, update)
+	err = g.groupRepo.Update(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	// Publish event for notification to requester
+	g.eventBus.Publish(bus.GroupJoinRequestEvent{
+		GroupID:     req.GroupID,
+		RequesterID: joinRequest.UserID.Hex(),
+		LeaderID:    requesterID,
+		Message:     joinRequest.Message,
+		Status:      string(model.RequestAccepted),
+		RequestedAt: joinRequest.RequestedAt,
+		UpdatedAt:   &now,
+	})
+
+	return nil
 }
 
 func (g *groupService) RejectJoinRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error {
@@ -492,19 +502,43 @@ func (g *groupService) RejectJoinRequest(req *dto.UpdateJoinGroupRequest, reques
 		return apperror.ErrInvalidID
 	}
 
+	// Get join request for notification
+	groupOID2 := groupOID
+	joinRequest, err := g.groupRepo.GetJoinRequestByID(ctx, groupOID2, requestOID)
+	if err != nil {
+		return err
+	}
+
 	// Update request status
 	filter := repo.Filter{
-		"_id":                groupOID,
+		"_id":               groupOID,
 		"join_requests._id": requestOID,
 	}
+	now := time.Now()
 	update := repo.UpdateDocument{
 		"$set": bson.M{
-			"join_requests.$.status":      model.RequestRejected,
-			"join_requests.$.updated_at": time.Now(),
+			"join_requests.$.status":     model.RequestRejected,
+			"join_requests.$.updated_at": now,
 		},
 	}
 
-	return g.groupRepo.Update(ctx, filter, update)
+	err = g.groupRepo.Update(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	// Publish event for notification to requester
+	g.eventBus.Publish(bus.GroupJoinRequestEvent{
+		GroupID:     req.GroupID,
+		RequesterID: joinRequest.UserID.Hex(),
+		LeaderID:    requesterID,
+		Message:     joinRequest.Message,
+		Status:      string(model.RequestRejected),
+		RequestedAt: joinRequest.RequestedAt,
+		UpdatedAt:   &now,
+	})
+
+	return nil
 }
 
 // Invitations - Group leader invites a student
@@ -538,14 +572,12 @@ func (g *groupService) InviteToGroup(req *dto.CreateGroupInvitationRequest, requ
 		return nil, err
 	}
 
-	// Check if recipient is already a member
 	for _, member := range group.Members {
 		if member.ID == recipientOID {
 			return nil, apperror.ErrBadRequest
 		}
 	}
 
-	// Check if group is at max capacity
 	isMaxReached, err := g.groupRepo.IsMaxMemberReached(ctx, req.GroupID)
 	if err != nil {
 		return nil, err
@@ -561,7 +593,6 @@ func (g *groupService) InviteToGroup(req *dto.CreateGroupInvitationRequest, requ
 		}
 	}
 
-	// Create invitation
 	invitation := model.JoinGroupInvitation{
 		ID:          primitive.NewObjectID(),
 		GroupID:     groupOID,
@@ -570,7 +601,6 @@ func (g *groupService) InviteToGroup(req *dto.CreateGroupInvitationRequest, requ
 		SentAt:      time.Now(),
 	}
 
-	// Add invitation to group
 	filter := repo.Filter{"_id": groupOID}
 	update := repo.UpdateDocument{
 		"$push": bson.M{"join_invitations": invitation},
@@ -581,7 +611,6 @@ func (g *groupService) InviteToGroup(req *dto.CreateGroupInvitationRequest, requ
 		return nil, err
 	}
 
-	// Publish event for notification
 	g.eventBus.Publish(bus.GroupInvitationEvent{
 		GroupID:     req.GroupID,
 		InviterID:   requesterID,
@@ -608,13 +637,11 @@ func (g *groupService) AcceptInvitation(req *dto.UpdateGroupInvitationRequest, r
 		return apperror.ErrInvalidID
 	}
 
-	// Get invitation
 	invitation, err := g.groupRepo.GetInvitationByID(ctx, groupOID, invitationOID)
 	if err != nil {
 		return err
 	}
-
-	// Only the invited user can accept
+	
 	if invitation.RecipientID.Hex() != requesterID {
 		return apperror.ErrForbidden
 	}
@@ -657,7 +684,28 @@ func (g *groupService) AcceptInvitation(req *dto.UpdateGroupInvitationRequest, r
 		},
 	}
 
-	return g.groupRepo.Update(ctx, filter, update)
+	err = g.groupRepo.Update(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	// Get group to get leader ID for notification
+	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	// Publish event for notification
+	g.eventBus.Publish(bus.GroupInvitationEvent{
+		GroupID:     req.GroupID,
+		InviterID:   group.LeaderID.Hex(),
+		InviteeID:   requesterID,
+		IsAccepted:  true,
+		SentAt:      invitation.SentAt,
+		RespondedAt: &now,
+	})
+
+	return nil
 }
 
 func (g *groupService) RejectInvitation(req *dto.UpdateGroupInvitationRequest, requesterID string) error {
@@ -702,7 +750,28 @@ func (g *groupService) RejectInvitation(req *dto.UpdateGroupInvitationRequest, r
 		},
 	}
 
-	return g.groupRepo.Update(ctx, filter, update)
+	err = g.groupRepo.Update(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	// Get group to get leader ID for notification
+	group, err := g.groupRepo.GetByID(ctx, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	// Publish event for notification
+	g.eventBus.Publish(bus.GroupInvitationEvent{
+		GroupID:     req.GroupID,
+		InviterID:   group.LeaderID.Hex(),
+		InviteeID:   requesterID,
+		IsAccepted:  false,
+		SentAt:      invitation.SentAt,
+		RespondedAt: &now,
+	})
+
+	return nil
 }
 
 func (g *groupService) CreateTask(req *dto.CreateTaskRequest, requesterID string) (*model.Task, error) {

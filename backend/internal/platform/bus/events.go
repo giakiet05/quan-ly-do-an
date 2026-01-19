@@ -29,6 +29,7 @@ const (
 
 	// Group
 	TopicGroupInvitation = "group.invitation"
+	TopicGroupJoinRequest = "group.join_request"
 
 	// Project Report
 	TopicReportSubmitted = "report.submitted"
@@ -253,6 +254,32 @@ func (e GroupInvitationEvent) Payload() map[string]interface{} {
 		"is_accepted":  e.IsAccepted,
 		"sent_at":      e.SentAt,
 		"responded_at": e.RespondedAt,
+	}
+}
+
+type GroupJoinRequestEvent struct {
+	GroupID     string     `json:"group_id"`
+	RequesterID string     `json:"requester_id"`
+	LeaderID    string     `json:"leader_id"`
+	Message     string     `json:"message"`
+	Status      string     `json:"status"`
+	RequestedAt time.Time  `json:"requested_at"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
+}
+
+func (e GroupJoinRequestEvent) Topic() string {
+	return TopicGroupJoinRequest
+}
+
+func (e GroupJoinRequestEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"group_id":     e.GroupID,
+		"requester_id": e.RequesterID,
+		"leader_id":    e.LeaderID,
+		"message":      e.Message,
+		"status":       e.Status,
+		"requested_at": e.RequestedAt,
+		"updated_at":   e.UpdatedAt,
 	}
 }
 

@@ -54,6 +54,7 @@ func (s *notificationService) Start() {
 
 	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
 	s.eventBus.Subscribe(bus.TopicGroupInvitation, eventChannel)
+	s.eventBus.Subscribe(bus.TopicGroupJoinRequest, eventChannel)
 	s.eventBus.Subscribe(bus.TopicClassroomInvitation, eventChannel)
 	s.eventBus.Subscribe(bus.TopicReportSubmitted, eventChannel)
 	s.eventBus.Subscribe(bus.TopicReportGraded, eventChannel)
@@ -70,6 +71,8 @@ func (s *notificationService) processEvents(ch bus.EventListener) {
 			s.handleBroadcast(event)
 		case bus.TopicGroupInvitation:
 			s.handleGroupInvitation(event)
+		case bus.TopicGroupJoinRequest:
+			s.handleGroupJoinRequest(event)
 		case bus.TopicClassroomInvitation:
 			s.handleClassroomInvitation(event)
 		case bus.TopicReportSubmitted:
@@ -337,31 +340,143 @@ func (s *notificationService) handleGroupInvitation(event bus.Event) {
 	defer cancel()
 
 	payload := event.Payload()
-	inviteeID, _ := payload["invitee_ids"].(string)
+	inviteeID, _ := payload["invitee_id"].(string)
 	inviterID, _ := payload["inviter_id"].(string)
+	groupID, _ := payload["group_id"].(string)
+	isAccepted, _ := payload["is_accepted"].(bool)
+	respondedAt, _ := payload["responded_at"].(*time.Time)
 
-	inviteeObjectID, _ := primitive.ObjectIDFromHex(inviteeID)
-	inviterObjectID, _ := primitive.ObjectIDFromHex(inviterID)
+	// If respondedAt is nil, it's a new invitation (sent)
+	if respondedAt == nil {
+		// Notify invitee about the invitation
+		inviteeObjectID, _ := primitive.ObjectIDFromHex(inviteeID)
+		inviterObjectID, _ := primitive.ObjectIDFromHex(inviterID)
 
-	notification := &model.Notification{
-		RecipientID: inviteeObjectID,
-		ActorID:     inviterObjectID,
-		Type:        model.NotificationTypeGroupInvitation,
-		Message:     fmt.Sprintf("Bạn có thư mời tham gia nhóm"),
-		Link:        "",
-		IsRead:      false,
-		Metadata:    payload,
-		CreatedAt:   time.Now(),
+		notification := &model.Notification{
+			RecipientID: inviteeObjectID,
+			ActorID:     inviterObjectID,
+			Type:        model.NotificationTypeGroupInvitation,
+			Message:     "Bạn có thư mời tham gia nhóm",
+			Link:        fmt.Sprintf("/groups/%s", groupID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+		createdNotification, err := s.notificationRepo.Create(ctx, notification)
+		if err != nil {
+			log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+			return
+		}
+
+		s.eventBus.Publish(bus.NotificationCreatedEvent{
+			RecipientID:  inviteeID,
+			Notification: dto.FromNotification(createdNotification),
+		})
+	} else {
+		// Invitation was responded to - notify inviter (group leader)
+		inviterObjectID, _ := primitive.ObjectIDFromHex(inviterID)
+		inviteeObjectID, _ := primitive.ObjectIDFromHex(inviteeID)
+
+		var message string
+		if isAccepted {
+			message = "Lời mời tham gia nhóm đã được chấp nhận"
+		} else {
+			message = "Lời mời tham gia nhóm đã bị từ chối"
+		}
+
+		notification := &model.Notification{
+			RecipientID: inviterObjectID,
+			ActorID:     inviteeObjectID,
+			Type:        model.NotificationTypeSystem,
+			Message:     message,
+			Link:        fmt.Sprintf("/groups/%s", groupID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+		createdNotification, err := s.notificationRepo.Create(ctx, notification)
+		if err != nil {
+			log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+			return
+		}
+
+		s.eventBus.Publish(bus.NotificationCreatedEvent{
+			RecipientID:  inviterID,
+			Notification: dto.FromNotification(createdNotification),
+		})
 	}
-	createdNotification, err := s.notificationRepo.Create(ctx, notification)
-	if err != nil {
-		log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
-	}
+}
 
-	s.eventBus.Publish(bus.NotificationCreatedEvent{
-		RecipientID:  inviteeID,
-		Notification: dto.FromNotification(createdNotification),
-	})
+func (s *notificationService) handleGroupJoinRequest(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	payload := event.Payload()
+	requesterID, _ := payload["requester_id"].(string)
+	leaderID, _ := payload["leader_id"].(string)
+	groupID, _ := payload["group_id"].(string)
+	status, _ := payload["status"].(string)
+	updatedAt, _ := payload["updated_at"].(*time.Time)
+
+	// If updatedAt is nil, it's a new request (pending)
+	if updatedAt == nil {
+		// Notify leader about the join request
+		leaderObjectID, _ := primitive.ObjectIDFromHex(leaderID)
+		requesterObjectID, _ := primitive.ObjectIDFromHex(requesterID)
+
+		notification := &model.Notification{
+			RecipientID: leaderObjectID,
+			ActorID:     requesterObjectID,
+			Type:        model.NotificationTypeSystem,
+			Message:     "Bạn có yêu cầu tham gia nhóm mới",
+			Link:        fmt.Sprintf("/groups/%s", groupID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+		createdNotification, err := s.notificationRepo.Create(ctx, notification)
+		if err != nil {
+			log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+			return
+		}
+
+		s.eventBus.Publish(bus.NotificationCreatedEvent{
+			RecipientID:  leaderID,
+			Notification: dto.FromNotification(createdNotification),
+		})
+	} else {
+		// Request was responded to - notify requester
+		requesterObjectID, _ := primitive.ObjectIDFromHex(requesterID)
+		leaderObjectID, _ := primitive.ObjectIDFromHex(leaderID)
+
+		var message string
+		if status == string(model.RequestAccepted) {
+			message = "Yêu cầu tham gia nhóm của bạn đã được chấp nhận"
+		} else {
+			message = "Yêu cầu tham gia nhóm của bạn đã bị từ chối"
+		}
+
+		notification := &model.Notification{
+			RecipientID: requesterObjectID,
+			ActorID:     leaderObjectID,
+			Type:        model.NotificationTypeSystem,
+			Message:     message,
+			Link:        fmt.Sprintf("/groups/%s", groupID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+		createdNotification, err := s.notificationRepo.Create(ctx, notification)
+		if err != nil {
+			log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+			return
+		}
+
+		s.eventBus.Publish(bus.NotificationCreatedEvent{
+			RecipientID:  requesterID,
+			Notification: dto.FromNotification(createdNotification),
+		})
+	}
 }
 
 func (s *notificationService) handleClassroomInvitation(event bus.Event) {

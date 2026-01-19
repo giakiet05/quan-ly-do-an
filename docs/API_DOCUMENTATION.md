@@ -1827,6 +1827,219 @@ Authorization: Bearer <access_token>
 
 ---
 
+## Group Join Requests & Invitations
+
+### Gửi yêu cầu tham gia nhóm
+**Endpoint:** `POST /api/groups/join-requests` 
+
+**Mô tả:** Sinh viên gửi yêu cầu tham gia nhóm.
+
+**Request Body:**
+```json
+{
+  "group_id": "507f1f77bcf86cd799439022",
+  "message": "Mình muốn tham gia nhóm này"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Gửi yêu cầu thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439030",
+    "user_id": "507f1f77bcf86cd799439015",
+    "status": "pending",
+    "message": "Mình muốn tham gia nhóm này",
+    "requested_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Nhóm không cho phép yêu cầu tham gia (AllowJoinRequest = false)
+- `400 BAD_REQUEST` - Người dùng đã là thành viên hoặc đã có yêu cầu pending
+- `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
+
+**Notification:**
+- **Người nhận:** Nhóm trưởng (leader)
+- **Nội dung:** "Bạn có yêu cầu tham gia nhóm mới"
+
+---
+
+### Chấp nhận yêu cầu tham gia nhóm
+**Endpoint:** `PUT /api/groups/join-requests/accept` 
+
+**Mô tả:** Nhóm trưởng chấp nhận yêu cầu tham gia.
+
+**Request Body:**
+```json
+{
+  "group_id": "507f1f77bcf86cd799439022",
+  "request_id": "507f1f77bcf86cd799439030"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Chấp nhận yêu cầu thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Chỉ nhóm trưởng mới có quyền chấp nhận
+- `400 BAD_REQUEST` - Yêu cầu không ở trạng thái pending
+- `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
+
+**Notification:**
+- **Người nhận:** Người gửi yêu cầu
+- **Nội dung:** "Yêu cầu tham gia nhóm của bạn đã được chấp nhận"
+
+---
+
+### Từ chối yêu cầu tham gia nhóm
+**Endpoint:** `PUT /api/groups/join-requests/reject` 
+
+**Mô tả:** Nhóm trưởng từ chối yêu cầu tham gia.
+
+**Request Body:**
+```json
+{
+  "group_id": "507f1f77bcf86cd799439022",
+  "request_id": "507f1f77bcf86cd799439030"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Từ chối yêu cầu thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Chỉ nhóm trưởng mới có quyền từ chối
+- `400 BAD_REQUEST` - Yêu cầu không ở trạng thái pending
+
+**Notification:**
+- **Người nhận:** Người gửi yêu cầu
+- **Nội dung:** "Yêu cầu tham gia nhóm của bạn đã bị từ chối"
+
+---
+
+### Mời sinh viên vào nhóm
+**Endpoint:** `POST /api/groups/invitations` 
+
+**Mô tả:** Nhóm trưởng mời sinh viên tham gia nhóm.
+
+**Request Body:**
+```json
+{
+  "group_id": "507f1f77bcf86cd799439022",
+  "recipient_id": "507f1f77bcf86cd799439016"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Gửi lời mời thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439031",
+    "group_id": "507f1f77bcf86cd799439022",
+    "recipient_id": "507f1f77bcf86cd799439016",
+    "status": "pending",
+    "sent_at": "2024-01-15T11:00:00Z"
+  }
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Chỉ nhóm trưởng mới có quyền mời
+- `400 BAD_REQUEST` - Người được mời đã là thành viên hoặc đã có lời mời pending
+- `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
+
+**Notification:**
+- **Người nhận:** Người được mời (recipient)
+- **Nội dung:** "Bạn có thư mời tham gia nhóm"
+
+---
+
+### Chấp nhận lời mời tham gia nhóm
+**Endpoint:** `PUT /api/groups/invitations/accept` 
+
+**Mô tả:** Sinh viên chấp nhận lời mời tham gia nhóm.
+
+**Request Body:**
+```json
+{
+  "group_id": "507f1f77bcf86cd799439022",
+  "invitation_id": "507f1f77bcf86cd799439031"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Chấp nhận lời mời thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Chỉ người được mời mới có quyền chấp nhận
+- `400 BAD_REQUEST` - Lời mời không ở trạng thái pending
+- `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
+
+**Notification:**
+- **Người nhận:** Nhóm trưởng (inviter/leader)
+- **Nội dung:** "Lời mời tham gia nhóm đã được chấp nhận"
+
+---
+
+### Từ chối lời mời tham gia nhóm
+**Endpoint:** `PUT /api/groups/invitations/reject` 
+
+**Mô tả:** Sinh viên từ chối lời mời tham gia nhóm.
+
+**Request Body:**
+```json
+{
+  "group_id": "507f1f77bcf86cd799439022",
+  "invitation_id": "507f1f77bcf86cd799439031"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Từ chối lời mời thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Chỉ người được mời mới có quyền từ chối
+- `400 BAD_REQUEST` - Lời mời không ở trạng thái pending
+
+**Notification:**
+- **Người nhận:** Nhóm trưởng (inviter/leader)
+- **Nội dung:** "Lời mời tham gia nhóm đã bị từ chối"
+
+---
+
+## Group Tasks
+
 ### Tạo task
 **Endpoint:** `POST /api/groups/tasks`
 
