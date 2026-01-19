@@ -51,19 +51,6 @@ db.classrooms.insertOne({
       start_date: new Date("2024-09-01T00:00:00.000Z"),
       end_date: new Date("2024-11-30T23:59:59.000Z"),
       description: "Đợt đăng ký đồ án giữa kỳ",
-      projects: [
-        {
-          _id: project1Id,
-          classroom_id: newClassroomId,
-          project_round_id: projectRoundId,
-          title: "Hệ thống quản lý thư viện trực tuyến",
-          amount: 5,
-          description: "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm nâng cao.",
-          min_member: 2,
-          max_member: 3,
-          status: "approved"
-        }
-      ],
       report_periods: [],
       created_at: new Date(),
       is_deleted: false
@@ -73,6 +60,23 @@ db.classrooms.insertOne({
 });
 
 print("✅ Classroom created with ID:", newClassroomId.toString());
+
+// Tạo project trong collection riêng
+print("📁 Creating project...");
+db.projects.insertOne({
+  _id: project1Id,
+  classroom_id: newClassroomId,
+  project_round_id: projectRoundId,
+  title: "Hệ thống quản lý thư viện trực tuyến",
+  amount: 5,
+  description: "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm nâng cao.",
+  min_member: 2,
+  max_member: 3,
+  status: "approved",
+  created_at: new Date()
+});
+
+print("✅ Project created with ID:", project1Id.toString());
 
 // Cập nhật group với classroom_id mới
 print("🔧 Updating group with new classroom_id...");

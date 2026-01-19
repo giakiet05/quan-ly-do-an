@@ -30,6 +30,7 @@ type GroupRepo interface {
 	IsLeader(ctx context.Context, groupID string, userID string) (bool, error)
 	IsMember(ctx context.Context, groupID string, userID string) (bool, error)
 	IsMaxMemberReached(ctx context.Context, groupID string) (bool, error)
+	ReportExistsByPeriod(ctx context.Context, classroomID string, periodID string) (bool, error)
 }
 
 type groupRepo struct {
@@ -338,4 +339,33 @@ func (g *groupRepo) IsMaxMemberReached(ctx context.Context, groupID string) (boo
 	}
 
 	return len(result.Members) >= result.Setting.MaxMembers, nil
+}
+
+func (g *groupRepo) ReportExistsByPeriod(
+	ctx context.Context,
+	classroomID string,
+	periodID string,
+) (bool, error) {
+
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return false, err
+	}
+
+	periodOID, err := primitive.ObjectIDFromHex(periodID)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{
+		"classroom_id":             classroomOID,
+		"reports.report_period_id": periodOID,
+	}
+
+	count, err := g.groupCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }

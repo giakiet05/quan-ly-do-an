@@ -62,6 +62,7 @@
       </svg>
     </div>
   {/if}
+  {@render children?.()}
 </button>
 
 <style>

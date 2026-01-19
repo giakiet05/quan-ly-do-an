@@ -68,6 +68,7 @@ export interface Project {
   minMember: number;
   maxMember: number;
   status: ProjectStatus;
+  createdAt: string;
 }
 
 export interface ReportPeriod {
@@ -85,7 +86,6 @@ export interface ProjectRound {
   startDate: string;
   endDate: string;
   description: string;
-  projects: Project[];
   reportPeriods: ReportPeriod[];
   createdAt: string;
   isDeleted: boolean;

@@ -12,7 +12,6 @@ type ProjectRound struct {
 	StartDate     time.Time          `bson:"start_date" json:"start_date"`
 	EndDate       time.Time          `bson:"end_date" json:"end_date"`
 	Description   string             `bson:"description" json:"description"`
-	Projects      []Project          `bson:"projects" json:"projects"`
 	ReportPeriods []ReportPeriod     `bson:"report_periods" json:"report_periods"`
 	CreatedAt     time.Time          `bson:"created_at" json:"created_at"`
 	IsDeleted     bool               `bson:"is_deleted" json:"is_deleted"`
@@ -28,6 +27,7 @@ type Project struct {
 	MinMember      int                `bson:"min_member" json:"min_member"`
 	MaxMember      int                `bson:"max_member" json:"max_member"`
 	Status         ProjectStatus      `bson:"status" json:"status"`
+	CreatedAt      time.Time          `bson:"created_at" json:"created_at"`
 }
 
 type ProjectStatus string

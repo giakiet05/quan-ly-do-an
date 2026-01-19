@@ -21,14 +21,11 @@ type Notification struct {
 type NotificationType string
 
 const (
-	NotificationTypeGroupInvite     NotificationType = "group_invite"
-	NotificationTypeComment         NotificationType = "comment"
-	NotificationTypeLike            NotificationType = "like"
-	NotificationTypeFollow          NotificationType = "follow"
-	NotificationTypeMention         NotificationType = "mention"
-	NotificationTypeNewMessage      NotificationType = "new_message"
-	NotificationTypeGroupInvitation NotificationType = "group_invitation"
-	NotificationTypeSystem          NotificationType = "system"
+	NotificationTypeGroupInvite         NotificationType = "group_invite"
+	NotificationTypeClassroomInvitation NotificationType = "classroom_invitation"
+	NotificationTypeNewMessage          NotificationType = "new_message"
+	NotificationTypeGroupInvitation     NotificationType = "group_invitation"
+	NotificationTypeSystem              NotificationType = "system"
 
 	NotificationTypeProjectRegistrationDeadline NotificationType = "project_registration_deadline"
 	NotificationTypeProjectRegistrationExpired  NotificationType = "project_registration_expired"
@@ -39,6 +36,4 @@ const (
 	NotificationTypeReportSubmitted NotificationType = "report_submitted"
 	NotificationTypeReportDeadline  NotificationType = "report_deadline"
 	NotificationTypeReportOpened    NotificationType = "report_opened"
-
-	NotificationTypeClassUpdated NotificationType = "class_updated"
 )

@@ -46,32 +46,6 @@
                 description: "Phát triển ứng dụng web hoàn chỉnh",
                 startDate: "2024-02-01T00:00:00Z",
                 endDate: "2024-05-31T23:59:59Z",
-                projects: [
-                  {
-                    id: "proj1",
-                    classroomId: "mock-class-1",
-                    projectRoundId: "round1",
-                    title: "Hệ thống quản lý thư viện",
-                    amount: 5,
-                    description:
-                      "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách",
-                    minMember: 2,
-                    maxMember: 4,
-                    status: "approved",
-                  },
-                  {
-                    id: "proj2",
-                    classroomId: "mock-class-1",
-                    projectRoundId: "round1",
-                    title: "Ứng dụng quản lý chi tiêu",
-                    amount: 3,
-                    description:
-                      "Ứng dụng mobile giúp theo dõi thu chi cá nhân",
-                    minMember: 2,
-                    maxMember: 3,
-                    status: "approved",
-                  },
-                ],
                 reportPeriods: [
                   {
                     id: "rp1",

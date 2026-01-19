@@ -87,7 +87,6 @@ type ProjectRoundResponse struct {
 	StartDate     time.Time              `json:"start_date"`
 	EndDate       time.Time              `json:"end_date"`
 	Description   string                 `json:"description"`
-	Projects      []ProjectResponse      `json:"projects"`
 	ReportPeriods []ReportPeriodResponse `json:"report_periods"`
 	CreatedAt     time.Time              `json:"created_at"`
 	IsDeleted     bool                   `json:"is_deleted"`
@@ -114,16 +113,25 @@ type ReportPeriodResponse struct {
 	EndDate     time.Time `json:"end_date"`
 }
 
+type ReportPeriodWithProjectRound struct {
+	ClassroomID      string             `json:"classroom_id"`
+	ClassroomName    string             `json:"classroom_name"`
+	ProjectRoundID   string             `json:"project_round_id"`
+	ProjectRoundName string             `json:"project_round_name"`
+	ReportPeriods    model.ReportPeriod `json:"report_periods"`
+}
+
+type ProjectRoundWithClassroom struct {
+	ClassroomID   string             `json:"classroom_id"`
+	ClassroomName string             `json:"classroom_name"`
+	Round         model.ProjectRound `json:"round"`
+}
+
 // Converter functions
 
 func FromProjectRound(round *model.ProjectRound) ProjectRoundResponse {
 	if round == nil {
 		return ProjectRoundResponse{}
-	}
-
-	projects := make([]ProjectResponse, 0, len(round.Projects))
-	for _, p := range round.Projects {
-		projects = append(projects, FromProject(&p))
 	}
 
 	reportPeriods := make([]ReportPeriodResponse, 0, len(round.ReportPeriods))
@@ -137,7 +145,6 @@ func FromProjectRound(round *model.ProjectRound) ProjectRoundResponse {
 		StartDate:     round.StartDate,
 		EndDate:       round.EndDate,
 		Description:   round.Description,
-		Projects:      projects,
 		ReportPeriods: reportPeriods,
 		CreatedAt:     round.CreatedAt,
 		IsDeleted:     round.IsDeleted,

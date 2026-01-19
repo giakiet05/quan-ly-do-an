@@ -34,30 +34,6 @@ db.classrooms.insertOne({
       start_date: new Date("2024-09-01"),
       end_date: new Date("2024-11-30"),
       description: "Đồ án giữa kỳ - Xây dựng ứng dụng web cơ bản",
-      projects: [
-        {
-          _id: ObjectId(),
-          classroom_id: null, // Sẽ update sau
-          project_round_id: null, // Sẽ update sau
-          title: "Hệ thống quản lý thư viện trực tuyến",
-          amount: 5,
-          description: "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-          min_member: 2,
-          max_member: 3,
-          status: "approved"
-        },
-        {
-          _id: ObjectId(),
-          classroom_id: null,
-          project_round_id: null,
-          title: "Website bán hàng trực tuyến",
-          amount: 3,
-          description: "Xây dựng website thương mại điện tử với giỏ hàng, thanh toán, quản lý đơn hàng",
-          min_member: 2,
-          max_member: 4,
-          status: "approved"
-        }
-      ],
       report_periods: [
         {
           _id: ObjectId(),
@@ -79,4 +55,19 @@ db.classrooms.insertOne({
 print("✅ Classroom created successfully!");
 print("📝 Remember to:");
 print("1. Replace STUDENT_ID and LECTURER_ID with actual ObjectId values");
-print("2. Update classroom_id and project_round_id in projects after classroom is created");
+print("2. Insert projects into the 'projects' collection separately with classroom_id and project_round_id");
+print("");
+print("Example projects insert:");
+print("db.projects.insertMany([");
+print("  {");
+print("    classroom_id: ObjectId('YOUR_CLASSROOM_ID'),");
+print("    project_round_id: ObjectId('YOUR_PROJECT_ROUND_ID'),");
+print("    title: 'Hệ thống quản lý thư viện trực tuyến',");
+print("    amount: 5,");
+print("    description: 'Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ',");
+print("    min_member: 2,");
+print("    max_member: 3,");
+print("    status: 'approved',");
+print("    created_at: new Date()");
+print("  }");
+print("]);")

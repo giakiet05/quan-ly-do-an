@@ -63,17 +63,6 @@ export interface ClassroomResponse {
     startDate: string;
     endDate: string;
     description: string;
-    projects: Array<{
-      id: string;
-      classroomId: string;
-      projectRoundId: string;
-      title: string;
-      amount: number;
-      description: string;
-      minMember: number;
-      maxMember: number;
-      status: string;
-    }>;
     reportPeriods: Array<{
       id: string;
       title: string;

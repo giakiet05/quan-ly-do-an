@@ -79,23 +79,39 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 		return nil, err
 	}
 
-	// Validate email domain if required
-	if classroom.RequireEmailDomain != nil && *classroom.RequireEmailDomain != "" {
-		if !strings.HasSuffix(user.Email, *classroom.RequireEmailDomain) {
+	// Validate email domain if restriction is enabled
+	if classroom.EnableEmailRestriction && len(classroom.AllowedEmailDomains) > 0 {
+		validEmail := false
+		for _, domain := range classroom.AllowedEmailDomains {
+			if strings.HasSuffix(user.Email, domain) {
+				validEmail = true
+				break
+			}
+		}
+		if !validEmail {
 			return nil, apperror.ErrInvalidEmailDomain
 		}
 	}
 
 	// Only validate student code if user has one (skip for lecturers/TAs)
 	if user.StudentCode != nil && *user.StudentCode != "" {
-		// Validate student code in whitelist if exists
-		if len(classroom.WhitelistStudentCode) > 0 {
-			if !contains(classroom.WhitelistStudentCode, *user.StudentCode) {
+		// Validate student code in whitelist if whitelist is enabled
+		if classroom.EnableWhitelist && len(classroom.WhitelistStudentCode) > 0 {
+			if !containsWhitelistEntry(classroom.WhitelistStudentCode, *user.StudentCode) {
 				return nil, apperror.ErrStudentCodeNotInWhitelist
+			}
+
+			// Check if student code has already been claimed in whitelist
+			isClaimed, err := s.classroomRepo.IsStudentCodeClaimedInWhitelist(ctx, classroom.ID.Hex(), *user.StudentCode)
+			if err != nil {
+				return nil, err
+			}
+			if isClaimed {
+				return nil, apperror.ErrStudentCodeAlreadyUsed
 			}
 		}
 
-		// Check student code not already used in classroom
+		// Check student code not already used in classroom (fallback check)
 		exists, err := s.classroomRepo.StudentCodeExistsInClassroom(ctx, classroom.ID.Hex(), *user.StudentCode)
 		if err != nil {
 			return nil, err
@@ -152,6 +168,11 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 			return nil, err
 		}
 
+		// Mark whitelist entry as joined if whitelist is enabled and user has student code
+		if classroom.EnableWhitelist && user.StudentCode != nil && *user.StudentCode != "" {
+			_ = s.classroomRepo.MarkWhitelistEntryAsJoined(ctx, classroom.ID.Hex(), *user.StudentCode, user.ID)
+		}
+
 		return &dto.JoinClassroomResponse{
 			ClassroomID: classroom.ID.Hex(),
 			Status:      "approved",
@@ -180,17 +201,17 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 	}
 }
 
-// GetPendingRequests returns pending join requests for a classroom (lecturer only)
+// GetPendingRequests returns pending join requests for a classroom (lecturer or co-lecturer)
 func (s *classroomJoinService) GetPendingRequests(classroomID, userID string, page, pageSize int) ([]dto.JoinRequestResponse, int64, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// Check if user is lecturer
-	isLecturer, err := s.classroomRepo.IsLecturer(ctx, classroomID, userID)
+	// Check if user is lecturer or co-lecturer
+	isAllowed, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, userID)
 	if err != nil {
 		return nil, 0, err
 	}
-	if !isLecturer {
+	if !isAllowed {
 		return nil, 0, apperror.ErrForbidden
 	}
 
@@ -250,11 +271,16 @@ func (s *classroomJoinService) ApproveRequest(requestID, reviewerID string) erro
 		return err
 	}
 
-	// Verify reviewer is lecturer
-	reviewerOID, _ := primitive.ObjectIDFromHex(reviewerID)
-	if classroom.Lecturer.ID != reviewerOID {
+	// Verify reviewer is lecturer or co-lecturer
+	isAllowed, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, classroom.ID.Hex(), reviewerID)
+	if err != nil {
+		return err
+	}
+	if !isAllowed {
 		return apperror.ErrForbidden
 	}
+
+	reviewerOID, _ := primitive.ObjectIDFromHex(reviewerID)
 
 	// Get user info
 	user, err := s.userRepo.GetByID(ctx, request.UserID.Hex())
@@ -291,6 +317,11 @@ func (s *classroomJoinService) ApproveRequest(requestID, reviewerID string) erro
 		return err
 	}
 
+	// Mark whitelist entry as joined if whitelist is enabled and user has student code
+	if classroom.EnableWhitelist && user.StudentCode != nil && *user.StudentCode != "" {
+		_ = s.classroomRepo.MarkWhitelistEntryAsJoined(ctx, classroom.ID.Hex(), *user.StudentCode, user.ID)
+	}
+
 	// Update request status
 	err = s.joinRequestRepo.UpdateStatus(ctx, requestID, model.JoinRequestApproved, &reviewerOID)
 	if err != nil {
@@ -324,11 +355,16 @@ func (s *classroomJoinService) RejectRequest(requestID, reviewerID string) error
 		return err
 	}
 
-	// Verify reviewer is lecturer
-	reviewerOID, _ := primitive.ObjectIDFromHex(reviewerID)
-	if classroom.Lecturer.ID != reviewerOID {
+	// Verify reviewer is lecturer or co-lecturer
+	isAllowed, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, classroom.ID.Hex(), reviewerID)
+	if err != nil {
+		return err
+	}
+	if !isAllowed {
 		return apperror.ErrForbidden
 	}
+
+	reviewerOID, _ := primitive.ObjectIDFromHex(reviewerID)
 
 	// Update request status
 	err = s.joinRequestRepo.UpdateStatus(ctx, requestID, model.JoinRequestRejected, &reviewerOID)
@@ -343,9 +379,9 @@ func (s *classroomJoinService) RejectRequest(requestID, reviewerID string) error
 
 // Helper functions
 
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
+func containsWhitelistEntry(entries []model.WhitelistEntry, studentCode string) bool {
+	for _, entry := range entries {
+		if entry.StudentCode == studentCode {
 			return true
 		}
 	}
