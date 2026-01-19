@@ -481,6 +481,9 @@
     color: #1e40af;
     text-decoration: underline;
   }
-
+  .w-full {
+    width: 100% !important;
+    display: flex !important;
+  }
   /* Utility */
 </style>
