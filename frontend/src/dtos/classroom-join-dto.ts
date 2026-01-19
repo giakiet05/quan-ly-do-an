@@ -16,6 +16,9 @@ export interface ClassroomPreviewResponse {
   lecturer: string;
   studentCount: number;
   maxStudents: number;
+  enableWhitelist?: boolean;
+  enableEmailRestriction?: boolean;
+  allowedEmailDomains?: string[];
 }
 
 export interface JoinClassroomResponse {

@@ -1,3 +1,11 @@
+// ==================== INTERFACES ====================
+
+export interface WhitelistEntry {
+  studentCode: string;
+  joinedBy: string | null;
+  joinedAt: string | null;
+}
+
 // ==================== REQUEST DTOs ====================
 
 export interface CreateClassroomRequest {
@@ -52,6 +60,11 @@ export interface ClassroomResponse {
     fullName: string;
     avatar: string;
   };
+  coLecturers?: Array<{
+    userId: string;
+    fullName: string;
+    avatar: string;
+  }>;
   students: Array<{
     userId: string;
     fullName: string;
@@ -78,8 +91,10 @@ export interface ClassroomResponse {
   maxStudents: number;
   autoApprove: boolean;
   canStudentDeleteGroup: boolean;
-  whitelistStudentCode?: string[];
-  requireEmailDomain?: string;
+  whitelistStudentCode?: WhitelistEntry[];
+  allowedEmailDomains?: string[];
+  enableWhitelist?: boolean;
+  enableEmailRestriction?: boolean;
   createdAt: string;
 }
 

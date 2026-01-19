@@ -2,10 +2,13 @@
   import { onMount } from "svelte";
   import { push } from "svelte-spa-router";
   import ChatTab from "../../components/ChatTab.svelte";
+  import ClassroomRequirements from "../../components/ClassroomRequirements.svelte";
+  import CoLecturersModal from "../../components/CoLecturersModal.svelte";
   import {
     getClassroom,
     getClassPosts,
   } from "../../services/classroom-service";
+  import { createChannel } from "../../services/channel-service";
   import { authStore } from "../../stores/auth-store";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
   import type { ClassPostResponse } from "../../dtos/class-post-dto";
@@ -25,6 +28,8 @@
   let classPosts = $state<ClassPostResponse[]>([]);
   let projectRounds = $state<ProjectRound[]>([]); // Tách riêng khỏi classroom
   let loading = $state(true);
+  let showCoLecturersModal = $state(false);
+  let lecturerChannelId = $state<string | null>(null);
   let activeTab = $state<"overview" | "students" | "notifications" | "chat">(
     "overview",
   );
@@ -37,6 +42,7 @@
   let registeredCategoryIds = $state<string[]>(["round1"]);
 
   onMount(async () => {
+    console.log("StudentClassDetail mounted, ID:", params.id);
     try {
       loading = true;
 
@@ -273,11 +279,39 @@
   });
 
   function handleBack() {
-    push("/classes");
+    push("/student/classes");
+  }
+
+  async function handleChatWithLecturer() {
+    if (!classroom?.lecturer) return;
+
+    // Skip API call for mock data
+    if (
+      params.id.startsWith("mock-") ||
+      classroom.lecturer.userId.startsWith("lecturer")
+    ) {
+      console.log("Using mock data - fallback to general channel");
+      lecturerChannelId = classroom?.generalChannelId || null;
+      activeTab = "chat";
+      return;
+    }
+
+    try {
+      // Create or get existing DM channel with lecturer
+      const channel = await createChannel([classroom.lecturer.userId]);
+
+      lecturerChannelId = channel.id;
+      activeTab = "chat";
+    } catch (err) {
+      console.error("Error creating channel with lecturer:", err);
+      // Fallback to general channel
+      lecturerChannelId = classroom?.generalChannelId || null;
+      activeTab = "chat";
+    }
   }
 
   function handleCategoryClick(categoryId: string) {
-    push(`/classes/${params.id}/categories/${categoryId}`);
+    push(`/student/classes/${params.id}/categories/${categoryId}`);
   }
 
   async function handleLeaveClass() {
@@ -294,7 +328,7 @@
       // await leaveClassroom(params.id);
       await new Promise((resolve) => setTimeout(resolve, 500));
       alert("Đã rời khỏi lớp học thành công");
-      push("/classes");
+      push("/student/classes");
     } catch (err: any) {
       alert(err.message || "Không thể rời khỏi lớp học");
     }
@@ -367,23 +401,6 @@
                 stroke="currentColor"
                 stroke-width="2"
               >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-              {classroom.students?.length || 0} sinh viên
-            </span>
-            <span class="separator">•</span>
-            <span class="meta-item">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
               </svg>
@@ -404,12 +421,20 @@
                 <circle cx="12" cy="19" r="1"></circle>
               </svg>
               GV: {classroom.lecturer.fullName}
+              {#if classroom.coLecturers && classroom.coLecturers.length > 0}
+                <button
+                  onclick={() => (showCoLecturersModal = true)}
+                  class="co-lecturers-btn"
+                >
+                  + {classroom.coLecturers.length} trợ giảng
+                </button>
+              {/if}
             </span>
           </div>
         </div>
 
         <div class="header-actions">
-          <button onclick={() => alert("Chat với giảng viên")} class="btn-chat">
+          <button onclick={handleChatWithLecturer} class="btn-chat">
             <svg
               width="20"
               height="20"
@@ -428,7 +453,7 @@
       </div>
 
       <div class="tabs">
-        {#each [{ id: "overview", label: "Hạng mục đề tài" }, { id: "students", label: `Sinh viên (${classroom.students?.length || 0})` }, { id: "notifications", label: "Thông báo" }, { id: "chat", label: "Trò chuyện" }] as tab}
+        {#each [{ id: "overview", label: "Hạng mục đề tài" }, { id: "students", label: "Sinh viên" }, { id: "notifications", label: "Thông báo" }, { id: "chat", label: "Trò chuyện" }] as tab}
           <button
             onclick={() => (activeTab = tab.id as any)}
             class="tab"
@@ -446,6 +471,9 @@
     <div class="content-section">
       {#if activeTab === "overview"}
         <div class="overview-tab">
+          <!-- Hiển thị yêu cầu tham gia lớp (whitelist, email restriction, etc.) -->
+          <ClassroomRequirements {classroom} />
+
           <h2 class="section-title">Danh sách đợt đồ án</h2>
 
           {#if !projectRounds || projectRounds.length === 0}
@@ -512,12 +540,23 @@
                 <div class="student-card-horizontal">
                   <div class="student-main">
                     <div class="student-avatar-section">
-                      {#if student.avatar}
+                      {#if student.avatar && typeof student.avatar === "string" && student.avatar.trim()}
                         <img
                           src={student.avatar}
                           alt={student.fullName}
                           class="student-avatar-large"
+                          onerror={(e) => {
+                            e.currentTarget.style.display = "none";
+                            e.currentTarget.nextElementSibling.style.display =
+                              "flex";
+                          }}
                         />
+                        <div
+                          class="student-avatar-large"
+                          style="display: none;"
+                        >
+                          {getInitials(student.fullName)}
+                        </div>
                       {:else}
                         <div class="student-avatar-large">
                           {getInitials(student.fullName)}
@@ -678,9 +717,9 @@
         </div>
       {:else if activeTab === "chat"}
         <div class="chat-tab">
-          {#if classroom?.generalChannelId}
+          {#if lecturerChannelId || classroom?.generalChannelId}
             <ChatTab
-              channelId={classroom.generalChannelId}
+              channelId={lecturerChannelId || classroom.generalChannelId}
               currentUserRole="student"
               currentUserName={$authStore.user?.fullname || "Student"}
             />
@@ -693,6 +732,9 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Modal trợ giảng -->
+  <CoLecturersModal {classroom} bind:show={showCoLecturersModal} />
 </div>
 
 <style>
@@ -792,6 +834,26 @@
 
   .meta-item svg {
     flex-shrink: 0;
+  }
+
+  .co-lecturers-btn {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .co-lecturers-btn:hover {
+    background: #bfdbfe;
+    border-color: #60a5fa;
+    transform: translateY(-1px);
   }
 
   .separator {
