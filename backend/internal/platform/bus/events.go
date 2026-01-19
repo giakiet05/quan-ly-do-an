@@ -30,17 +30,10 @@ const (
 	// Group
 	TopicGroupInvitation = "group.invitation"
 
-	// Report
-	TopicReportOpened       = "report.opened"
-	TopicReportNearDeadline = "report.near_deadline"
-	TopicReportSubmitted    = "report.submitted"
-	TopicReportGraded       = "report.graded"
-	TopicReportExpired      = "report.expired"
-
-	// Project
-	TopicProjectRegistrationOpened   = "project.registration.opened"
-	TopicProjectRegistrationDeadline = "project.registration.deadline"
-	TopicProjectRegistrationExpired  = "project.registration.expired"
+	// Project Report
+	TopicReportSubmitted = "report.submitted"
+	TopicReportGraded    = "report.graded"
+	TopicReportExpired   = "report.expired"
 
 	// Class
 	TopicClassUpdated        = "class.updated"
@@ -55,6 +48,16 @@ const (
 	BroadcastEventTypingStart    BroadcastEventType = "typing_start"
 	BroadcastEventTypingStop     BroadcastEventType = "typing_stop"
 	BroadcastEventMessageRead    BroadcastEventType = "message_read"
+
+	// ---- Project-related ----
+	BroadcastEventProjectRegistrationOpened   BroadcastEventType = "project_registration_opened"
+	BroadcastEventProjectRegistrationDeadline BroadcastEventType = "project_registration_deadline"
+	BroadcastEventProjectRegistrationExpired  BroadcastEventType = "project_registration_expired"
+
+	// ---- Project-Report-related ----
+	BroadcastEventReportOpened  BroadcastEventType = "report_opened"
+	BroadcastReportNearDeadline BroadcastEventType = "report_near_deadline"
+	BroadcastReportGraded       BroadcastEventType = "report_graded"
 
 	// ---- Notification-related ----
 	BroadcastEventMessageNotification BroadcastEventType = "message_notification"
@@ -276,25 +279,11 @@ func (e ClassroomInvitationEvent) Payload() map[string]interface{} {
 	}
 }
 
-//type ReportOpenedEvent struct {
-//	ReportID string    `json:"report_id"`
-//	OpenedAt time.Time `json:"opened_at"`
-//}
-//
-//func (e ReportOpenedEvent) Topic() string {
-//	return TopicReportOpened
-//}
-//func (e ReportOpenedEvent) Payload() map[string]interface{} {
-//	return map[string]interface{}{
-//		"report_id": e.ReportID,
-//		"opened_at": e.OpenedAt,
-//	}
-//}
-
 type TopicReportSubmittedEvent struct {
 	ClassroomID string    `json:"classroom_id"`
 	GroupID     string    `json:"group_id"`
 	ReportID    string    `json:"report_id"`
+	SubmitterID string    `json:"submitter_id"`
 	SubmittedAt time.Time `json:"submitted_at"`
 }
 
@@ -307,6 +296,7 @@ func (e TopicReportSubmittedEvent) Payload() map[string]interface{} {
 		"classroom_id": e.ClassroomID,
 		"group_id":     e.GroupID,
 		"report_id":    e.ReportID,
+		"submitter_id": e.SubmitterID,
 		"submitted_at": e.SubmittedAt,
 	}
 }

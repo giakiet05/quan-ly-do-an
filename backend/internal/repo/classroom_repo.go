@@ -29,6 +29,7 @@ type ClassroomRepo interface {
 	AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error
 	RemoveStudent(ctx context.Context, classroomID, studentID string) error
 	IsStudentInClassroom(ctx context.Context, classroomID, studentID string) (bool, error)
+	GetStudentIDsByClassroomID(ctx context.Context, classroomID string) ([]string, error)
 
 	// CoLecturer management
 	AddCoLecturer(ctx context.Context, classroomID string, coLecturer model.UserInfo) error
@@ -306,6 +307,37 @@ func (c *classroomRepo) IsStudentInClassroom(ctx context.Context, classroomID, s
 	}
 
 	return count > 0, nil
+}
+
+func (c *classroomRepo) GetStudentIDsByClassroomID(ctx context.Context, classroomID string) ([]string, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return nil, apperror.ErrInvalidID
+	}
+
+	var result struct {
+		Students []model.UserInfo `bson:"students"`
+	}
+
+	err = c.collection.FindOne(
+		ctx,
+		bson.M{"_id": classroomObjectID},
+		options.FindOne().SetProjection(bson.M{"students": 1}),
+	).Decode(&result)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, apperror.ErrClassroomNotFound
+		}
+		return nil, err
+	}
+
+	studentIDs := make([]string, 0, len(result.Students))
+	for _, student := range result.Students {
+		studentIDs = append(studentIDs, student.ID.Hex())
+	}
+
+	return studentIDs, nil
 }
 
 func (c *classroomRepo) IsLecturer(ctx context.Context, classroomID, lecturerID string) (bool, error) {

@@ -114,9 +114,11 @@ type ReportPeriodResponse struct {
 }
 
 type ReportPeriodWithProjectRound struct {
-	ClassroomID    string             `json:"classroom_id"`
-	ProjectRoundID string             `json:"project_round_id"`
-	ReportPeriods  model.ReportPeriod `json:"report_periods"`
+	ClassroomID      string             `json:"classroom_id"`
+	ClassroomName    string             `json:"classroom_name"`
+	ProjectRoundID   string             `json:"project_round_id"`
+	ProjectRoundName string             `json:"project_round_name"`
+	ReportPeriods    model.ReportPeriod `json:"report_periods"`
 }
 
 type ProjectRoundWithClassroom struct {

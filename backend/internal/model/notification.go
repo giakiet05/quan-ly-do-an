@@ -23,10 +23,6 @@ type NotificationType string
 const (
 	NotificationTypeGroupInvite         NotificationType = "group_invite"
 	NotificationTypeClassroomInvitation NotificationType = "classroom_invitation"
-	NotificationTypeComment             NotificationType = "comment"
-	NotificationTypeLike                NotificationType = "like"
-	NotificationTypeFollow              NotificationType = "follow"
-	NotificationTypeMention             NotificationType = "mention"
 	NotificationTypeNewMessage          NotificationType = "new_message"
 	NotificationTypeGroupInvitation     NotificationType = "group_invitation"
 	NotificationTypeSystem              NotificationType = "system"
@@ -40,6 +36,4 @@ const (
 	NotificationTypeReportSubmitted NotificationType = "report_submitted"
 	NotificationTypeReportDeadline  NotificationType = "report_deadline"
 	NotificationTypeReportOpened    NotificationType = "report_opened"
-
-	NotificationTypeClassUpdated NotificationType = "class_updated"
 )

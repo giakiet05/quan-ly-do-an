@@ -41,39 +41,197 @@ type ProjectService interface {
 type projectService struct {
 	projectRepo   repo.ProjectRepo
 	classroomRepo repo.ClassroomRepo
+	groupRepo     repo.GroupRepo
 	eventBus      *bus.EventBus
 	cron          *cron.Cron
 }
 
-func NewProjectService(projectRepo repo.ProjectRepo, classroomRepo repo.ClassroomRepo, eventBus *bus.EventBus, cron *cron.Cron) ProjectService {
+func NewProjectService(projectRepo repo.ProjectRepo, classroomRepo repo.ClassroomRepo, groupRepo repo.GroupRepo, eventBus *bus.EventBus, cron *cron.Cron) ProjectService {
 	return &projectService{
 		projectRepo:   projectRepo,
 		classroomRepo: classroomRepo,
+		groupRepo:     groupRepo,
 		eventBus:      eventBus,
 		cron:          cron,
 	}
 }
 
 func (p *projectService) Start() {
+	p.cron.AddFunc("@daily", p.checkProjectRegistrationOpened)
+	p.cron.AddFunc("@daily", p.checkProjectRegistrationDeadlines)
 	p.cron.AddFunc("@daily", p.checkReportOpened)
 	p.cron.AddFunc("@daily", p.checkReportDeadlines)
 }
 
-func (p *projectService) checkReportOpened() {
-	//ctx, cancel := util.NewDefaultDBContext()
-	//defer cancel()
-	//
-	//now := time.Now()
-	//rounds, err := p.projectRepo.GetJustOpenProjectRounds(ctx, now)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//for _, round := range rounds {
-	//}
+func (p *projectService) checkProjectRegistrationOpened() {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	now := time.Now()
+	rounds, err := p.projectRepo.GetJustOpenProjectRounds(ctx, now)
+	if err != nil {
+		return
+	}
+
+	for _, roundData := range rounds {
+		// Get all students in the classroom
+		studentIDs, err := p.classroomRepo.GetStudentIDsByClassroomID(ctx, roundData.ClassroomID)
+		if err != nil || len(studentIDs) == 0 {
+			continue
+		}
+
+		// Publish broadcast event to all students
+		broadcastEvent := bus.BroadcastEvent{
+			RecipientIDs: studentIDs,
+			EventType:    bus.BroadcastEventProjectRegistrationOpened,
+			Data: map[string]interface{}{
+				"classroom_id":       roundData.ClassroomID,
+				"classroom_name":     roundData.ClassroomName,
+				"project_round_id":   roundData.Round.ID.Hex(),
+				"project_round_name": roundData.Round.Name,
+				"start_date":         roundData.Round.StartDate,
+				"end_date":           roundData.Round.EndDate,
+				"description":        roundData.Round.Description,
+			},
+		}
+
+		p.eventBus.Publish(broadcastEvent)
+	}
 }
 
-func (p *projectService) checkReportDeadlines() {}
+func (p *projectService) checkProjectRegistrationDeadlines() {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	now := time.Now()
+	// Check for project rounds ending in 3 days
+	rounds, err := p.projectRepo.GetNearDeadlineProjectRounds(ctx, now, 3)
+	if err != nil {
+		return
+	}
+
+	for _, roundData := range rounds {
+		// Get all students in the classroom
+		studentIDs, err := p.classroomRepo.GetStudentIDsByClassroomID(ctx, roundData.ClassroomID)
+		if err != nil || len(studentIDs) == 0 {
+			continue
+		}
+
+		// Calculate days remaining
+		daysRemaining := int(time.Until(roundData.Round.EndDate).Hours() / 24)
+		if daysRemaining < 0 {
+			daysRemaining = 0
+		}
+
+		// Publish broadcast event to all students
+		broadcastEvent := bus.BroadcastEvent{
+			RecipientIDs: studentIDs,
+			EventType:    bus.BroadcastEventProjectRegistrationDeadline,
+			Data: map[string]interface{}{
+				"classroom_id":       roundData.ClassroomID,
+				"classroom_name":     roundData.ClassroomName,
+				"project_round_id":   roundData.Round.ID.Hex(),
+				"project_round_name": roundData.Round.Name,
+				"end_date":           roundData.Round.EndDate,
+				"days_remaining":     daysRemaining,
+			},
+		}
+
+		p.eventBus.Publish(broadcastEvent)
+	}
+}
+
+func (p *projectService) checkReportOpened() {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	now := time.Now()
+	periods, err := p.projectRepo.GetJustOpenReportPeriods(ctx, now)
+	if err != nil {
+		return
+	}
+
+	for _, periodData := range periods {
+		// Get all students in the classroom
+		studentIDs, err := p.classroomRepo.GetStudentIDsByClassroomID(ctx, periodData.ClassroomID)
+		if err != nil || len(studentIDs) == 0 {
+			continue
+		}
+
+		// Publish broadcast event to all students
+		broadcastEvent := bus.BroadcastEvent{
+			RecipientIDs: studentIDs,
+			EventType:    bus.BroadcastEventReportOpened,
+			Data: map[string]interface{}{
+				"classroom_id":        periodData.ClassroomID,
+				"project_round_id":    periodData.ProjectRoundID,
+				"project_round_name":  periodData.ProjectRoundName,
+				"report_period_id":    periodData.ReportPeriods.ID.Hex(),
+				"report_period_title": periodData.ReportPeriods.Title,
+				"start_date":          periodData.ReportPeriods.StartDate,
+				"end_date":            periodData.ReportPeriods.EndDate,
+			},
+		}
+
+		p.eventBus.Publish(broadcastEvent)
+	}
+}
+
+func (p *projectService) checkReportDeadlines() {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	now := time.Now()
+	// Check for reports due in 3 days
+	periods, err := p.projectRepo.GetNearDeadlineReportPeriods(ctx, now, 3)
+	if err != nil {
+		return
+	}
+
+	for _, periodData := range periods {
+		// Get all students in the classroom
+		studentIDs, err := p.classroomRepo.GetStudentIDsByClassroomID(ctx, periodData.ClassroomID)
+		if err != nil || len(studentIDs) == 0 {
+			continue
+		}
+
+		// Calculate days remaining
+		daysRemaining := int(time.Until(periodData.ReportPeriods.EndDate).Hours() / 24)
+		if daysRemaining < 0 {
+			daysRemaining = 0
+		}
+
+		// Publish broadcast event to all students
+		broadcastEvent := bus.BroadcastEvent{
+			RecipientIDs: studentIDs,
+			EventType:    bus.BroadcastReportNearDeadline,
+			Data: map[string]interface{}{
+				"classroom_id":        periodData.ClassroomID,
+				"project_round_id":    periodData.ProjectRoundID,
+				"project_round_name":  periodData.ProjectRoundName,
+				"report_period_id":    periodData.ReportPeriods.ID.Hex(),
+				"report_period_title": periodData.ReportPeriods.Title,
+				"end_date":            periodData.ReportPeriods.EndDate,
+				"days_remaining":      daysRemaining,
+			},
+		}
+
+		p.eventBus.Publish(broadcastEvent)
+	}
+}
+
+// Helper function to remove duplicate strings
+func removeDuplicates(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
 
 func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, requesterID string) (*model.ProjectRound, error) {
 	ctx, cancel := util.NewDefaultDBContext()
