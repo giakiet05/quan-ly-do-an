@@ -21,6 +21,7 @@ import StudentClassList from './pages/student/StudentClassList.svelte';
 import StudentClassDetail from './pages/student/StudentClassDetail.svelte';
 import StudentCategoryDetail from './pages/student/StudentCategoryDetail.svelte';
 import StudentProjectRegister from './pages/student/StudentProjectRegister.svelte';
+import JoinClassroom from './pages/student/JoinClassroom.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
@@ -51,10 +52,11 @@ const routes = {
     '/lecture/students-management': StudentsManagementView,
 
     // Student routes
-    '/classes': StudentClassList,
-    '/classes/:id': StudentClassDetail,
-    '/classes/:id/categories/:categoryId': StudentCategoryDetail,
-    '/classes/:id/categories/:categoryId/projects/:projectId': StudentProjectRegister,
+    '/student/classes': StudentClassList,
+    '/student/classes/join': JoinClassroom,
+    '/student/classes/:id': StudentClassDetail,
+    '/student/classes/:id/categories/:categoryId': StudentCategoryDetail,
+    '/student/classes/:id/categories/:categoryId/projects/:projectId': StudentProjectRegister,
 
 };
 

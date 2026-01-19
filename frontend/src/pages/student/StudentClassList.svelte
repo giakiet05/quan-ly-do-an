@@ -3,194 +3,32 @@
   import { push } from "svelte-spa-router";
   import { getMyJoinedClassrooms } from "../../services/classroom-service";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
+  import JoinClassroomModal from "../../components/JoinClassroomModal.svelte";
 
   let classes = $state<ClassroomResponse[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let showJoinModal = $state(false);
 
-  onMount(async () => {
+  async function loadClasses() {
     try {
       loading = true;
       error = null;
-
-      // Fetch real data from API
       classes = await getMyJoinedClassrooms();
-
-      // TEMPORARY: Add mock data if empty for UI testing
-      if (classes.length === 0) {
-        classes = [
-          {
-            id: "mock-class-1",
-            name: "Đồ án Phát triển ứng dụng web",
-            description:
-              "Lớp học đồ án cuối kỳ HK2 2024-2025 - Phát triển ứng dụng web full-stack",
-            semester: "HK2",
-            year: 2024,
-            invitationCode: "WEB2024",
-            status: "active",
-            generalChannelId: "channel1",
-            lecturer: {
-              userId: "lecturer1",
-              fullName: "TS. Nguyễn Văn A",
-              avatar: "",
-            },
-            students: Array(45).fill({
-              userId: "s1",
-              fullName: "Student",
-              avatar: "",
-            }),
-            projectRounds: [
-              {
-                id: "round1",
-                name: "Đợt 1 - Đồ án cuối kỳ",
-                description: "Phát triển ứng dụng web hoàn chỉnh",
-                startDate: "2024-02-01T00:00:00Z",
-                endDate: "2024-05-31T23:59:59Z",
-                reportPeriods: [
-                  {
-                    id: "rp1",
-                    title: "Báo cáo đề cương",
-                    description: "Nộp báo cáo đề cương dự án",
-                    fileType: ["pdf", "docx"],
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-02-15T23:59:59Z",
-                  },
-                ],
-                createdAt: "2024-01-15T00:00:00Z",
-                isDeleted: false,
-              },
-            ],
-            maxStudents: 50,
-            autoApprove: false,
-            canStudentDeleteGroup: false,
-            avatar: "",
-            createdAt: "2024-01-15T00:00:00Z",
-          },
-          {
-            id: "mock-class-2",
-            name: "Đồ án Trí tuệ nhân tạo",
-            description: "Áp dụng AI vào bài toán thực tế",
-            semester: "HK2",
-            year: 2024,
-            invitationCode: "AI2024",
-            status: "active",
-            generalChannelId: "channel2",
-            lecturer: {
-              userId: "lecturer2",
-              fullName: "TS. Trần Thị B",
-              avatar: "",
-            },
-            students: Array(38).fill({
-              userId: "s1",
-              fullName: "Student",
-              avatar: "",
-            }),
-            projectRounds: [
-              {
-                id: "round2",
-                name: "Đợt 1 - AI Research",
-                description: "Nghiên cứu và ứng dụng AI",
-                startDate: "2024-02-01T00:00:00Z",
-                endDate: "2024-05-31T23:59:59Z",
-                projects: [],
-                reportPeriods: [],
-                createdAt: "2024-01-15T00:00:00Z",
-                isDeleted: false,
-              },
-            ],
-            maxStudents: 40,
-            autoApprove: true,
-            canStudentDeleteGroup: false,
-            avatar: "",
-            createdAt: "2024-01-15T00:00:00Z",
-          },
-        ] as any;
-      }
-
-      /* MOCK DATA - Uncomment để test UI
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      classes = [
-        {
-          id: "class1",
-          name: "Đồ án Phát triển ứng dụng web",
-          description: "Lớp học đồ án cuối kỳ HK2 2024-2025",
-          semester: "HK2",
-          year: 2024,
-          invitation_code: "WEB2024",
-          status: "active",
-          requiresProjectRegistration: true, // Thêm field này
-          lecturer: {
-            userId: "lecturer1",
-            fullName: "TS. Nguyễn Văn A",
-            avatar: "",
-          },
-          students: Array(45).fill(null),
-          project_rounds: [
-            {
-              id: "round1",
-              name: "Đợt 1",
-              description: "",
-              start_date: "2024-02-01",
-              end_date: "2024-05-31",
-              created_at: "",
-              updated_at: "",
-            },
-          ],
-          avatar: "",
-          created_at: "2024-01-15",
-          updated_at: "2024-01-15",
-        },
-        {
-          id: "class2",
-          name: "Đồ án Trí tuệ nhân tạo",
-          description: "Áp dụng AI vào bài toán thực tế",
-          semester: "HK2",
-          year: 2024,
-          invitation_code: "AI2024",
-          status: "active",
-          requiresProjectRegistration: false,
-          lecturer: {
-            userId: "lecturer2",
-            fullName: "TS. Trần Thị B",
-            avatar: "",
-          },
-          students: Array(38).fill(null),
-          project_rounds: [
-            {
-              id: "round2",
-              name: "Đợt 1",
-              description: "",
-              start_date: "2024-02-01",
-              end_date: "2024-05-31",
-              created_at: "",
-              updated_at: "",
-            },
-            {
-              id: "round3",
-              name: "Đợt 2",
-              description: "",
-              start_date: "2024-09-01",
-              end_date: "2024-12-31",
-              created_at: "",
-              updated_at: "",
-            },
-          ],
-          avatar: "",
-          created_at: "2024-01-20",
-          updated_at: "2024-01-20",
-        },
-      ];
-      */
     } catch (err: any) {
-      error = err.message || "Không thể tải danh sách lớp học";
       console.error("Error loading classes:", err);
+      error = err.message || "Không thể tải danh sách lớp học";
     } finally {
       loading = false;
     }
+  }
+
+  onMount(async () => {
+    await loadClasses();
   });
 
   function handleClassClick(classId: string) {
-    push(`/classes/${classId}`);
+    push(`/student/classes/${classId}`);
   }
 
   function getInitials(name: string): string {
@@ -208,6 +46,20 @@
       <h1 class="title">Lớp học của tôi</h1>
       <p class="subtitle">Danh sách các lớp học bạn đã tham gia</p>
     </div>
+    <button onclick={() => (showJoinModal = true)} class="btn-join">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Tham gia lớp học
+    </button>
   </div>
 
   {#if loading}
@@ -274,23 +126,6 @@
                 {classData.semester}
                 {classData.year}
               </span>
-              {#if classData.requiresProjectRegistration}
-                <span class="badge badge-warning">
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  Cần đăng ký đề tài
-                </span>
-              {/if}
             </div>
 
             <h3 class="class-name">{classData.name}</h3>
@@ -329,7 +164,7 @@
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
               </svg>
-              <span>{classData.project_rounds?.length || 0} đợt đồ án</span>
+              <span>{classData.projectRounds?.length || 0} đợt đồ án</span>
             </div>
 
             <div class="stat-item instructor">
@@ -352,6 +187,8 @@
     </div>
   {/if}
 </div>
+
+<JoinClassroomModal bind:show={showJoinModal} onSuccess={loadClasses} />
 
 <style>
   .container {
@@ -377,6 +214,31 @@
   .subtitle {
     font-size: 1rem;
     color: #6b7280;
+  }
+
+  .btn-join {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-join:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  .btn-join svg {
+    flex-shrink: 0;
   }
 
   .loading-state,
