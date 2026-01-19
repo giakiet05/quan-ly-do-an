@@ -283,6 +283,7 @@ type TopicReportSubmittedEvent struct {
 	ClassroomID string    `json:"classroom_id"`
 	GroupID     string    `json:"group_id"`
 	ReportID    string    `json:"report_id"`
+	SubmitterID string    `json:"submitter_id"`
 	SubmittedAt time.Time `json:"submitted_at"`
 }
 
@@ -295,6 +296,7 @@ func (e TopicReportSubmittedEvent) Payload() map[string]interface{} {
 		"classroom_id": e.ClassroomID,
 		"group_id":     e.GroupID,
 		"report_id":    e.ReportID,
+		"submitter_id": e.SubmitterID,
 		"submitted_at": e.SubmittedAt,
 	}
 }

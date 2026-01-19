@@ -631,6 +631,7 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 		ClassroomID: req.ClassroomID,
 		GroupID:     req.GroupID,
 		ReportID:    report.ID.Hex(),
+		SubmitterID: requesterID,
 		SubmittedAt: now,
 	})
 

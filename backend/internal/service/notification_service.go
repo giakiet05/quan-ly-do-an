@@ -25,6 +25,8 @@ type NotificationService interface {
 type notificationService struct {
 	notificationRepo repo.NotificationRepo
 	userRepo         repo.UserRepo
+	classroomRepo    repo.ClassroomRepo
+	groupRepo        repo.GroupRepo
 	eventBus         *bus.EventBus
 	redisClient      *redis.Client
 }
@@ -32,12 +34,16 @@ type notificationService struct {
 func NewNotificationService(
 	notificationRepo repo.NotificationRepo,
 	userRepo repo.UserRepo,
+	classroomRepo repo.ClassroomRepo,
+	groupRepo repo.GroupRepo,
 	bus *bus.EventBus,
 	redis *redis.Client,
 ) NotificationService {
 	return &notificationService{
 		notificationRepo: notificationRepo,
 		userRepo:         userRepo,
+		classroomRepo:    classroomRepo,
+		groupRepo:        groupRepo,
 		eventBus:         bus,
 		redisClient:      redis,
 	}
@@ -49,6 +55,8 @@ func (s *notificationService) Start() {
 	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
 	s.eventBus.Subscribe(bus.TopicGroupInvitation, eventChannel)
 	s.eventBus.Subscribe(bus.TopicClassroomInvitation, eventChannel)
+	s.eventBus.Subscribe(bus.TopicReportSubmitted, eventChannel)
+	s.eventBus.Subscribe(bus.TopicReportGraded, eventChannel)
 
 	log.Println("NotificationService started and subscribed to events.")
 
@@ -64,6 +72,10 @@ func (s *notificationService) processEvents(ch bus.EventListener) {
 			s.handleGroupInvitation(event)
 		case bus.TopicClassroomInvitation:
 			s.handleClassroomInvitation(event)
+		case bus.TopicReportSubmitted:
+			s.handleReportSubmitted(event)
+		case bus.TopicReportGraded:
+			s.handleReportGraded(event)
 		}
 	}
 }
@@ -85,16 +97,12 @@ func (s *notificationService) handleBroadcast(event bus.Event) {
 	switch eventType {
 	case bus.BroadcastEventMessageCreated:
 		s.handleMessageCreated(ctx, recipientIDs, data)
-
 	case bus.BroadcastEventReportOpened:
 		s.handleReportOpened(ctx, recipientIDs, data)
-
 	case bus.BroadcastReportNearDeadline:
 		s.handleReportNearDeadline(ctx, recipientIDs, data)
-
 	case bus.BroadcastEventProjectRegistrationOpened:
 		s.handleProjectRegistrationOpened(ctx, recipientIDs, data)
-
 	case bus.BroadcastEventProjectRegistrationDeadline:
 		s.handleProjectRegistrationDeadline(ctx, recipientIDs, data)
 	}
@@ -397,17 +405,65 @@ func (s *notificationService) handleClassroomInvitation(event bus.Event) {
 	})
 }
 
-func (s *notificationService) handleReportPeriodOpened(event bus.Event) {
-	// This event is published by project service but notifications are sent via BroadcastEvent
-	// Just log for monitoring purposes
+func (s *notificationService) handleReportSubmitted(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
 	payload := event.Payload()
 	classroomID, _ := payload["classroom_id"].(string)
-	projectRoundName, _ := payload["project_round_name"].(string)
-	reportPeriodTitle, _ := payload["report_period_title"].(string)
-	endDate, _ := payload["end_date"].(time.Time)
+	groupID, _ := payload["group_id"].(string)
+	reportID, _ := payload["report_id"].(string)
+	submitterID, _ := payload["submitter_id"].(string)
 
-	log.Printf("Report period opened: %s - %s in classroom %s (deadline: %s)",
-		projectRoundName, reportPeriodTitle, classroomID, endDate.Format("2006-01-02"))
+	submitterOID, err := primitive.ObjectIDFromHex(submitterID)
+	if err != nil {
+		log.Printf("ERROR: Invalid submitter ID in report submitted event: %v", err)
+		return
+	}
+
+	notification := &model.Notification{
+		RecipientID: submitterOID,
+		Type:        model.NotificationTypeReportSubmitted,
+		Message:     "Bạn đã nộp báo cáo thành công",
+		Link:        fmt.Sprintf("/classrooms/%s/groups/%s/reports/%s", classroomID, groupID, reportID),
+		IsRead:      false,
+		Metadata:    payload,
+		CreatedAt:   time.Now(),
+	}
+
+	s.createAndPublish(ctx, submitterID, notification)
+}
+
+func (s *notificationService) handleReportGraded(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	payload := event.Payload()
+	classroomID, _ := payload["classroom_id"].(string)
+	groupID, _ := payload["group_id"].(string)
+	reportID, _ := payload["report_id"].(string)
+
+	// Get group to get all members
+	group, err := s.groupRepo.GetByID(ctx, groupID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get group for report graded notification: %v", err)
+		return
+	}
+
+	// Notify all group members
+	for _, member := range group.Members {
+		notification := &model.Notification{
+			RecipientID: member.ID,
+			Type:        model.NotificationTypeReportGraded,
+			Message:     "Báo cáo của nhóm bạn đã được chấm điểm",
+			Link:        fmt.Sprintf("/classrooms/%s/groups/%s/reports/%s", classroomID, groupID, reportID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+
+		s.createAndPublish(ctx, member.ID.Hex(), notification)
+	}
 }
 
 func (s *notificationService) GetNotifications(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error) {
