@@ -43,8 +43,8 @@ const (
 	TopicProjectRegistrationExpired  = "project.registration.expired"
 
 	// Class
-	TopicClassUpdated         = "class.updated"
-	TopicClassroomInvitation  = "classroom.invitation"
+	TopicClassUpdated        = "class.updated"
+	TopicClassroomInvitation = "classroom.invitation"
 )
 
 type BroadcastEventType string
@@ -273,6 +273,9 @@ func (e ClassroomInvitationEvent) Payload() map[string]interface{} {
 		"inviter_id":     e.InviterID,
 		"inviter_name":   e.InviterName,
 		"invitee_id":     e.InviteeID,
+	}
+}
+
 //type ReportOpenedEvent struct {
 //	ReportID string    `json:"report_id"`
 //	OpenedAt time.Time `json:"opened_at"`
