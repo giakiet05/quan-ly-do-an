@@ -18,6 +18,16 @@ func RegisterGroupRoutes(rg *gin.RouterGroup, c *controller.GroupController) {
 		groups.PUT("", c.UpdateGroup)
 		groups.DELETE("/:group_id", c.DeleteGroup)
 
+		// Join request operations (student requests to join a group)
+		groups.POST("/join-requests", c.CreateJoinRequest)
+		groups.PUT("/join-requests/accept", c.AcceptJoinRequest)
+		groups.PUT("/join-requests/reject", c.RejectJoinRequest)
+
+		// Invitation operations (group leader invites students)
+		groups.POST("/invitations", c.InviteToGroup)
+		groups.PUT("/invitations/accept", c.AcceptInvitation)
+		groups.PUT("/invitations/reject", c.RejectInvitation)
+
 		// Task operations
 		groups.POST("/tasks", c.CreateTask)
 		groups.PUT("/tasks", c.UpdateTask)

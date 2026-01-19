@@ -181,12 +181,11 @@ func Init() (*gin.Engine, error) {
 
 	// Start background services
 	go wsHub.Start()
+	cronService.Start()
 	services.NotificationService.Start()
 	services.MessageService.Start()
 	services.ChannelService.Start()
-	//services.GroupService.Start()
-	//services.ProjectService.Start()
-	cronService.Start()
+	services.ProjectService.Start()
 
 	return router, nil
 }
