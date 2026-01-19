@@ -14,6 +14,7 @@ import (
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -78,7 +79,14 @@ func initRepos(client *mongo.Client, db *mongo.Database) *Repos {
 	}
 }
 
-func initServices(repos *Repos, redisClient *redis.Client, emailSender email.Sender, eventBus *bus.EventBus, tokenService *auth.TokenService) *Services {
+func initServices(
+	repos *Repos,
+	redisClient *redis.Client,
+	emailSender email.Sender,
+	eventBus *bus.EventBus,
+	cron *cron.Cron,
+	tokenService *auth.TokenService,
+) *Services {
 	return &Services{
 		GroupService:                service.NewGroupService(repos.GroupRepo, repos.ClassroomRepo, repos.ChannelRepo, repos.UserRepo, repos.ProjectRepo),
 		AuthService:                 service.NewAuthService(repos.UserRepo, repos.EmailVerificationRepo, repos.PasswordResetRepo, emailSender, redisClient, tokenService),
@@ -164,9 +172,10 @@ func Init() (*gin.Engine, error) {
 	eventBus := bus.NewEventBus()
 	wsHub := ws.NewHub(eventBus)
 	emailSender := email.NewSMTPSender()
+	cronService := cron.New()
 
 	repos := initRepos(mongoClient, db)
-	services := initServices(repos, redisClient, emailSender, eventBus, tokenService)
+	services := initServices(repos, redisClient, emailSender, eventBus, cronService, tokenService)
 	controllers := initControllers(services, wsHub)
 	initRoutes(controllers, router)
 
@@ -175,6 +184,9 @@ func Init() (*gin.Engine, error) {
 	services.NotificationService.Start()
 	services.MessageService.Start()
 	services.ChannelService.Start()
+	services.GroupService.Start()
+	services.ProjectService.Start()
+	cronService.Start()
 
 	return router, nil
 }

@@ -29,11 +29,13 @@ const (
 
 	// Group
 	TopicGroupInvitation = "group.invitation"
-	TopicReportOpened    = "report.opened"
-	TopicReportDeadline  = "report.deadline"
-	TopicReportSubmitted = "report.submitted"
-	TopicReportGraded    = "report.graded"
-	TopicReportExpired   = "report.expired"
+
+	// Report
+	TopicReportOpened       = "report.opened"
+	TopicReportNearDeadline = "report.near_deadline"
+	TopicReportSubmitted    = "report.submitted"
+	TopicReportGraded       = "report.graded"
+	TopicReportExpired      = "report.expired"
 
 	// Project
 	TopicProjectRegistrationOpened   = "project.registration.opened"
@@ -271,5 +273,57 @@ func (e ClassroomInvitationEvent) Payload() map[string]interface{} {
 		"inviter_id":     e.InviterID,
 		"inviter_name":   e.InviterName,
 		"invitee_id":     e.InviteeID,
+//type ReportOpenedEvent struct {
+//	ReportID string    `json:"report_id"`
+//	OpenedAt time.Time `json:"opened_at"`
+//}
+//
+//func (e ReportOpenedEvent) Topic() string {
+//	return TopicReportOpened
+//}
+//func (e ReportOpenedEvent) Payload() map[string]interface{} {
+//	return map[string]interface{}{
+//		"report_id": e.ReportID,
+//		"opened_at": e.OpenedAt,
+//	}
+//}
+
+type TopicReportSubmittedEvent struct {
+	ClassroomID string    `json:"classroom_id"`
+	GroupID     string    `json:"group_id"`
+	ReportID    string    `json:"report_id"`
+	SubmittedAt time.Time `json:"submitted_at"`
+}
+
+func (e TopicReportSubmittedEvent) Topic() string {
+	return TopicReportSubmitted
+}
+
+func (e TopicReportSubmittedEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"classroom_id": e.ClassroomID,
+		"group_id":     e.GroupID,
+		"report_id":    e.ReportID,
+		"submitted_at": e.SubmittedAt,
+	}
+}
+
+type TopicReportGradedEvent struct {
+	ClassroomID string    `json:"classroom_id"`
+	GroupID     string    `json:"group_id"`
+	ReportID    string    `json:"report_id"`
+	GradedAt    time.Time `json:"graded_at"`
+}
+
+func (e TopicReportGradedEvent) Topic() string {
+	return TopicReportGraded
+}
+
+func (e TopicReportGradedEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"classroom_id": e.ClassroomID,
+		"group_id":     e.GroupID,
+		"report_id":    e.ReportID,
+		"graded_at":    e.GradedAt,
 	}
 }
