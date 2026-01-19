@@ -62,10 +62,13 @@ type UpdateTaskRequest struct {
 }
 
 type CreateReportRequest struct {
-	GroupID string       `json:"group_id"`
-	Title   string       `json:"title"`
-	Content string       `json:"content"`
-	Files   []model.File `json:"files"`
+	ClassroomID    string       `json:"classroom_id"`
+	GroupID        string       `json:"group_id"`
+	ProjectRoundID string       `json:"project_round_id"`
+	ReportPeriodID string       `json:"report_period_id"`
+	Title          string       `json:"title"`
+	Content        string       `json:"content"`
+	Files          []model.File `json:"files"`
 }
 
 type UpdateReportRequest struct {
@@ -118,14 +121,16 @@ type TaskResponse struct {
 }
 
 type ReportResponse struct {
-	ID       string                 `json:"id"`
-	Title    string                 `json:"title"`
-	Content  string                 `json:"content"`
-	Files    []model.File           `json:"files"`
-	Feedback ReportFeedbackResponse `json:"feedback"`
+	ID             string                 `json:"id"`
+	ReportPeriodID string                 `json:"report_period_id"`
+	Title          string                 `json:"title"`
+	Content        string                 `json:"content"`
+	Files          []model.File           `json:"files"`
+	Feedback       ReportFeedbackResponse `json:"feedback"`
 }
 
 type ReportFeedbackResponse struct {
+	ID          string    `json:"id"`
 	Content     string    `json:"content"`
 	Grade       string    `json:"grade"`
 	LecturerID  string    `json:"lecturer_id"`
@@ -158,11 +163,13 @@ func FromGroup(group *model.Group) *GroupResponse {
 	reports := make([]ReportResponse, len(group.Reports))
 	for i, r := range group.Reports {
 		reports[i] = ReportResponse{
-			ID:      r.ID.Hex(),
-			Title:   r.Title,
-			Content: r.Content,
-			Files:   r.Files,
+			ID:             r.ID.Hex(),
+			ReportPeriodID: r.ReportPeriodID.Hex(),
+			Title:          r.Title,
+			Content:        r.Content,
+			Files:          r.Files,
 			Feedback: ReportFeedbackResponse{
+				ID:          r.Feedback.ID.Hex(),
 				Content:     r.Feedback.Content,
 				Grade:       r.Feedback.Grade,
 				LecturerID:  r.Feedback.LecturerID.Hex(),

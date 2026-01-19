@@ -28,7 +28,12 @@ type notificationService struct {
 	redisClient      *redis.Client
 }
 
-func NewNotificationService(notificationRepo repo.NotificationRepo, userRepo repo.UserRepo, bus *bus.EventBus, redis *redis.Client) NotificationService {
+func NewNotificationService(
+	notificationRepo repo.NotificationRepo,
+	userRepo repo.UserRepo,
+	bus *bus.EventBus,
+	redis *redis.Client,
+) NotificationService {
 	return &notificationService{
 		notificationRepo: notificationRepo,
 		userRepo:         userRepo,
@@ -39,9 +44,10 @@ func NewNotificationService(notificationRepo repo.NotificationRepo, userRepo rep
 
 func (s *notificationService) Start() {
 	eventChannel := make(bus.EventListener, 100)
-
+	
 	s.eventBus.Subscribe(bus.TopicBroadcast, eventChannel)
 	s.eventBus.Subscribe(bus.TopicGroupInvitation, eventChannel)
+	s.eventBus.Subscribe(bus.TopicClassroomInvitation, eventChannel)
 
 	log.Println("NotificationService started and subscribed to events.")
 
@@ -55,6 +61,8 @@ func (s *notificationService) processEvents(ch bus.EventListener) {
 			s.handleBroadcast(event)
 		case bus.TopicGroupInvitation:
 			s.handleGroupInvitation(event)
+		case bus.TopicClassroomInvitation:
+			s.handleClassroomInvitation(event)
 		}
 	}
 }
@@ -157,6 +165,47 @@ func (s *notificationService) handleGroupInvitation(event bus.Event) {
 	createdNotification, err := s.notificationRepo.Create(ctx, notification)
 	if err != nil {
 		log.Printf("ERROR: NotificationService: failed to create notification: %v", err)
+	}
+
+	s.eventBus.Publish(bus.NotificationCreatedEvent{
+		RecipientID:  inviteeID,
+		Notification: dto.FromNotification(createdNotification),
+	})
+}
+
+func (s *notificationService) handleClassroomInvitation(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	payload := event.Payload()
+	inviteeID, _ := payload["invitee_id"].(string)
+	inviterID, _ := payload["inviter_id"].(string)
+	inviterName, _ := payload["inviter_name"].(string)
+	classroomName, _ := payload["classroom_name"].(string)
+	classroomID, _ := payload["classroom_id"].(string)
+	invitationID, _ := payload["invitation_id"].(string)
+
+	inviteeObjectID, _ := primitive.ObjectIDFromHex(inviteeID)
+	inviterObjectID, _ := primitive.ObjectIDFromHex(inviterID)
+
+	notification := &model.Notification{
+		RecipientID: inviteeObjectID,
+		ActorID:     inviterObjectID,
+		Type:        model.NotificationTypeClassroomInvitation,
+		Message:     fmt.Sprintf("%s moi ban lam tro giang lop %s", inviterName, classroomName),
+		Link:        fmt.Sprintf("/classrooms/%s", classroomID),
+		IsRead:      false,
+		Metadata: map[string]interface{}{
+			"invitation_id":  invitationID,
+			"classroom_id":   classroomID,
+			"classroom_name": classroomName,
+		},
+		CreatedAt: time.Now(),
+	}
+	createdNotification, err := s.notificationRepo.Create(ctx, notification)
+	if err != nil {
+		log.Printf("ERROR: NotificationService: failed to create classroom invitation notification: %v", err)
+		return
 	}
 
 	s.eventBus.Publish(bus.NotificationCreatedEvent{

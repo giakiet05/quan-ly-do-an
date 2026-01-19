@@ -16,6 +16,7 @@ Tất cả endpoints trả về response theo format:
 **Ký hiệu:**
 -  = Yêu cầu authentication (gửi `Authorization: Bearer <access_token>` trong header)
 -  = Chỉ giảng viên mới có quyền truy cập
+-  = Giảng viên hoặc trợ giảng có quyền truy cập
 -  = Cả sinh viên và giảng viên đều có quyền truy cập
 
 ---
@@ -577,14 +578,18 @@ Authorization: Bearer <access_token>
   "year": 2024,
   "max_students": 50,
   "auto_approve": false,
-  "require_email_domain": "@hcmut.edu.vn"
+  "allowed_email_domains": ["@hcmut.edu.vn", "@student.hcmut.edu.vn"],
+  "enable_email_restriction": true,
+  "enable_whitelist": false
 }
 ```
 
 **Lưu ý:**
 - `max_students` mặc định: 100
 - `auto_approve` mặc định: false (yêu cầu phê duyệt thủ công)
-- `require_email_domain` optional: Chỉ cho phép email với domain này tham gia
+- `allowed_email_domains`: Mảng các domain email được phép (VD: ["@hcmut.edu.vn"])
+- `enable_email_restriction`: Bật/tắt giới hạn domain email (mặc định: false)
+- `enable_whitelist`: Bật/tắt whitelist mã sinh viên (mặc định: false)
 
 **Success Response (201):**
 ```json
@@ -604,10 +609,14 @@ Authorization: Bearer <access_token>
       "full_name": "GV. Nguyễn Văn A",
       "avatar": null
     },
+    "co_lecturers": [],
     "students": [],
     "invitation_code": "ABC123XYZ",
     "max_students": 50,
     "auto_approve": false,
+    "allowed_email_domains": ["@hcmut.edu.vn", "@student.hcmut.edu.vn"],
+    "enable_email_restriction": true,
+    "enable_whitelist": false,
     "created_at": "2024-01-01T00:00:00Z",
     "whitelist_student_code": []
   }
@@ -707,21 +716,48 @@ Authorization: Bearer <access_token>
       "full_name": "GV. Nguyễn Văn A",
       "avatar": null
     },
+    "co_lecturers": [
+      {
+        "user_id": "507f1f77bcf86cd799439015",
+        "full_name": "Trợ giảng Nguyễn Văn C",
+        "avatar": null
+      }
+    ],
     "students": [
       {
         "user_id": "507f1f77bcf86cd799439013",
         "full_name": "Nguyễn Văn B",
-        "avatar": null
+        "avatar": null,
+        "student_code": "2021600001"
       }
     ],
     "invitation_code": "ABC123XYZ",
     "max_students": 50,
     "auto_approve": false,
+    "allowed_email_domains": ["@hcmut.edu.vn"],
+    "enable_email_restriction": true,
+    "enable_whitelist": true,
     "created_at": "2024-01-01T00:00:00Z",
-    "whitelist_student_code": ["2021600001", "2021600002"]
+    "whitelist_student_code": [
+      {
+        "student_code": "2021600001",
+        "joined_by": "507f1f77bcf86cd799439013",
+        "joined_at": "2024-01-05T10:00:00Z"
+      },
+      {
+        "student_code": "2021600002",
+        "joined_by": null,
+        "joined_at": null
+      }
+    ]
   }
 }
 ```
+
+**Lưu ý:**
+- `whitelist_student_code`: Mảng các object chứa mã sinh viên và trạng thái join
+  - `joined_by`: ID của user đã claim mã này (null nếu chưa có ai)
+  - `joined_at`: Thời điểm user claim mã (null nếu chưa có ai)
 
 **Lỗi:**
 - `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
@@ -729,10 +765,10 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Cập nhật lớp học (Chỉ giảng viên)
+### Cập nhật lớp học (Giảng viên hoặc trợ giảng)
 **Endpoint:** `PUT /api/classrooms/:id`
 
-**Mô tả:** Cập nhật thông tin lớp học (chỉ giảng viên).
+**Mô tả:** Cập nhật thông tin lớp học (giảng viên hoặc trợ giảng).
 
 **Request Body:**
 ```json
@@ -741,6 +777,9 @@ Authorization: Bearer <access_token>
   "description": "Mô tả mới",
   "max_students": 60,
   "auto_approve": true,
+  "allowed_email_domains": ["@hcmut.edu.vn", "@student.hcmut.edu.vn"],
+  "enable_email_restriction": true,
+  "enable_whitelist": true,
   "can_student_delete_group": false
 }
 ```
@@ -761,7 +800,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
-- `403 FORBIDDEN` - Không phải giảng viên của lớp
+- `403 FORBIDDEN` - Không phải giảng viên hoặc trợ giảng của lớp
 - `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
 
 ---
@@ -784,7 +823,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Cập nhật trạng thái lớp học (Chỉ giảng viên)
+### Cập nhật trạng thái lớp học (Giảng viên hoặc trợ giảng)
 **Endpoint:** `PATCH /api/classrooms/:id/status`
 
 **Mô tả:** Cập nhật trạng thái lớp học (active, inactive, archived).
@@ -812,7 +851,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Xóa sinh viên khỏi lớp (Chỉ giảng viên)
+### Xóa sinh viên khỏi lớp (Giảng viên hoặc trợ giảng)
 **Endpoint:** `DELETE /api/classrooms/:id/students/:student_id`
 
 **Mô tả:** Xóa một sinh viên khỏi lớp học.
@@ -828,6 +867,46 @@ Authorization: Bearer <access_token>
 
 ---
 
+### Rời lớp học
+**Endpoint:** `POST /api/classrooms/:id/leave`
+
+**Mô tả:** Sinh viên hoặc trợ giảng tự rời khỏi lớp học. Giảng viên chính không thể rời lớp.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Rời lớp học thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Giảng viên chính không thể rời lớp / Không phải thành viên lớp
+- `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
+
+---
+
+### Xóa trợ giảng khỏi lớp (Chỉ giảng viên chính)
+**Endpoint:** `DELETE /api/classrooms/:id/co-lecturers/:co_lecturer_id`
+
+**Mô tả:** Giảng viên chính xóa trợ giảng khỏi lớp học.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa trợ giảng thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `403 FORBIDDEN` - Không phải giảng viên chính
+- `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
+
+---
+
 ### Tải template whitelist
 **Endpoint:** `GET /api/classrooms/whitelist-template`
 
@@ -837,10 +916,10 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Lấy whitelist mã sinh viên
+### Lấy whitelist mã sinh viên (Giảng viên hoặc trợ giảng)
 **Endpoint:** `GET /api/classrooms/:id/whitelist-student-code`
 
-**Mô tả:** Lấy danh sách mã sinh viên được phép tham gia lớp.
+**Mô tả:** Lấy danh sách mã sinh viên được phép tham gia lớp, kèm trạng thái đã join.
 
 **Success Response (200):**
 ```json
@@ -848,17 +927,37 @@ Authorization: Bearer <access_token>
   "success": true,
   "message": "Lấy whitelist thành công",
   "data": {
-    "student_codes": ["2021600001", "2021600002", "2021600003"]
+    "whitelist": [
+      {
+        "student_code": "2021600001",
+        "joined_by": "507f1f77bcf86cd799439013",
+        "joined_at": "2024-01-05T10:00:00Z"
+      },
+      {
+        "student_code": "2021600002",
+        "joined_by": null,
+        "joined_at": null
+      },
+      {
+        "student_code": "2021600003",
+        "joined_by": null,
+        "joined_at": null
+      }
+    ]
   }
 }
 ```
 
+**Lưu ý:**
+- `joined_by`: ID user đã claim mã sinh viên này (null nếu chưa ai claim)
+- `joined_at`: Thời điểm claim (null nếu chưa ai claim)
+
 ---
 
-### Upload whitelist (JSON) (Chỉ giảng viên)
+### Upload whitelist (JSON) (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/:id/whitelist-student-code`
 
-**Mô tả:** Upload danh sách mã sinh viên bằng JSON.
+**Mô tả:** Upload danh sách mã sinh viên bằng JSON (thay thế toàn bộ whitelist cũ).
 
 **Request Body:**
 ```json
@@ -880,7 +979,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Upload whitelist (Excel) (Chỉ giảng viên)
+### Upload whitelist (Excel) (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/:id/whitelist-student-code/upload`
 
 **Mô tả:** Upload danh sách mã sinh viên bằng file Excel.
@@ -901,7 +1000,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Cập nhật whitelist (Chỉ giảng viên)
+### Cập nhật whitelist (Giảng viên hoặc trợ giảng)
 **Endpoint:** `PATCH /api/classrooms/:id/whitelist-student-code`
 
 **Mô tả:** Thêm hoặc xóa mã sinh viên khỏi whitelist.
@@ -927,7 +1026,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Xóa whitelist (Chỉ giảng viên)
+### Xóa whitelist (Giảng viên hoặc trợ giảng)
 **Endpoint:** `DELETE /api/classrooms/:id/whitelist-student-code`
 
 **Mô tả:** Xóa toàn bộ whitelist mã sinh viên.
@@ -943,7 +1042,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Tạo lại mã mời (Chỉ giảng viên)
+### Tạo lại mã mời (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/:id/regenerate-code`
 
 **Mô tả:** Tạo lại invitation code mới cho lớp học.
@@ -1030,10 +1129,10 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Lấy danh sách yêu cầu tham gia (Chỉ giảng viên)
+### Lấy danh sách yêu cầu tham gia (Giảng viên hoặc trợ giảng)
 **Endpoint:** `GET /api/classrooms/:id/join-requests`
 
-**Mô tả:** Lấy danh sách các yêu cầu tham gia đang chờ duyệt (chỉ giảng viên).
+**Mô tả:** Lấy danh sách các yêu cầu tham gia đang chờ duyệt.
 
 **Success Response (200):**
 ```json
@@ -1055,7 +1154,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Phê duyệt yêu cầu tham gia (Chỉ giảng viên)
+### Phê duyệt yêu cầu tham gia (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/join-requests/:id/approve`
 
 **Mô tả:** Chấp nhận yêu cầu tham gia lớp.
@@ -1075,7 +1174,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Từ chối yêu cầu tham gia (Chỉ giảng viên)
+### Từ chối yêu cầu tham gia (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/join-requests/:id/reject`
 
 **Mô tả:** Từ chối yêu cầu tham gia lớp.
@@ -1091,12 +1190,213 @@ Authorization: Bearer <access_token>
 
 ---
 
+## Classroom Invitations (Mời trợ giảng)
+
+### Mời trợ giảng vào lớp (Giảng viên hoặc trợ giảng)
+**Endpoint:** `POST /api/classrooms/:id/invitations`
+
+**Mô tả:** Mời người khác làm trợ giảng cho lớp học thông qua email.
+
+**Request Body:**
+```json
+{
+  "email": "ta@hcmut.edu.vn"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Gửi lời mời thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439030",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "inviter_id": "507f1f77bcf86cd799439012",
+    "invitee_id": "507f1f77bcf86cd799439016",
+    "status": "pending",
+    "created_at": "2024-01-01T10:00:00Z"
+  }
+}
+```
+
+**Lỗi:**
+- `400 BAD_REQUEST` - Email không hợp lệ
+- `404 USER_NOT_FOUND` - Không tìm thấy user với email này
+- `409 ALREADY_LECTURER` - User đã là giảng viên chính của lớp
+- `409 ALREADY_CO_LECTURER` - User đã là trợ giảng của lớp
+- `409 INVITATION_ALREADY_EXISTS` - Đã có lời mời pending cho user này
+- `403 FORBIDDEN` - Không thể mời chính mình
+
+---
+
+### Lấy danh sách lời mời của lớp (Giảng viên hoặc trợ giảng)
+**Endpoint:** `GET /api/classrooms/:id/invitations?page=1&pageSize=20`
+
+**Mô tả:** Lấy danh sách các lời mời trợ giảng của lớp.
+
+**Query Parameters:**
+- `page`: Số trang (mặc định: 1)
+- `pageSize`: Số lời mời/trang (mặc định: 20)
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách lời mời thành công",
+  "data": {
+    "invitations": [
+      {
+        "id": "507f1f77bcf86cd799439030",
+        "classroom": {
+          "id": "507f1f77bcf86cd799439011",
+          "name": "Lập trình Web"
+        },
+        "inviter": {
+          "id": "507f1f77bcf86cd799439012",
+          "full_name": "GV. Nguyễn Văn A",
+          "email": "lecturer@hcmut.edu.vn"
+        },
+        "invitee": {
+          "id": "507f1f77bcf86cd799439016",
+          "full_name": "Trợ giảng B",
+          "email": "ta@hcmut.edu.vn"
+        },
+        "status": "pending",
+        "created_at": "2024-01-01T10:00:00Z",
+        "responded_at": null
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 1,
+      "total_items": 1,
+      "page_size": 20
+    }
+  }
+}
+```
+
+---
+
+### Lấy danh sách lời mời của tôi
+**Endpoint:** `GET /api/classroom-invitations/my?page=1&pageSize=20`
+
+**Mô tả:** Lấy danh sách các lời mời trợ giảng mà mình nhận được.
+
+**Query Parameters:**
+- `page`: Số trang (mặc định: 1)
+- `pageSize`: Số lời mời/trang (mặc định: 20)
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách lời mời thành công",
+  "data": {
+    "invitations": [
+      {
+        "id": "507f1f77bcf86cd799439030",
+        "classroom": {
+          "id": "507f1f77bcf86cd799439011",
+          "name": "Lập trình Web"
+        },
+        "inviter": {
+          "id": "507f1f77bcf86cd799439012",
+          "full_name": "GV. Nguyễn Văn A",
+          "email": "lecturer@hcmut.edu.vn"
+        },
+        "invitee": {
+          "id": "507f1f77bcf86cd799439016",
+          "full_name": "Trợ giảng B",
+          "email": "ta@hcmut.edu.vn"
+        },
+        "status": "pending",
+        "created_at": "2024-01-01T10:00:00Z",
+        "responded_at": null
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 1,
+      "total_items": 1,
+      "page_size": 20
+    }
+  }
+}
+```
+
+---
+
+### Chấp nhận lời mời trợ giảng
+**Endpoint:** `POST /api/classroom-invitations/:id/accept`
+
+**Mô tả:** Chấp nhận lời mời làm trợ giảng.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Chấp nhận lời mời thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `404 INVITATION_NOT_FOUND` - Lời mời không tồn tại
+- `403 FORBIDDEN` - Không phải người được mời
+- `409 INVITATION_ALREADY_PROCESSED` - Lời mời đã được xử lý
+
+---
+
+### Từ chối lời mời trợ giảng
+**Endpoint:** `POST /api/classroom-invitations/:id/reject`
+
+**Mô tả:** Từ chối lời mời làm trợ giảng.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Từ chối lời mời thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `404 INVITATION_NOT_FOUND` - Lời mời không tồn tại
+- `403 FORBIDDEN` - Không phải người được mời
+- `409 INVITATION_ALREADY_PROCESSED` - Lời mời đã được xử lý
+
+---
+
+### Hủy lời mời trợ giảng (Người mời)
+**Endpoint:** `DELETE /api/classroom-invitations/:id`
+
+**Mô tả:** Hủy lời mời đã gửi (chỉ người mời hoặc giảng viên/trợ giảng của lớp).
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Hủy lời mời thành công",
+  "data": null
+}
+```
+
+**Lỗi:**
+- `404 INVITATION_NOT_FOUND` - Lời mời không tồn tại
+- `403 FORBIDDEN` - Không có quyền hủy lời mời
+- `409 INVITATION_ALREADY_PROCESSED` - Lời mời đã được xử lý
+
+---
+
 ## Class Posts
 
-### Tạo bài đăng (Chỉ giảng viên)
+### Tạo bài đăng (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/:id/posts`
 
-**Mô tả:** Tạo bài đăng mới trong lớp học (chỉ giảng viên).
+**Mô tả:** Tạo bài đăng mới trong lớp học.
 
 **Workflow:**
 1. Upload files trước: `POST /api/classrooms/posts/upload-attachments`
@@ -1200,7 +1500,7 @@ Authorization: Bearer <access_token>
 ### Cập nhật bài đăng
 **Endpoint:** `PUT /api/classrooms/posts/:post_id`
 
-**Mô tả:** Cập nhật bài đăng (giảng viên hoặc tác giả).
+**Mô tả:** Cập nhật bài đăng (giảng viên, trợ giảng hoặc tác giả).
 
 **Request Body:**
 ```json
@@ -1237,10 +1537,10 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Xóa bài đăng (Chỉ giảng viên)
+### Xóa bài đăng (Giảng viên hoặc trợ giảng)
 **Endpoint:** `DELETE /api/classrooms/posts/:post_id`
 
-**Mô tả:** Xóa bài đăng (chỉ giảng viên).
+**Mô tả:** Xóa bài đăng.
 
 **Success Response (200):**
 ```json
@@ -1255,10 +1555,10 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Ghim/bỏ ghim bài đăng (Chỉ giảng viên)
+### Ghim/bỏ ghim bài đăng (Giảng viên hoặc trợ giảng)
 **Endpoint:** `PATCH /api/classrooms/posts/:post_id/pin`
 
-**Mô tả:** Ghim hoặc bỏ ghim bài đăng (chỉ giảng viên).
+**Mô tả:** Ghim hoặc bỏ ghim bài đăng.
 
 **Request Body:**
 ```json
@@ -1683,10 +1983,10 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Tạo feedback cho báo cáo (Chỉ giảng viên)
+### Tạo feedback cho báo cáo (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/groups/reports/feedback`
 
-**Mô tả:** Giảng viên đưa feedback và điểm cho báo cáo.
+**Mô tả:** Giảng viên hoặc trợ giảng đưa feedback và điểm cho báo cáo.
 
 **Request Body:**
 ```json
@@ -2146,6 +2446,487 @@ Authorization: Bearer <access_token>
 
 ---
 
+## Projects
+
+### Tạo report period
+**Endpoint:** `POST /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods`
+
+**Mô tả:** Tạo một report period mới cho project round.
+
+**Request Body:**
+```json
+{
+  "name": "Báo cáo tuần 1",
+  "description": "Mô tả báo cáo",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-01-07T23:59:59Z"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo report period thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439030",
+    "name": "Báo cáo tuần 1",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-01-07T23:59:59Z"
+  }
+}
+```
+
+---
+
+### Tạo nhiều report periods
+**Endpoint:** `POST /api/projects/classrooms/:classroom_id/report-periods/bulk`
+
+**Mô tả:** Tạo nhiều report periods một lúc.
+
+**Request Body:**
+```json
+{
+  "round_id": "507f1f77bcf86cd799439021",
+  "report_periods": [
+    {
+      "name": "Báo cáo tuần 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-01-07T23:59:59Z"
+    },
+    {
+      "name": "Báo cáo tuần 2",
+      "start_date": "2024-01-08T00:00:00Z",
+      "end_date": "2024-01-14T23:59:59Z"
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo report periods thành công",
+  "data": {
+    "created_count": 2,
+    "report_periods": [...]
+  }
+}
+```
+
+---
+
+### Lấy thông tin report period
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods/:period_id`
+
+**Mô tả:** Lấy chi tiết một report period.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy report period thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439030",
+    "name": "Báo cáo tuần 1",
+    "description": "Mô tả báo cáo",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-01-07T23:59:59Z"
+  }
+}
+```
+
+---
+
+### Lấy danh sách report periods
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods`
+
+**Mô tả:** Lấy danh sách report periods theo round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách report periods thành công",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439030",
+      "name": "Báo cáo tuần 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-01-07T23:59:59Z"
+    }
+  ]
+}
+```
+
+---
+
+### Cập nhật report period
+**Endpoint:** `PUT /api/projects/report-periods`
+
+**Mô tả:** Cập nhật thông tin report period.
+
+**Request Body:**
+```json
+{
+  "period_id": "507f1f77bcf86cd799439030",
+  "name": "Báo cáo tuần 1 (Updated)",
+  "description": "Mô tả mới",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-01-10T23:59:59Z"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Cập nhật report period thành công",
+  "data": {...}
+}
+```
+
+---
+
+### Xóa report period
+**Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods/:period_id`
+
+**Mô tả:** Xóa report period.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa report period thành công",
+  "data": null
+}
+```
+
+---
+
+### Tạo project
+**Endpoint:** `POST /api/projects`
+
+**Mô tả:** Tạo project mới.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "round_id": "507f1f77bcf86cd799439021",
+  "name": "Hệ thống quản lý thư viện",
+  "description": "Mô tả đồ án",
+  "requirements": "Yêu cầu chức năng..."
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo project thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439020",
+    "name": "Hệ thống quản lý thư viện",
+    "description": "Mô tả đồ án",
+    "requirements": "Yêu cầu chức năng..."
+  }
+}
+```
+
+---
+
+### Tạo nhiều projects
+**Endpoint:** `POST /api/projects/bulk`
+
+**Mô tả:** Tạo nhiều projects một lúc.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "round_id": "507f1f77bcf86cd799439021",
+  "projects": [
+    {
+      "name": "Project 1",
+      "description": "Mô tả 1"
+    },
+    {
+      "name": "Project 2",
+      "description": "Mô tả 2"
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo projects thành công",
+  "data": {
+    "created_count": 2,
+    "projects": [...]
+  }
+}
+```
+
+---
+
+### Lấy thông tin project
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/:project_id`
+
+**Mô tả:** Lấy chi tiết một project.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy project thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439020",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "round_id": "507f1f77bcf86cd799439021",
+    "name": "Hệ thống quản lý thư viện",
+    "description": "Mô tả đồ án",
+    "requirements": "Yêu cầu chức năng..."
+  }
+}
+```
+
+---
+
+### Lấy danh sách projects
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/projects`
+
+**Mô tả:** Lấy danh sách projects theo round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách projects thành công",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439020",
+      "name": "Hệ thống quản lý thư viện",
+      "description": "Mô tả đồ án"
+    }
+  ]
+}
+```
+
+---
+
+### Cập nhật project
+**Endpoint:** `PUT /api/projects`
+
+**Mô tả:** Cập nhật thông tin project.
+
+**Request Body:**
+```json
+{
+  "project_id": "507f1f77bcf86cd799439020",
+  "name": "Hệ thống quản lý thư viện (Updated)",
+  "description": "Mô tả mới",
+  "requirements": "Yêu cầu mới..."
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Cập nhật project thành công",
+  "data": {...}
+}
+```
+
+---
+
+### Xóa project
+**Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/:project_id`
+
+**Mô tả:** Xóa project.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa project thành công",
+  "data": null
+}
+```
+
+---
+
+### Tạo project round
+**Endpoint:** `POST /api/projects/rounds`
+
+**Mô tả:** Tạo project round mới cho lớp học.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "name": "Đợt 1",
+  "description": "Đợt đồ án học kỳ 1",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-05-31T23:59:59Z",
+  "max_members_per_group": 5
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo project round thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439021",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "name": "Đợt 1",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-05-31T23:59:59Z",
+    "max_members_per_group": 5
+  }
+}
+```
+
+---
+
+### Tạo nhiều project rounds
+**Endpoint:** `POST /api/projects/rounds/bulk`
+
+**Mô tả:** Tạo nhiều project rounds một lúc.
+
+**Request Body:**
+```json
+{
+  "classroom_id": "507f1f77bcf86cd799439011",
+  "rounds": [
+    {
+      "name": "Đợt 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-05-31T23:59:59Z",
+      "max_members_per_group": 5
+    },
+    {
+      "name": "Đợt 2",
+      "start_date": "2024-06-01T00:00:00Z",
+      "end_date": "2024-10-31T23:59:59Z",
+      "max_members_per_group": 5
+    }
+  ]
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Tạo project rounds thành công",
+  "data": {
+    "created_count": 2,
+    "rounds": [...]
+  }
+}
+```
+
+---
+
+### Lấy thông tin project round
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id`
+
+**Mô tả:** Lấy chi tiết một project round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy project round thành công",
+  "data": {
+    "id": "507f1f77bcf86cd799439021",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "name": "Đợt 1",
+    "description": "Đợt đồ án học kỳ 1",
+    "start_date": "2024-01-01T00:00:00Z",
+    "end_date": "2024-05-31T23:59:59Z",
+    "max_members_per_group": 5
+  }
+}
+```
+
+---
+
+### Lấy danh sách project rounds
+**Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds`
+
+**Mô tả:** Lấy danh sách project rounds theo lớp học.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách project rounds thành công",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439021",
+      "name": "Đợt 1",
+      "start_date": "2024-01-01T00:00:00Z",
+      "end_date": "2024-05-31T23:59:59Z"
+    }
+  ]
+}
+```
+
+---
+
+### Cập nhật project round
+**Endpoint:** `PUT /api/projects/rounds`
+
+**Mô tả:** Cập nhật thông tin project round.
+
+**Request Body:**
+```json
+{
+  "round_id": "507f1f77bcf86cd799439021",
+  "name": "Đợt 1 (Updated)",
+  "description": "Mô tả mới",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-06-30T23:59:59Z",
+  "max_members_per_group": 6
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Cập nhật project round thành công",
+  "data": {...}
+}
+```
+
+---
+
+### Xóa project round
+**Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/rounds/:round_id`
+
+**Mô tả:** Xóa project round.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Xóa project round thành công",
+  "data": null
+}
+```
+
+---
+
 ## Common Error Codes
 
 | Error Code | HTTP Status | Mô tả |
@@ -2161,9 +2942,17 @@ Authorization: Bearer <access_token>
 | `POST_NOT_FOUND` | 404 | Không tìm thấy bài đăng |
 | `GROUP_NOT_FOUND` | 404 | Không tìm thấy nhóm |
 | `CHANNEL_NOT_FOUND` | 404 | Không tìm thấy channel |
+| `INVITATION_NOT_FOUND` | 404 | Không tìm thấy lời mời |
 | `EMAIL_EXISTS` | 409 | Email đã tồn tại |
 | `ALREADY_IN_CLASSROOM` | 409 | Đã là thành viên của lớp |
+| `ALREADY_CO_LECTURER` | 409 | Đã là trợ giảng của lớp |
+| `ALREADY_LECTURER` | 409 | Đã là giảng viên của lớp |
+| `INVITATION_ALREADY_EXISTS` | 409 | Đã có lời mời pending |
+| `INVITATION_ALREADY_PROCESSED` | 409 | Lời mời đã được xử lý |
 | `CLASSROOM_FULL` | 409 | Lớp học đã đầy |
+| `STUDENT_CODE_NOT_IN_WHITELIST` | 409 | Mã SV không trong whitelist |
+| `STUDENT_CODE_ALREADY_USED` | 409 | Mã SV đã được sử dụng |
+| `INVALID_EMAIL_DOMAIN` | 400 | Email không đúng domain cho phép |
 | `LOGIN_METHOD_MISMATCH` | 409 | Sai phương thức đăng nhập |
 | `INTERNAL_ERROR` | 500 | Lỗi server |
 

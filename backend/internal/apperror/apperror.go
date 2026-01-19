@@ -116,6 +116,10 @@ var (
 	ErrProjectNotFound      = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
 	ErrInvalidMemberNumber  = AppError{Code: "INVALID_MEMBER_NUMBER", Message: "Invalid member number"}
 
+	// Project-related
+	ErrReportAlreadyExists  = AppError{Code: "REPORT_ALREADY_EXISTS", Message: "Report already exists for this period"}
+	ErrReportPeriodNotFound = AppError{Code: "REPORT_PERIOD_NOT_FOUND", Message: "Report period not found"}
+
 	// Class Membership-related
 	ErrMembershipNotFound     = AppError{Code: "MEMBERSHIP_NOT_FOUND", Message: "Membership not found"}
 	ErrAlreadyMember          = AppError{Code: "ALREADY_MEMBER", Message: "User is already a member of this community"}
@@ -133,19 +137,22 @@ var (
 	ErrPostNotFound      = AppError{Code: "POST_NOT_FOUND", Message: "Post not found"}
 
 	// Invitation-related
-	ErrInvitationNotFound        = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
-	ErrInvitationExpired         = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
-	ErrInvitationAlreadyExists   = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
+	ErrInvitationNotFound         = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}
+	ErrInvitationExpired          = AppError{Code: "INVITATION_EXPIRED", Message: "Invitation has expired"}
+	ErrInvitationAlreadyExists    = AppError{Code: "INVITATION_ALREADY_EXISTS", Message: "Invitation already exists for this email"}
 	ErrInvitationAlreadyProcessed = AppError{Code: "INVITATION_ALREADY_PROCESSED", Message: "Invitation has already been accepted or rejected"}
-	ErrAlreadyInClassroom        = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
-	ErrClassroomFull             = AppError{Code: "CLASSROOM_FULL", Message: "Classroom has reached maximum capacity"}
-	ErrEmailMismatch             = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
+	ErrAlreadyInClassroom         = AppError{Code: "ALREADY_IN_CLASSROOM", Message: "User is already a member of this classroom"}
+	ErrClassroomFull              = AppError{Code: "CLASSROOM_FULL", Message: "Classroom has reached maximum capacity"}
+	ErrEmailMismatch              = AppError{Code: "EMAIL_MISMATCH", Message: "Email does not match invitation"}
 
 	// Classroom Join-related
-	ErrCodeInvalid               = AppError{Code: "CODE_INVALID", Message: "Invalid invitation code"}
-	ErrStudentCodeNotInWhitelist = AppError{Code: "STUDENT_CODE_NOT_IN_WHITELIST", Message: "Student code not in whitelist"}
-	ErrStudentCodeAlreadyUsed    = AppError{Code: "STUDENT_CODE_ALREADY_USED", Message: "Student code already used in this classroom"}
-	ErrInvalidEmailDomain        = AppError{Code: "INVALID_EMAIL_DOMAIN", Message: "Email domain not allowed for this classroom"}
-	ErrJoinRequestNotFound       = AppError{Code: "JOIN_REQUEST_NOT_FOUND", Message: "Join request not found"}
+	ErrCodeInvalid                 = AppError{Code: "CODE_INVALID", Message: "Invalid invitation code"}
+	ErrStudentCodeNotInWhitelist   = AppError{Code: "STUDENT_CODE_NOT_IN_WHITELIST", Message: "Student code not in whitelist"}
+	ErrStudentCodeAlreadyUsed      = AppError{Code: "STUDENT_CODE_ALREADY_USED", Message: "Student code already used in this classroom"}
+	ErrInvalidEmailDomain          = AppError{Code: "INVALID_EMAIL_DOMAIN", Message: "Email domain not allowed for this classroom"}
+	ErrJoinRequestNotFound         = AppError{Code: "JOIN_REQUEST_NOT_FOUND", Message: "Join request not found"}
 	ErrJoinRequestAlreadyProcessed = AppError{Code: "JOIN_REQUEST_ALREADY_PROCESSED", Message: "Join request has already been processed"}
+	ErrAlreadyCoLecturer           = AppError{Code: "ALREADY_CO_LECTURER", Message: "User is already a co-lecturer of this classroom"}
+	ErrAlreadyLecturer             = AppError{Code: "ALREADY_LECTURER", Message: "User is already the lecturer of this classroom"}
+	ErrCannotInviteSelf            = AppError{Code: "CANNOT_INVITE_SELF", Message: "Cannot invite yourself"}
 )

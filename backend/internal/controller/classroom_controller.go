@@ -328,14 +328,34 @@ func (c *ClassroomController) GetWhitelistStudentCode(ctx *gin.Context) {
 	user := authUser.(auth.AuthUser)
 
 	// Call service
-	studentCodes, err := c.classroomService.GetWhitelistStudentCode(classroomID, user.ID)
+	entries, err := c.classroomService.GetWhitelistStudentCode(classroomID, user.ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
+	// Convert to response format
+	whitelist := make([]dto.WhitelistEntryResponse, 0, len(entries))
+	for _, entry := range entries {
+		var joinedBy *string
+		var joinedAt *string
+		if entry.JoinedBy != nil {
+			hex := entry.JoinedBy.Hex()
+			joinedBy = &hex
+		}
+		if entry.JoinedAt != nil {
+			formatted := entry.JoinedAt.Format("2006-01-02T15:04:05Z07:00")
+			joinedAt = &formatted
+		}
+		whitelist = append(whitelist, dto.WhitelistEntryResponse{
+			StudentCode: entry.StudentCode,
+			JoinedBy:    joinedBy,
+			JoinedAt:    joinedAt,
+		})
+	}
+
 	dto.SendSuccess(ctx, http.StatusOK, "Whitelist retrieved", gin.H{
-		"student_codes": studentCodes,
+		"whitelist": whitelist,
 	})
 }
 
@@ -443,6 +463,51 @@ func (c *ClassroomController) RemoveStudentFromClassroom(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Student removed from classroom successfully", gin.H{
 		"student_id": studentID,
 	})
+}
+
+// RemoveCoLecturerFromClassroom removes a co-lecturer from classroom (lecturer only)
+// DELETE /api/classrooms/:id/co-lecturers/:co_lecturer_id
+func (c *ClassroomController) RemoveCoLecturerFromClassroom(ctx *gin.Context) {
+	classroomID := ctx.Param("id")
+	coLecturerID := ctx.Param("co_lecturer_id")
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
+		return
+	}
+	user := authUser.(auth.AuthUser)
+
+	err := c.classroomService.RemoveCoLecturerFromClassroom(classroomID, user.ID, coLecturerID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Co-lecturer removed from classroom successfully", gin.H{
+		"co_lecturer_id": coLecturerID,
+	})
+}
+
+// LeaveClassroom allows a student or co-lecturer to leave the classroom
+// POST /api/classrooms/:id/leave
+func (c *ClassroomController) LeaveClassroom(ctx *gin.Context) {
+	classroomID := ctx.Param("id")
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
+		return
+	}
+	user := authUser.(auth.AuthUser)
+
+	err := c.classroomService.LeaveClassroom(classroomID, user.ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Left classroom successfully", nil)
 }
 
 // DownloadWhitelistTemplate generates and downloads an Excel template for whitelist upload

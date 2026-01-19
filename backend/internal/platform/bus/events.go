@@ -15,16 +15,36 @@ const (
 	TopicWSDisconnected = "ws.disconnected"
 	TopicWSPackageSend  = "ws.send"
 
-	TopicUserChangeAvatar = "user.avatar"
-
-	TopicNotificationCreated = "notification.created"
-
 	TopicNewMessage    = "message.new"
 	TopicMessageError  = "message.error"
 	TopicTypingMessage = "message.typing"
 	TopicInChatMessage = "message.in_chat"
 
+	TopicUserChangeAvatar = "user.avatar"
+
+	// Notification events
+	TopicNotificationCreated = "notification.created"
+	TopicNotificationUpdated = "notification.updated"
+	TopicNotificationDeleted = "notification.deleted"
+
+	// Group
 	TopicGroupInvitation = "group.invitation"
+
+	// Report
+	TopicReportOpened       = "report.opened"
+	TopicReportNearDeadline = "report.near_deadline"
+	TopicReportSubmitted    = "report.submitted"
+	TopicReportGraded       = "report.graded"
+	TopicReportExpired      = "report.expired"
+
+	// Project
+	TopicProjectRegistrationOpened   = "project.registration.opened"
+	TopicProjectRegistrationDeadline = "project.registration.deadline"
+	TopicProjectRegistrationExpired  = "project.registration.expired"
+
+	// Class
+	TopicClassUpdated        = "class.updated"
+	TopicClassroomInvitation = "classroom.invitation"
 )
 
 type BroadcastEventType string
@@ -230,5 +250,83 @@ func (e GroupInvitationEvent) Payload() map[string]interface{} {
 		"is_accepted":  e.IsAccepted,
 		"sent_at":      e.SentAt,
 		"responded_at": e.RespondedAt,
+	}
+}
+
+type ClassroomInvitationEvent struct {
+	InvitationID  string `json:"invitation_id"`
+	ClassroomID   string `json:"classroom_id"`
+	ClassroomName string `json:"classroom_name"`
+	InviterID     string `json:"inviter_id"`
+	InviterName   string `json:"inviter_name"`
+	InviteeID     string `json:"invitee_id"`
+}
+
+func (e ClassroomInvitationEvent) Topic() string {
+	return TopicClassroomInvitation
+}
+func (e ClassroomInvitationEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"invitation_id":  e.InvitationID,
+		"classroom_id":   e.ClassroomID,
+		"classroom_name": e.ClassroomName,
+		"inviter_id":     e.InviterID,
+		"inviter_name":   e.InviterName,
+		"invitee_id":     e.InviteeID,
+	}
+}
+
+//type ReportOpenedEvent struct {
+//	ReportID string    `json:"report_id"`
+//	OpenedAt time.Time `json:"opened_at"`
+//}
+//
+//func (e ReportOpenedEvent) Topic() string {
+//	return TopicReportOpened
+//}
+//func (e ReportOpenedEvent) Payload() map[string]interface{} {
+//	return map[string]interface{}{
+//		"report_id": e.ReportID,
+//		"opened_at": e.OpenedAt,
+//	}
+//}
+
+type TopicReportSubmittedEvent struct {
+	ClassroomID string    `json:"classroom_id"`
+	GroupID     string    `json:"group_id"`
+	ReportID    string    `json:"report_id"`
+	SubmittedAt time.Time `json:"submitted_at"`
+}
+
+func (e TopicReportSubmittedEvent) Topic() string {
+	return TopicReportSubmitted
+}
+
+func (e TopicReportSubmittedEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"classroom_id": e.ClassroomID,
+		"group_id":     e.GroupID,
+		"report_id":    e.ReportID,
+		"submitted_at": e.SubmittedAt,
+	}
+}
+
+type TopicReportGradedEvent struct {
+	ClassroomID string    `json:"classroom_id"`
+	GroupID     string    `json:"group_id"`
+	ReportID    string    `json:"report_id"`
+	GradedAt    time.Time `json:"graded_at"`
+}
+
+func (e TopicReportGradedEvent) Topic() string {
+	return TopicReportGraded
+}
+
+func (e TopicReportGradedEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"classroom_id": e.ClassroomID,
+		"group_id":     e.GroupID,
+		"report_id":    e.ReportID,
+		"graded_at":    e.GradedAt,
 	}
 }
