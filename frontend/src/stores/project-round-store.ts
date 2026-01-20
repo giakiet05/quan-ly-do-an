@@ -46,7 +46,6 @@ export const projectRoundStore = {
     async editRound(data: UpdateProjectRoundRequest) {
         try {
             const updated = await updateProjectRound(data);
-            console.log("Updated round:", updated);
             // Fetch lại từ server để đảm bảo dữ liệu từ DB
             const rounds = await getProjectRounds(data.classroomId);
             roundsStore.set(rounds);
