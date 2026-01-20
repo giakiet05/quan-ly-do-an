@@ -124,7 +124,7 @@ type ReportPeriodWithProjectRound struct {
 type ProjectRoundWithClassroom struct {
 	ClassroomID   string             `json:"classroom_id"`
 	ClassroomName string             `json:"classroom_name"`
-	Round         model.ProjectRound `json:"round"`
+	Round         model.ProjectRound `json:"project_rounds"`
 }
 
 // Converter functions

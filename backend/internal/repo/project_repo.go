@@ -103,7 +103,7 @@ func (p *projectRepo) CreateProjectRounds(
 	filter := bson.M{"_id": classroomObjectID}
 	update := bson.M{
 		"$push": bson.M{
-			"rounds": bson.M{
+			"project_rounds": bson.M{
 				"$each": rounds,
 			},
 		},
@@ -134,8 +134,8 @@ func (p *projectRepo) GetProjectRoundByID(ctx context.Context, classroomID, roun
 	// Aggregation pipeline để lấy round cụ thể
 	pipeline := []bson.M{
 		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "$rounds"},
-		{"$match": bson.M{"rounds._id": roundObjectID}},
+		{"$unwind": "project_rounds"},
+		{"$match": bson.M{"project_rounds._id": roundObjectID}},
 		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
 	}
 
@@ -168,14 +168,14 @@ func (p *projectRepo) GetProjectRoundsByClassroomID(
 	}
 
 	var result struct {
-		Rounds []model.ProjectRound `bson:"rounds"`
+		Rounds []model.ProjectRound `bson:"project_rounds"`
 	}
 
 	err = p.classroomCollection.FindOne(
 		ctx,
 		bson.M{"_id": classroomOID},
 		options.FindOne().SetProjection(bson.M{
-			"rounds": 1,
+			"project_rounds": 1,
 		}),
 	).Decode(&result)
 
@@ -199,8 +199,8 @@ func (p *projectRepo) ListProjectRounds(ctx context.Context, classroomID string,
 
 	pipeline := []bson.M{
 		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "$rounds"},
-		{"$sort": bson.D{{Key: "rounds.created_at", Value: -1}}},
+		{"$unwind": "project_rounds"},
+		{"$sort": bson.D{{Key: "project_rounds.created_at", Value: -1}}},
 		{"$skip": skip},
 		{"$limit": pageSize},
 		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
@@ -220,7 +220,7 @@ func (p *projectRepo) ListProjectRounds(ctx context.Context, classroomID string,
 	// COUNT TOTAL (pipeline riêng KHÔNG có skip/limit)
 	countPipeline := []bson.M{
 		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "$rounds"},
+		{"$unwind": "project_rounds"},
 		{"$count": "total"},
 	}
 
@@ -272,13 +272,13 @@ func (p *projectRepo) DeleteProjectRound(
 	}
 
 	filter := bson.M{
-		"_id":        classroomOID,
-		"rounds._id": roundOID,
+		"_id":                classroomOID,
+		"project_rounds._id": roundOID,
 	}
 
 	update := bson.M{
 		"$pull": bson.M{
-			"rounds": bson.M{
+			"project_rounds": bson.M{
 				"_id": roundOID,
 			},
 		},
@@ -307,28 +307,24 @@ func (p *projectRepo) GetJustOpenReportPeriods(ctx context.Context, now time.Tim
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		// 1️⃣ explode rounds
-		{{Key: "$unwind", Value: "$rounds"}},
+		{{Key: "$unwind", Value: "project_rounds"}},
 
-		// 2️⃣ explode report_periods
-		{{Key: "$unwind", Value: "$rounds.report_periods"}},
+		{{Key: "$unwind", Value: "project_rounds.report_periods"}},
 
-		// 3️⃣ filter by day + not deleted
 		{{Key: "$match", Value: bson.M{
-			"rounds.report_periods.start_date": bson.M{
+			"project_rounds.report_periods.start_date": bson.M{
 				"$gte": startOfDay,
 				"$lt":  endOfDay,
 			},
-			"rounds.is_deleted": false,
+			"project_rounds.is_deleted": false,
 		}}},
 
-		// 4️⃣ shape result
 		{{Key: "$project", Value: bson.M{
 			"_id":                0,
 			"classroom_id":       "$_id",
-			"project_round_id":   "$rounds._id",
-			"project_round_name": "$rounds.name",
-			"report_periods":     "$rounds.report_periods",
+			"project_round_id":   "project_rounds._id",
+			"project_round_name": "project_rounds.name",
+			"report_periods":     "project_rounds.report_periods",
 		}}},
 	}
 
@@ -357,28 +353,24 @@ func (p *projectRepo) GetNearDeadlineReportPeriods(ctx context.Context, now time
 	endOfDeadlineDay := startOfToday.AddDate(0, 0, daysBeforeDeadline).Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		// 1️⃣ explode rounds
-		{{Key: "$unwind", Value: "$rounds"}},
+		{{Key: "$unwind", Value: "project_rounds"}},
 
-		// 2️⃣ explode report_periods
-		{{Key: "$unwind", Value: "$rounds.report_periods"}},
+		{{Key: "$unwind", Value: "project_rounds.report_periods"}},
 
-		// 3️⃣ filter by deadline range + not deleted
 		{{Key: "$match", Value: bson.M{
-			"rounds.report_periods.end_date": bson.M{
+			"project_rounds.report_periods.end_date": bson.M{
 				"$gte": startOfToday,
 				"$lte": endOfDeadlineDay,
 			},
-			"rounds.is_deleted": false,
+			"project_rounds.is_deleted": false,
 		}}},
 
-		// 4️⃣ shape result
 		{{Key: "$project", Value: bson.M{
 			"_id":                0,
 			"classroom_id":       "$_id",
-			"project_round_id":   "$rounds._id",
-			"project_round_name": "$rounds.name",
-			"report_periods":     "$rounds.report_periods",
+			"project_round_id":   "project_rounds._id",
+			"project_round_name": "project_rounds.name",
+			"report_periods":     "project_rounds.report_periods",
 		}}},
 	}
 
@@ -411,21 +403,21 @@ func (p *projectRepo) GetJustOpenProjectRounds(
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$unwind", Value: "$rounds"}},
+		{{Key: "$unwind", Value: "project_rounds"}},
 
 		{{Key: "$match", Value: bson.M{
-			"rounds.start_date": bson.M{
+			"project_rounds.start_date": bson.M{
 				"$gte": startOfDay,
 				"$lt":  endOfDay,
 			},
-			"rounds.is_deleted": false,
+			"project_rounds.is_deleted": false,
 		}}},
 
 		{{Key: "$project", Value: bson.M{
 			"_id":            0,
 			"classroom_id":   "$_id",
 			"classroom_name": "$name",
-			"round":          "$rounds",
+			"project_rounds": "project_rounds",
 		}}},
 	}
 
@@ -454,21 +446,21 @@ func (p *projectRepo) GetNearDeadlineProjectRounds(ctx context.Context, now time
 	endOfDeadlineDay := startOfToday.AddDate(0, 0, daysBeforeDeadline).Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$unwind", Value: "$rounds"}},
+		{{Key: "$unwind", Value: "project_rounds"}},
 
 		{{Key: "$match", Value: bson.M{
-			"rounds.end_date": bson.M{
+			"project_rounds.end_date": bson.M{
 				"$gte": startOfToday,
 				"$lte": endOfDeadlineDay,
 			},
-			"rounds.is_deleted": false,
+			"project_rounds.is_deleted": false,
 		}}},
 
 		{{Key: "$project", Value: bson.M{
 			"_id":            0,
 			"classroom_id":   "$_id",
 			"classroom_name": "$name",
-			"round":          "$rounds",
+			"project_rounds": "project_rounds",
 		}}},
 	}
 
