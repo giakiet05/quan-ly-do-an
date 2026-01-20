@@ -194,7 +194,9 @@ func (c *classroomRepo) GetByLecturer(ctx context.Context, lecturerID string, pa
 	defer cursor.Close(ctx)
 
 	var classrooms []model.Classroom
-	cursor.All(ctx, &classrooms)
+	if err := cursor.All(ctx, &classrooms); err != nil {
+		return nil, 0, err
+	}
 
 	return classrooms, total, nil
 }
@@ -233,7 +235,9 @@ func (c *classroomRepo) GetByStudent(ctx context.Context, studentID string, page
 	defer cursor.Close(ctx)
 
 	var classrooms []model.Classroom
-	cursor.All(ctx, &classrooms)
+	if err := cursor.All(ctx, &classrooms); err != nil {
+		return nil, 0, err
+	}
 
 	return classrooms, total, nil
 }
