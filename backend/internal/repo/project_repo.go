@@ -64,6 +64,7 @@ func (p *projectRepo) CreateProjectRound(ctx context.Context, classroomID string
 		return err
 	}
 
+	round.ID = primitive.NewObjectID()
 	round.CreatedAt = time.Now()
 
 	filter := bson.M{"_id": classroomObjectID}
