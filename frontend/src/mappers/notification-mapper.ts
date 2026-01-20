@@ -77,8 +77,8 @@ export function mapNotification(
         title: mapTitle(dto.type),
         content: dto.message,
         link: dto.link || undefined,
-        read: dto.is_read,
-        createdAt: new Date(dto.created_at).toISOString(),
+        read: dto.isRead,
+        createdAt: new Date(dto.createdAt).toISOString(),
     };
 }
 

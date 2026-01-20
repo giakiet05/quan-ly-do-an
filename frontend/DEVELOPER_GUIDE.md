@@ -97,8 +97,8 @@ export async function login(email: string, password: string) {
 
   // Lưu token vào localStorage
   if (response.success && response.data) {
-    setAccessToken(response.data.access_token);
-    setRefreshToken(response.data.refresh_token);
+    setAccessToken(response.data.accessToken);
+    setRefreshToken(response.data.refreshToken);
     setUser(response.data.user);
   }
 
@@ -173,8 +173,8 @@ export async function loginWithGoogle() { ... }
 Token được lưu trong localStorage với các key sau:
 
 ```typescript
-localStorage.getItem("access_token"); // JWT access token (15 phút)
-localStorage.getItem("refresh_token"); // Refresh token (7 ngày)
+localStorage.getItem("accessToken"); // JWT access token (15 phút)
+localStorage.getItem("refreshToken"); // Refresh token (7 ngày)
 localStorage.getItem("user"); // User info (JSON string)
 ```
 

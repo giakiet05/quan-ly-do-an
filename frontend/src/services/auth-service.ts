@@ -2,9 +2,9 @@
 import {
   setAccessToken,
   getAccessToken,
-  clearAccessToken,
   setRefreshToken,
   getRefreshToken,
+  clearAccessToken,
   clearRefreshToken,
   setUser,
   clearUser,
@@ -18,7 +18,6 @@ import type {
   VerifyEmailResponseDto,
   CompleteRegistrationRequestDto,
   RegisterResponseDto,
-  RefreshTokenRequestDto,
   RefreshTokenResponseDto,
   LogoutRequestDto,
   ForgotPasswordRequestDto,
@@ -28,21 +27,11 @@ import type {
   CompleteGoogleSetupRequestDto,
 } from "../dtos/auth-dto";
 
+import { apiFetch } from "../utils/api-fetch";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 /* ---------------- Helpers ---------------- */
-function safeJson(res: Response) {
-  return res.json().catch(() => null);
-}
-
-function throwIfError(res: Response, json: any) {
-  if (!res.ok) {
-    // prefer { message, error_code } or json itself
-    const err = json ?? { message: `HTTP ${res.status}` };
-    throw err;
-  }
-}
-
 function parseJwt(token: string): any {
   try {
     const base64 = token.split(".")[1];
@@ -60,186 +49,131 @@ export function isTokenExpired(token: string): boolean {
 
 /* ---------------- Core Auth Services ---------------- */
 
-/** Login - returns LoginResponseDto and persists tokens/user */
+/** Đăng nhập */
 export async function login(payload: LoginRequestDto): Promise<LoginResponseDto> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/login`, {
+  const data = await apiFetch<LoginResponseDto>("/api/auth/local/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
 
-  const json = await safeJson(res);
-  throwIfError(res, json);
-
-  const data = (json?.data ?? json) as LoginResponseDto;
-
-  setAccessToken(data.access_token);
-  setRefreshToken(data.refresh_token);
+  setAccessToken(data.accessToken);
+  setRefreshToken(data.refreshToken);
   setUser(data.user);
-
   return data;
 }
 
-/** Send email verification (start register flow) */
-export async function sendEmailVerification(
-  payload: SendVerificationRequestDto
-): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/send-verification`, {
+/** Gửi mã xác thực email (Đăng ký) */
+export async function sendEmailVerification(payload: SendVerificationRequestDto): Promise<void> {
+  await apiFetch("/api/auth/local/send-verification", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
-
-  const json = await safeJson(res);
-  throwIfError(res, json);
-  return;
 }
 
-/** Verify OTP for email - returns verificationToken */
-export async function verifyEmail(
-  payload: VerifyEmailRequestDto
-): Promise<VerifyEmailResponseDto> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/verify-email`, {
+/** Xác thực OTP email */
+export async function verifyEmail(payload: VerifyEmailRequestDto): Promise<VerifyEmailResponseDto> {
+  return await apiFetch<VerifyEmailResponseDto>("/api/auth/local/verify-email", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
-
-  const json = await safeJson(res);
-  throwIfError(res, json);
-
-  return (json?.data ?? json) as VerifyEmailResponseDto;
 }
 
-/** Complete registration using verificationToken -> returns RegisterResponseDto and persists tokens/user */
-export async function completeRegistration(
-  payload: CompleteRegistrationRequestDto
-): Promise<RegisterResponseDto> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/complete-registration`, {
+/** Hoàn tất đăng ký */
+export async function completeRegistration(payload: CompleteRegistrationRequestDto): Promise<RegisterResponseDto> {
+  const data = await apiFetch<RegisterResponseDto>("/api/auth/local/complete-registration", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
-  console.log("Response from completeRegistration:", payload, res);
-  const json = await safeJson(res);
-  throwIfError(res, json);
 
-  const data = (json?.data ?? json) as RegisterResponseDto;
-
-  setAccessToken(data.access_token);
-  setRefreshToken(data.refresh_token);
+  setAccessToken(data.accessToken);
+  setRefreshToken(data.refreshToken);
   setUser(data.user);
-
   return data;
 }
 
-/** Refresh tokens using refreshToken from storage (returns new tokens) */
+/** Làm mới Token */
 export async function refreshToken(): Promise<RefreshTokenResponseDto | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
+  const currentToken = getRefreshToken();
+  if (!currentToken) return null;
 
-  const payload: RefreshTokenRequestDto = { refresh_token: refreshToken };
+  try {
+    const data = await apiFetch<RefreshTokenResponseDto>("/api/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken: currentToken }),
+      skipAuth: true
+    });
 
-  const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const json = await safeJson(res);
-
-  if (!res.ok) {
-    // refresh failed -> force logout on client
+    setAccessToken(data.accessToken);
+    setRefreshToken(data.refreshToken);
+    return data;
+  } catch (err) {
     logout();
     return null;
   }
-
-  const data = (json?.data ?? json) as RefreshTokenResponseDto;
-  setAccessToken(data.access_token);
-  setRefreshToken(data.refresh_token);
-  return data;
 }
 
-/** Get valid access token: if expired attempt refresh; returns accessToken or null */
+/** Lấy Access Token còn hạn */
 export async function getValidAccessToken(): Promise<string | null> {
   const token = getAccessToken();
   if (!token) return null;
   if (!isTokenExpired(token)) return token;
 
   const refreshed = await refreshToken();
-  return refreshed?.access_token ?? null;
+  return refreshed?.accessToken ?? null;
 }
 
-/** Logout: notify backend if possible, then clear client storage */
+/** Đăng xuất */
 export async function logout(payload?: LogoutRequestDto): Promise<void> {
   try {
-    // Try notify backend (if route exists). If backend requires tokens, payload should be provided.
-    await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    await apiFetch("/api/auth/logout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload ?? {}),
     }).catch(() => null);
-  } catch {
-    // ignore
   } finally {
     clearAccessToken();
     clearRefreshToken();
     clearUser();
-    // navigate to login - leave routing to app if needed
-    try {
-      window.location.href = "/#/login";
-    } catch { }
+    window.location.href = "/#/login";
   }
 }
 
-/* ---------------- Password reset flow ---------------- */
-export async function forgotPassword(payload: ForgotPasswordRequestDto): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/forgot-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+/* ---------------- Password Reset Flow ---------------- */
 
-  const json = await safeJson(res);
-  throwIfError(res, json);
-  return;
+export async function forgotPassword(payload: ForgotPasswordRequestDto): Promise<void> {
+  await apiFetch("/api/auth/local/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuth: true
+  });
 }
 
-export async function verifyResetOtp(
-  payload: VerifyResetOtpRequestDto
-): Promise<VerifyResetOtpResponseDto> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/verify-reset-otp`, {
+export async function verifyResetOtp(payload: VerifyResetOtpRequestDto): Promise<VerifyResetOtpResponseDto> {
+  return await apiFetch<VerifyResetOtpResponseDto>("/api/auth/local/verify-reset-otp", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
-
-  const json = await safeJson(res);
-  throwIfError(res, json);
-  return (json?.data ?? json) as VerifyResetOtpResponseDto;
 }
 
 export async function resetPassword(payload: ResetPasswordRequestDto): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/local/reset-password`, {
+  await apiFetch("/api/auth/local/reset-password", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
-
-  const json = await safeJson(res);
-  throwIfError(res, json);
-  return;
 }
 
-/* ---------------- Google setup ---------------- */
+/* ---------------- Google Auth ---------------- */
+
 export function loginWithGoogle() {
   window.location.href = `${API_BASE_URL}/api/auth/google/login`;
 }
 
-export function handleLoginCallback(): {
-  success: boolean; user?: any; accessToken?: string; setupRequired?: boolean;
-  setupToken?: string;
-} {
+export function handleLoginCallback() {
   const hash = window.location.hash;
   const queryString = hash.includes("?") ? hash.split("?")[1] : "";
   const params = new URLSearchParams(queryString);
@@ -249,19 +183,11 @@ export function handleLoginCallback(): {
   const userStr = params.get('user');
   const setupToken = params.get('setup_token');
 
-  if (setupToken) {
-    return { success: false, setupRequired: true, setupToken };
-  }
-
-  if (!accessToken) {
-    return { success: false };
-  }
+  if (setupToken) return { success: false, setupRequired: true, setupToken };
+  if (!accessToken) return { success: false };
 
   setAccessToken(accessToken);
-
-  if (refreshToken) {
-    setRefreshToken(refreshToken);
-  }
+  if (refreshToken) setRefreshToken(refreshToken);
 
   let userObj = null;
   if (userStr) {
@@ -276,42 +202,32 @@ export function handleLoginCallback(): {
   return { success: true, user: userObj, accessToken };
 }
 
-export async function completeGoogleSetup(
-  payload: CompleteGoogleSetupRequestDto
-): Promise<RegisterResponseDto> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/google/complete-setup`, {
+export async function completeGoogleSetup(payload: CompleteGoogleSetupRequestDto): Promise<RegisterResponseDto> {
+  const data = await apiFetch<RegisterResponseDto>("/api/auth/google/complete-setup", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    skipAuth: true
   });
 
-  const json = await safeJson(res);
-  throwIfError(res, json);
-
-  const data = (json?.data ?? json) as RegisterResponseDto;
-  setAccessToken(data.access_token);
-  setRefreshToken(data.refresh_token);
+  setAccessToken(data.accessToken);
+  setRefreshToken(data.refreshToken);
   setUser(data.user);
   return data;
 }
 
-/* ---------------- Exports & compatibility ---------------- */
+/* ---------------- Exports ---------------- */
 export const authService = {
-  // helpers
   isTokenExpired,
   getValidAccessToken,
-  // core
   login,
   sendEmailVerification,
   verifyEmail,
   completeRegistration,
   refreshToken,
   logout,
-  // password
   forgotPassword,
   verifyResetOtp,
   resetPassword,
-  // google
   completeGoogleSetup,
   loginWithGoogle,
   handleLoginCallback,

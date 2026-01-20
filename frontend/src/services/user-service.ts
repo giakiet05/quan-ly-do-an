@@ -5,19 +5,19 @@ import { apiFetch } from "../utils/api-fetch";
 export interface UserProfile {
   id: string;
   email: string;
-  full_name: string;
-  student_code?: string;
+  fullName: string;
+  studentCode?: string;
   provider: "local" | "google";
   avatar?: {
     url: string;
-    public_id: string;
+    publicId: string;
   };
-  created_at: string;
+  createdAt: string;
 }
 
 export interface UpdateProfileRequest {
-  full_name?: string;
-  student_code?: string;
+  fullName?: string;
+  studentCode?: string;
 }
 
 export interface ChangePasswordRequest {
@@ -68,12 +68,9 @@ export async function changePassword(
 ): Promise<void> {
   await apiFetch<void>("/api/users/me/password", {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
-      old_password: oldPassword,
-      new_password: newPassword,
+      oldPassword,
+      newPassword,
     }),
   });
 }

@@ -6,10 +6,14 @@
     } from "../../../../types/announcement";
 
     // Định nghĩa Props bằng $props()
-    let { onClose, onSubmit, editingAnnouncement } = $props<{
+    let {
+        onClose,
+        onSubmit,
+        editingAnnouncement = null,
+    } = $props<{
         onClose: () => void;
         onSubmit: (announcement: any) => void;
-        editingAnnouncement?: Announcement;
+        editingAnnouncement?: Announcement | null;
     }>();
 
     // Khởi tạo state của form

@@ -9,8 +9,8 @@ export interface LoginRequestDto {
 
 export interface LoginResponseDto {
   user: User;
-  access_token: string;
-  refresh_token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 
@@ -25,36 +25,36 @@ export interface VerifyEmailRequestDto {
 }
 
 export interface VerifyEmailResponseDto {
-  verification_token: string;
+  verificationToken: string;
 }
 
 
 export interface CompleteRegistrationRequestDto {
-  verification_token: string;
-  full_name: string;
+  verificationToken: string;
+  fullName: string;
   password: string;
 }
 
 export interface RegisterResponseDto {
   user: User;
-  access_token: string;
-  refresh_token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 
 export interface RefreshTokenRequestDto {
-  refresh_token: string;
+  refreshToken: string;
 }
 
 export interface RefreshTokenResponseDto {
-  access_token: string;
-  refresh_token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 
 export interface LogoutRequestDto {
-  access_token: string;
-  refresh_token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 
@@ -69,16 +69,16 @@ export interface VerifyResetOtpRequestDto {
 }
 
 export interface VerifyResetOtpResponseDto {
-  reset_token: string;
+  resetToken: string;
 }
 
 export interface ResetPasswordRequestDto {
-  reset_token: string;
-  new_password: string;
+  resetToken: string;
+  newPassword: string;
 }
 
 
 export interface CompleteGoogleSetupRequestDto {
-  setup_token: string;
-  full_name: string;
+  setupToken: string;
+  fullName: string;
 }

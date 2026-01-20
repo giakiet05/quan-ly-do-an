@@ -38,8 +38,8 @@
       error = null;
       const data = await getUserProfile();
       profile = data;
-      editedFullName = data.full_name;
-      editedStudentCode = data.student_code || "";
+      editedFullName = data.fullName;
+      editedStudentCode = data.studentCode || "";
 
       // Update authStore with latest profile
       authStore.update((state) => ({
@@ -48,7 +48,7 @@
           id: data.id,
           avatar: data.avatar?.url || "",
           email: data.email,
-          fullname: data.full_name,
+          fullname: data.fullName,
           role: "user",
           is_verified: true,
         },
@@ -70,12 +70,12 @@
       error = null;
 
       // Only send changed fields
-      const updates: { full_name?: string; student_code?: string } = {};
-      if (editedFullName !== profile.full_name) {
-        updates.full_name = editedFullName;
+      const updates: { fullName?: string; studentCode?: string } = {};
+      if (editedFullName !== profile.fullName) {
+        updates.fullName = editedFullName;
       }
-      if (editedStudentCode !== (profile.student_code || "")) {
-        updates.student_code = editedStudentCode;
+      if (editedStudentCode !== (profile.studentCode || "")) {
+        updates.studentCode = editedStudentCode;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -85,8 +85,8 @@
 
       const updatedProfile = await updateUserProfile(updates);
       profile = updatedProfile;
-      editedFullName = updatedProfile.full_name;
-      editedStudentCode = updatedProfile.student_code || "";
+      editedFullName = updatedProfile.fullName;
+      editedStudentCode = updatedProfile.studentCode || "";
 
       // Update authStore
       authStore.update((state) => ({
@@ -94,7 +94,7 @@
         user: state.user
           ? {
               ...state.user,
-              fullname: updatedProfile.full_name,
+              fullname: updatedProfile.fullName,
             }
           : null,
       }));
@@ -233,17 +233,17 @@
   function handleCancel() {
     if (!profile) return;
     // Reset to original values
-    editedFullName = profile.full_name;
-    editedStudentCode = profile.student_code || "";
+    editedFullName = profile.fullName;
+    editedStudentCode = profile.studentCode || "";
     alert("Đã hủy thay đổi");
   }
 
   // Derived values
   const avatarLetter = $derived(
-    profile?.full_name?.charAt(0)?.toUpperCase() || "U"
+    profile?.fullName?.charAt(0)?.toUpperCase() || "U",
   );
   const displayRole = $derived(
-    profile?.provider === "google" ? "Google" : "Local"
+    profile?.provider === "google" ? "Google" : "Local",
   );
 </script>
 
@@ -295,11 +295,11 @@
         </div>
 
         <!-- Name & Info -->
-        <h3 class="text-xl text-slate-900 mb-2">{profile.full_name}</h3>
+        <h3 class="text-xl text-slate-900 mb-2">{profile.fullName}</h3>
         <div class="text-center text-slate-500 mb-6">
           <p class="text-sm">Email: {profile.email}</p>
-          {#if profile.student_code}
-            <p class="text-sm">MSSV: {profile.student_code}</p>
+          {#if profile.studentCode}
+            <p class="text-sm">MSSV: {profile.studentCode}</p>
           {/if}
           <p class="text-xs text-slate-400 mt-1">
             Đăng nhập qua: {displayRole}
@@ -386,8 +386,8 @@
                 >
                 <input
                   type="text"
-                  value={new Date(profile.created_at).toLocaleDateString(
-                    "vi-VN"
+                  value={new Date(profile.createdAt).toLocaleDateString(
+                    "vi-VN",
                   )}
                   disabled
                   class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500"

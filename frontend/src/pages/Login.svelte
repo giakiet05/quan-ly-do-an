@@ -39,7 +39,7 @@
       });
 
       console.log("Login thành công:", res);
-      setAuth(res.user, res.access_token, res.refresh_token);
+      setAuth(res.user, res.accessToken, res.refreshToken);
       push("/home");
     } catch (err: any) {
       console.error("Lỗi đăng nhập:", err);

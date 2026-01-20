@@ -1,7 +1,7 @@
 <script lang="ts">
     import { link, push } from "svelte-spa-router";
     import Button from "../components/Button.svelte";
-    import OtpVerification from "../components/OtpVerification.svelte";
+    import OtpVerification from "../components/OTPVerification.svelte";
     import { authService } from "../services/auth-service";
 
     let step: "email" | "otp" | "reset" = "email";
@@ -51,7 +51,7 @@
                 email,
                 otp: code,
             });
-            resetToken = response.reset_token;
+            resetToken = response.resetToken;
             if (!resetToken) throw new Error("Không nhận được token xác thực.");
             step = "reset";
         } catch (err: any) {
@@ -73,8 +73,8 @@
         loading = true;
         try {
             await authService.resetPassword({
-                reset_token: resetToken,
-                new_password: newPassword,
+                resetToken: resetToken,
+                newPassword: newPassword,
             });
             alert("Đổi mật khẩu thành công!");
             push("/auth/login");

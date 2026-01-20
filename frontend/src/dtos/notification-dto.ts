@@ -16,15 +16,15 @@ export interface NotificationResponse {
     type: NotificationType;
     message: string;
     link: string;
-    is_read: boolean;
-    created_at: string;
+    isRead: boolean;
+    createdAt: string;
 }
 
 export interface Pagination {
     page: number;
-    page_size: number;
-    total_items: number;
-    total_pages: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
 }
 
 export interface PaginatedNotificationsResponse {
