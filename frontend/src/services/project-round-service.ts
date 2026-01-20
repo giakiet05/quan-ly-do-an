@@ -45,11 +45,10 @@ export async function createProjectRound(data: CreateProjectRoundRequest): Promi
 export async function updateProjectRound(
     data: UpdateProjectRoundRequest
 ): Promise<ProjectRound> {
-    const response = await apiFetch<ProjectRoundResponse>(`/api/projects/rounds/`, {
+    const response = await apiFetch<ProjectRoundResponse>(`/api/projects/rounds`, {
         method: "PUT",
         body: JSON.stringify(data)
     });
-
     return projectRoundMapper.toEntity(response);
 }
 

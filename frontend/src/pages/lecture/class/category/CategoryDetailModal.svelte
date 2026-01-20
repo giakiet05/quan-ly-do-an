@@ -13,15 +13,19 @@
     } = $props<{
         onClose: () => void;
         onSubmit: (data: any) => void;
-        classData: ClassData;
+        classData: ClassData | undefined;
         isEdit?: boolean;
         initialData?: ProjectRound | null;
     }>();
 
     // 2. Helper function để định dạng date input (YYYY-MM-DD)
-    const formatToDateInput = (dateStr: string | undefined | null) => {
+    const formatToDateInput = (dateStr: string | undefined | null | Date) => {
         if (!dateStr) return "";
-        return dateStr.split("T")[0];
+        const dateString =
+            typeof dateStr === "string"
+                ? dateStr
+                : new Date(dateStr).toISOString();
+        return dateString.split("T")[0];
     };
 
     // 3. Khởi tạo formData trực tiếp từ initialData prop

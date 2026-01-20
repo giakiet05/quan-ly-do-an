@@ -6,7 +6,7 @@
 
     // Components
     import CategoryList from "./category/CategoryList.svelte";
-    import CreateCategoryModal from "./category/CreateCategoryModal.svelte";
+    import CategoryDetailModal from "./category/CategoryDetailModal.svelte";
     import StudentTab from "./student/StudentTab.svelte";
     import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
     import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
@@ -68,6 +68,7 @@
     async function handleUpdateRound(data: any) {
         if (!editingCategory) return;
         try {
+            console.log("📝 Updating category:", data);
             const payload: UpdateProjectRoundRequest = {
                 roundId: editingCategory.id,
                 projectRoundId: editingCategory.id,
@@ -78,9 +79,12 @@
                 endDate: data.endDate,
             };
 
+            console.log("📤 Sending payload:", $state.snapshot(payload));
             await projectRoundStore.editRound(payload);
+            console.log("✅ Category updated successfully");
             editingCategory = null;
         } catch (error) {
+            console.error("❌ Error updating category:", error);
             alert("Có lỗi khi cập nhật!");
         }
     }
@@ -232,7 +236,7 @@
 
 {#if classData}
     {#if isCreateCategoryModalOpen}
-        <CreateCategoryModal
+        <CategoryDetailModal
             {classData}
             onClose={() => (isCreateCategoryModalOpen = false)}
             onSubmit={handleCreateRound}
@@ -240,7 +244,7 @@
     {/if}
 
     {#if editingCategory}
-        <CreateCategoryModal
+        <CategoryDetailModal
             isEdit={true}
             initialData={editingCategory}
             {classData}
