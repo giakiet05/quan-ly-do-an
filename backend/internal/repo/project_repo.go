@@ -136,7 +136,7 @@ func (p *projectRepo) GetProjectRoundByID(ctx context.Context, classroomID, roun
 		{"$match": bson.M{"_id": classroomObjectID}},
 		{"$unwind": "project_rounds"},
 		{"$match": bson.M{"project_rounds._id": roundObjectID}},
-		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
+		{"$replaceRoot": bson.M{"newRoot": "$project_rounds"}},
 	}
 
 	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
@@ -203,7 +203,7 @@ func (p *projectRepo) ListProjectRounds(ctx context.Context, classroomID string,
 		{"$sort": bson.D{{Key: "project_rounds.created_at", Value: -1}}},
 		{"$skip": skip},
 		{"$limit": pageSize},
-		{"$replaceRoot": bson.M{"newRoot": "$rounds"}},
+		{"$replaceRoot": bson.M{"newRoot": "$project_rounds"}},
 	}
 
 	cursor, err := p.classroomCollection.Aggregate(ctx, pipeline)
@@ -622,8 +622,8 @@ func (p *projectRepo) CreateReportPeriod(ctx context.Context, classroomID, round
 		return err
 	}
 
-	filter := bson.M{"_id": classroomObjectID, "rounds._id": roundObjectID}
-	update := bson.M{"$push": bson.M{"rounds.$.report_periods": period}}
+	filter := bson.M{"_id": classroomObjectID, "project_rounds._id": roundObjectID}
+	update := bson.M{"$push": bson.M{"project_rounds.$.report_periods": period}}
 
 	res, err := p.classroomCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
@@ -651,13 +651,13 @@ func (p *projectRepo) CreateReportPeriods(
 	}
 
 	filter := bson.M{
-		"_id":        classroomObjectID,
-		"rounds._id": roundObjectID,
+		"_id":                classroomObjectID,
+		"project_rounds._id": roundObjectID,
 	}
 
 	update := bson.M{
 		"$push": bson.M{
-			"rounds.$.report_periods": bson.M{
+			"project_rounds.$.report_periods": bson.M{
 				"$each": reportPeriods,
 			},
 		},
@@ -697,16 +697,16 @@ func (p *projectRepo) GetReportPeriodByID(
 		{{Key: "$match", Value: bson.M{
 			"_id": classroomOID,
 		}}},
-		{{Key: "$unwind", Value: "$rounds"}},
+		{{Key: "$unwind", Value: "project_rounds"}},
 		{{Key: "$match", Value: bson.M{
-			"rounds._id": roundOID,
+			"project_rounds._id": roundOID,
 		}}},
-		{{Key: "$unwind", Value: "$rounds.report_periods"}},
+		{{Key: "$unwind", Value: "project_rounds.report_periods"}},
 		{{Key: "$match", Value: bson.M{
-			"rounds.report_periods._id": reportPeriodOID,
+			"project_rounds.report_periods._id": reportPeriodOID,
 		}}},
 		{{Key: "$replaceRoot", Value: bson.M{
-			"newRoot": "$rounds.report_periods",
+			"newRoot": "project_rounds.report_periods",
 		}}},
 	}
 
@@ -746,7 +746,7 @@ func (p *projectRepo) GetReportPeriodsByRoundID(
 	var result struct {
 		Rounds []struct {
 			ReportPeriods []model.ReportPeriod `bson:"report_periods"`
-		} `bson:"rounds"`
+		} `bson:"project_rounds"`
 	}
 
 	err = p.classroomCollection.FindOne(
@@ -755,7 +755,7 @@ func (p *projectRepo) GetReportPeriodsByRoundID(
 		options.FindOne().SetProjection(bson.M{
 			"rounds": bson.M{
 				"$filter": bson.M{
-					"input": "$rounds",
+					"input": "project_rounds",
 					"as":    "r",
 					"cond": bson.M{
 						"$eq": []interface{}{"$$r._id", roundOID},
@@ -781,8 +781,8 @@ func (p *projectRepo) GetReportPeriodsByRoundID(
 
 func (p *projectRepo) ReplaceReportPeriod(ctx context.Context, reportPeriod *model.ReportPeriod) error {
 	// find classroom/round that contains this report period and replace it
-	filter := bson.M{"rounds.report_periods._id": reportPeriod.ID}
-	update := bson.M{"$set": bson.M{"rounds.$[r].report_periods.$[p]": reportPeriod}}
+	filter := bson.M{"project_rounds.report_periods._id": reportPeriod.ID}
+	update := bson.M{"$set": bson.M{"project_rounds.$[r].report_periods.$[p]": reportPeriod}}
 	arrayFilters := options.ArrayFilters{Filters: []interface{}{
 		bson.M{"p._id": reportPeriod.ID},
 	}}
@@ -812,8 +812,8 @@ func (p *projectRepo) DeleteReportPeriod(ctx context.Context, classroomID, round
 		return err
 	}
 
-	filter := bson.M{"_id": classroomObjectID, "rounds._id": roundObjectID}
-	update := bson.M{"$pull": bson.M{"rounds.$.report_periods": bson.M{"_id": reportPeriodObjectID}}}
+	filter := bson.M{"_id": classroomObjectID, "project_rounds._id": roundObjectID}
+	update := bson.M{"$pull": bson.M{"project_rounds.$.report_periods": bson.M{"_id": reportPeriodObjectID}}}
 
 	res, err := p.classroomCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
@@ -849,7 +849,7 @@ func (p *projectRepo) ReportPeriodExists(
 
 	filter := bson.M{
 		"_id": classroomOID,
-		"rounds": bson.M{
+		"project_rounds": bson.M{
 			"$elemMatch": bson.M{
 				"_id":                roundOID,
 				"report_periods._id": periodOID,
