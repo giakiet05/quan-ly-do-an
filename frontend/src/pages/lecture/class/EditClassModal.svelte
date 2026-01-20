@@ -38,15 +38,6 @@
         semester: z.string().min(1, "Học kỳ là bắt buộc"),
         avatar: z.string().optional(),
         description: z.string().optional(),
-        students: z
-            .array(
-                z.object({
-                    fullName: z.string(),
-                    studentCode: z.string(),
-                    email: z.string().optional(),
-                }),
-            )
-            .optional(),
     });
     let detail = $state<ClassroomResponse>({} as ClassroomResponse);
 
@@ -54,10 +45,7 @@
         getClassroom(classData.id)
             .then((res) => {
                 detail = res; // Đảm bảo `res` có dữ liệu hợp lệ
-                console.log(
-                    "Fetched class detail:",
-                    res.whitelist_student_code,
-                );
+                console.log("Fetched class detail:", res.whitelistStudentCode);
             })
             .catch((err) => {
                 console.error("Failed to fetch class detail:", err);
@@ -68,40 +56,33 @@
     let errors = $state<Record<string, string>>({});
 
     let formData = $state<CreateClassRequest>({
-        name: "",
-        semester: "",
-        avatar: "",
-        description: "",
-        students: [],
+        name: classData.name || "",
+        semester: classData.semester || "HK1",
+        year: classData.year || new Date().getFullYear(),
+        autoApprove: classData.autoApprove ?? false,
+        description: classData.description || "",
+        avatar: classData.avatar || "",
+        maxStudents: classData.maxStudents || 100,
+        allowedEmailDomains: classData.allowedEmailDomains || [],
+        enableWhitelist: classData.enableWhitelist ?? false,
+        enableEmailRestriction: classData.enableEmailRestriction ?? false,
     });
 
     $effect(() => {
         formData.name = classData.name || "";
         formData.semester = classData.semester || "";
         formData.description = classData.description || "";
-        formData.students = classData.students || [];
         formData.avatar = classData.avatar || "";
     });
 
     let students = $state<Student[]>(
         mockStudents.map((s) => ({
             ...s,
-            selected: formData.students.some(
-                (student) => student.studentCode === s.studentCode,
-            ),
+            selected: false,
         })),
     );
 
-    // Cập nhật formData.students khi selected thay đổi
-    $effect(() => {
-        formData.students = students
-            .filter((s) => s.selected)
-            .map(({ fullName, studentCode, email }) => ({
-                fullName,
-                studentCode,
-                email: email || `${studentCode}@student.edu.vn`,
-            }));
-    });
+    // Note: Co-lecturers are managed through StudentManagement component
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -200,7 +181,12 @@
 
             <div class="modal-footer">
                 <div class="stats">
-                    Tổng cộng: <span>{formData.students.length}</span> sinh viên
+                    {#if detail.coLecturers}
+                        Tổng cộng: <span>{detail.coLecturers.length}</span> giáo
+                        viên phụ trở
+                    {:else}
+                        Chưa có dữ liệu
+                    {/if}
                 </div>
                 <div class="actions">
                     <button type="button" class="btn-cancel" onclick={onClose}>

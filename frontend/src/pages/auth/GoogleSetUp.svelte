@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { push, querystring } from "svelte-spa-router";
-    import Button from "../components/Button.svelte";
-    import { authService } from "../services/auth-service";
+    import Button from "../../components/Button.svelte";
+    import { authService } from "../../services/auth-service";
 
     let fullName = "";
     let studentCode = "";

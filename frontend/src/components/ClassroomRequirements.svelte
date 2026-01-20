@@ -58,7 +58,9 @@
         <circle cx="12" cy="7" r="4"></circle>
       </svg>
       <span>
-        Trợ giảng: {classroom.coLecturers.map((c) => c.fullName).join(", ")}
+        Trợ giảng: {classroom.coLecturers
+          .map((c: any) => c.fullName)
+          .join(", ")}
       </span>
     </div>
   {/if}
@@ -91,16 +93,5 @@
 
   .requirement-item span {
     line-height: 1.5;
-  }
-
-  .badge-full {
-    display: inline-block;
-    padding: 2px 8px;
-    background: #ef4444;
-    color: white;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    margin-left: 8px;
   }
 </style>

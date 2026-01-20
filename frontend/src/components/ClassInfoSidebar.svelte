@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Upload } from "../libs/Icons";
+    import { Upload, Users, Calendar } from "../libs/Icons"; // Thêm icon cho đẹp
     import type { CreateClassRequest } from "../types/class";
 
     const {
@@ -11,6 +11,18 @@
         errors: Record<string, string>;
         onAvatarChange: (e: Event) => void;
     }>();
+
+    // Danh sách năm để chọn cho nhanh
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear - 1, currentYear, currentYear + 1];
+
+    // Đảm bảo nếu năm của lớp cũ không có trong danh sách mặc định thì vẫn hiển thị được
+    $effect(() => {
+        if (formData.year && !years.includes(formData.year)) {
+            years.push(formData.year);
+            years.sort((a, b) => b - a);
+        }
+    });
 </script>
 
 <div class="sidebar">
@@ -44,22 +56,55 @@
             class:error={errors.name}
             placeholder="VD: Lớp K64 CNTT1"
         />
-        {#if errors.name}
-            <span class="err-text">{errors.name}</span>
-        {/if}
+        {#if errors.name}<span class="err-text">{errors.name}</span>{/if}
+    </div>
+
+    <div class="grid-cols-2">
+        <div class="form-group">
+            <label for="semester">Học kỳ <span class="req">*</span></label>
+            <select
+                id="semester"
+                bind:value={formData.semester}
+                class:error={errors.semester}
+            >
+                <option value="HK1">Học kỳ 1</option>
+                <option value="HK2">Học kỳ 2</option>
+                <option value="HK3">Học kỳ 3</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="year">Năm học <span class="req">*</span></label>
+            <select id="year" bind:value={formData.year}>
+                {#each years as y}
+                    <option value={y}>{y}</option>
+                {/each}
+            </select>
+        </div>
     </div>
 
     <div class="form-group">
-        <label for="semester">Học kỳ <span class="req">*</span></label>
-        <input
-            id="semester"
-            bind:value={formData.semester}
-            placeholder="VD: HK1"
-            class:error={errors.semester}
-        />
-        {#if errors.semester}
-            <span class="err-text">{errors.semester}</span>
-        {/if}
+        <label for="max-students">Sĩ số tối đa</label>
+        <div class="input-with-icon">
+            <input
+                id="max-students"
+                type="number"
+                bind:value={formData.maxStudents}
+                min="1"
+                max="200"
+            />
+        </div>
+        <p class="helper-text">Giới hạn số lượng SV tham gia lớp</p>
+    </div>
+
+    <div class="toggle-group">
+        <label class="switch">
+            <input type="checkbox" bind:checked={formData.autoApprove} />
+            <span class="slider"></span>
+        </label>
+        <div class="toggle-info">
+            <span class="toggle-label">Tự động duyệt</span>
+            <span class="toggle-desc">SV có mã sẽ vào thẳng lớp</span>
+        </div>
     </div>
 
     <div class="form-group">
@@ -68,8 +113,7 @@
             id="description"
             bind:value={formData.description}
             placeholder="Mô tả ngắn về lớp học..."
-        >
-        </textarea>
+        ></textarea>
     </div>
 </div>
 
@@ -179,5 +223,103 @@
         color: #e53e3e;
         margin-top: 4px;
         display: block;
+    }
+    .grid-cols-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .input-with-icon {
+        position: relative;
+    }
+
+    .input-with-icon input {
+        padding-left: 36px !important;
+    }
+
+    .helper-text {
+        font-size: 11px;
+        color: #718096;
+        margin-top: 4px;
+    }
+
+    /* Style cho cái Toggle/Switch */
+    .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+
+    .toggle-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .toggle-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #2d3748;
+    }
+
+    .toggle-desc {
+        font-size: 11px;
+        color: #718096;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 34px;
+        height: 20px;
+        flex-shrink: 0;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: #cbd5e0;
+        transition: 0.4s;
+        border-radius: 20px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #0045b1;
+    }
+    input:checked + .slider:before {
+        transform: translateX(14px);
+    }
+
+    select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: white;
+        font-size: 14px;
     }
 </style>
