@@ -220,19 +220,6 @@ func (p *projectService) checkReportDeadlines() {
 	}
 }
 
-// Helper function to remove duplicate strings
-func removeDuplicates(slice []string) []string {
-	keys := make(map[string]bool)
-	list := []string{}
-	for _, entry := range slice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
-		}
-	}
-	return list
-}
-
 func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, requesterID string) (*model.ProjectRound, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
@@ -361,6 +348,11 @@ func (p *projectService) UpdateProjectRound(req *dto.UpdateProjectRoundRequest, 
 	}
 	if req.Description != "" {
 		round.Description = req.Description
+	}
+
+	err = p.projectRepo.ReplaceProjectRound(ctx, round)
+	if err != nil {
+		return nil, err
 	}
 
 	return round, nil

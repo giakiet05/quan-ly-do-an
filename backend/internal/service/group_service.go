@@ -21,12 +21,10 @@ type GroupService interface {
 	UpdateGroup(req *dto.UpdateGroupRequest, requesterID string) (*model.Group, error)
 	DeleteGroup(groupID string, requesterID string) error
 
-	// Join requests (student requests to join a group)
 	CreateJoinRequest(req *dto.CreateJoinGroupRequest, requesterID string) (*model.JoinGroupRequest, error)
 	AcceptJoinRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error
 	RejectJoinRequest(req *dto.UpdateJoinGroupRequest, requesterID string) error
 
-	// Invitations (group leader invites a student)
 	InviteToGroup(req *dto.CreateGroupInvitationRequest, requesterID string) (*model.JoinGroupInvitation, error)
 	AcceptInvitation(req *dto.UpdateGroupInvitationRequest, requesterID string) error
 	RejectInvitation(req *dto.UpdateGroupInvitationRequest, requesterID string) error

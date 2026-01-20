@@ -21,6 +21,7 @@ type ProjectRepo interface {
 	GetProjectRoundByID(ctx context.Context, classroomID, roundID string) (*model.ProjectRound, error)
 	GetProjectRoundsByClassroomID(ctx context.Context, classroomID string) ([]model.ProjectRound, error)
 	ListProjectRounds(ctx context.Context, classroomID string, page, pageSize int) ([]model.ProjectRound, int64, error)
+	ReplaceProjectRound(ctx context.Context, round *model.ProjectRound) error
 	DeleteProjectRound(ctx context.Context, classroomID, roundID string) error
 
 	GetJustOpenReportPeriods(ctx context.Context, now time.Time) ([]dto.ReportPeriodWithProjectRound, error)
@@ -63,14 +64,19 @@ func (p *projectRepo) CreateProjectRound(ctx context.Context, classroomID string
 		return err
 	}
 
-	round.ID = primitive.NewObjectID()
 	round.CreatedAt = time.Now()
 
 	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{"$push": bson.M{"rounds": round}}
+	update := bson.M{"$push": bson.M{"project_rounds": round}}
 
-	_, err = p.classroomCollection.UpdateOne(ctx, filter, update)
-	return err
+	result, err := p.classroomCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount == 0 {
+		return apperror.ErrInternal
+	}
+	return nil
 }
 
 func (p *projectRepo) CreateProjectRounds(
@@ -236,6 +242,20 @@ func (p *projectRepo) ListProjectRounds(ctx context.Context, classroomID string,
 	return rounds, total, nil
 }
 
+func (p *projectRepo) ReplaceProjectRound(ctx context.Context, round *model.ProjectRound) error {
+	filter := bson.M{"project_rounds._id": round.ID}
+	update := bson.M{"$set": bson.M{"project_rounds.$": round}}
+
+	res, err := p.classroomCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if res.ModifiedCount == 0 {
+		return apperror.ErrRoundNotFound
+	}
+	return nil
+}
+
 func (p *projectRepo) DeleteProjectRound(
 	ctx context.Context,
 	classroomID, roundID string,
@@ -304,11 +324,11 @@ func (p *projectRepo) GetJustOpenReportPeriods(ctx context.Context, now time.Tim
 
 		// 4️⃣ shape result
 		{{Key: "$project", Value: bson.M{
-			"_id":               0,
-			"classroom_id":      "$_id",
-			"project_round_id":  "$rounds._id",
+			"_id":                0,
+			"classroom_id":       "$_id",
+			"project_round_id":   "$rounds._id",
 			"project_round_name": "$rounds.name",
-			"report_periods":    "$rounds.report_periods",
+			"report_periods":     "$rounds.report_periods",
 		}}},
 	}
 
