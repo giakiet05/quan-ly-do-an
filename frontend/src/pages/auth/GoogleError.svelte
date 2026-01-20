@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { push } from "svelte-spa-router";
-    import Button from "../components/Button.svelte";
+    import Button from "../../components/Button.svelte";
 
     let errorMessage = "Đã xảy ra lỗi trong quá trình xác thực.";
 

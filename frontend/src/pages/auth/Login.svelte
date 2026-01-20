@@ -1,9 +1,9 @@
 <script lang="ts">
   import { link, push } from "svelte-spa-router";
-  import Button from "../components/Button.svelte";
-  import AuthModel from "../layouts/AuthLayout.svelte";
-  import { authService } from "../services/auth-service";
-  import { setAuth } from "../stores/auth-store";
+  import Button from "../../components/Button.svelte";
+  import AuthModel from "../../layouts/AuthLayout.svelte";
+  import { authService } from "../../services/auth-service";
+  import { setAuth } from "../../stores/auth-store";
 
   let Email = "";
   let password = "";

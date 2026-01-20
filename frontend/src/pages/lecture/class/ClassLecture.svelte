@@ -16,7 +16,11 @@
     import { mockClasses } from "../../../mocks/classes.mock";
     import type { ClassItem, CreateClassRequest } from "../../../types/class";
     import { push } from "svelte-spa-router";
-
+    const statusMap = {
+        active: { label: "Đang chạy", class: "bg-green-100 text-green-700" },
+        inactive: { label: "Tạm dừng", class: "bg-red-100 text-red-700" },
+        archived: { label: "Lưu trữ", class: "bg-gray-100 text-gray-700" },
+    };
     let {
         classes,
         searchTerm,
@@ -110,75 +114,81 @@
         <table>
             <thead class="table-header">
                 <tr>
-                    <th class="w-3/15">Thông tin Lớp học</th>
-                    <th class="w-4/15">Mô tả</th>
-                    <th class="w-2/15 text-center">Số lượng SV</th>
-                    <th class="w-2/15">Học kỳ</th>
+                    <th class="w-4/15">Thông tin Lớp học</th>
+                    <th class="w-5/15">Mô tả</th>
+                    <th class="w-1/10 text-center">Năm</th>
+                    <th class="w-1/15 text-center">SV</th>
+                    <th class="w-1/10">Học kỳ</th>
                     <th class="w-2/15 text-center">Trạng thái</th>
                     <th class="w-2/15 text-center">Hành động</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
                 {#each $paginatedClasses as cls (cls.id)}
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    {@const status =
+                        statusMap[cls.status as keyof typeof statusMap] ||
+                        statusMap.inactive}
+                    <tr class="hover:bg-gray-50 transition-colors align-top">
                         <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-start gap-3">
                                 <img
                                     src={cls.avatar ||
                                         `https://ui-avatars.com/api/?name=${cls.name}&background=random`}
                                     alt=""
                                     class="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                                 />
-                                <span class="font-medium text-gray-900"
-                                    >{cls.name}</span
+                                <span
+                                    class="font-medium text-gray-900 line-clamp-3 leading-tight"
                                 >
+                                    {cls.name}
+                                </span>
                             </div>
                         </td>
 
-                        <td class="px-6 py-4 text-gray-600 truncate"
-                            >{cls.description || "Không có thông tin mô tả"}</td
-                        >
+                        <td class="px-6 py-4 text-gray-600">
+                            <p class="text-sm line-clamp-3 leading-normal">
+                                {cls.description || "Không có thông tin mô tả"}
+                            </p>
+                        </td>
+
+                        <td class="px-6 py-4 text-center text-gray-600 text-sm">
+                            {cls.year}
+                        </td>
 
                         <td class="px-6 py-4 text-center">
                             <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
+                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
                             >
-                                {cls.studentCount} SV
+                                {cls.studentCount}
                             </span>
                         </td>
 
-                        <td class="px-6 py-4 text-gray-600 text-sm"
-                            >{cls.semester}</td
-                        >
+                        <td class="px-6 py-4 text-gray-600 text-sm text-center">
+                            {cls.semester}
+                        </td>
 
                         <td class="px-6 py-4 text-center">
-                            <span
-                                class="status-tag {cls.status === 'active'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'}"
-                            >
-                                {cls.status === "active"
-                                    ? "Đang chạy"
-                                    : "Tạm dừng"}
+                            <span class="status-tag {status.class}">
+                                {status.label}
                             </span>
                         </td>
 
                         <td class="px-6 py-4">
-                            <div class="flex items-center justify-center gap-2">
+                            <div class="flex items-center justify-center gap-3">
                                 <button
                                     onclick={() =>
                                         push(`/lecture/my-classes/${cls.id}`)}
-                                    class="text-blue-600"
+                                    class="text-blue-600 hover:scale-110 transition-transform"
                                     ><Eye size={18} /></button
                                 >
                                 <button
                                     onclick={() => openEditModal(cls)}
-                                    class="text-green-600"
+                                    class="text-green-600 hover:scale-110 transition-transform"
                                     ><Edit2 size={18} /></button
                                 >
                                 <button
                                     onclick={() => handleDeleteClass(cls.id)}
-                                    class="text-red-600"
+                                    class="text-red-600 hover:scale-110 transition-transform"
                                     ><Trash2 size={18} /></button
                                 >
                             </div>
@@ -266,14 +276,23 @@
 {/if}
 
 <style>
+    .line-clamp-3 {
+        display: -webkit-box;
+        --webkit-line-clamp: 3; /* Cho trình duyệt cũ (Chrome, Safari, Edge cũ) */
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+    }
     .table-header th {
         padding: 0.75rem 1.5rem;
         text-align: left;
-        font-size: 0.875rem;
-        font-weight: 600;
+        font-size: 0.75rem;
+        font-weight: 700;
         text-transform: uppercase;
-        color: #6b7280;
-        background-color: #f9fafb;
+        letter-spacing: 0.05em;
+        color: #4b5563;
+        background-color: #f3f4f6;
     }
 
     .btn-add {
@@ -296,6 +315,7 @@
     table {
         width: 100%;
         table-layout: fixed;
+        border-collapse: collapse;
     }
 
     th,
@@ -310,6 +330,9 @@
         font-size: 0.875rem;
         font-weight: 500;
         border-radius: 0.375rem;
+    }
+    img {
+        aspect-ratio: 1/1;
     }
     .bg-green-100 {
         background-color: rgba(16, 185, 129, 0.2);

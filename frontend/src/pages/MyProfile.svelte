@@ -6,9 +6,9 @@
     uploadAvatar,
     deleteAvatar,
     changePassword as changePasswordAPI,
-    type UserProfile,
   } from "../services/user-service";
   import { authStore } from "../stores/auth-store";
+  import type { UserProfile } from "../types/user";
 
   // State using Svelte 5 runes
   let profile = $state<UserProfile | null>(null);

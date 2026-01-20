@@ -53,7 +53,12 @@
         semester: "",
         avatar: "",
         description: "",
-        students: [],
+        year: new Date().getFullYear(),
+        maxStudents: 100,
+        autoApprove: true,
+        allowedEmailDomains: [],
+        enableWhitelist: false,
+        enableEmailRestriction: false,
     });
 
     let students = $state<Student[]>(
@@ -72,17 +77,6 @@
         filteredStudents.length > 0 &&
             filteredStudents.every((s) => s.selected),
     );
-
-    // Cập nhật formData.students khi danh sách selected thay đổi
-    $effect(() => {
-        formData.students = students
-            .filter((s) => s.selected)
-            .map(({ fullName, studentCode, email }) => ({
-                fullName,
-                studentCode,
-                email: email || `${studentCode}@student.edu.vn`,
-            }));
-    });
 
     function toggleAll() {
         const value = !allSelected;
@@ -177,7 +171,9 @@
 
             <div class="modal-footer">
                 <div class="stats">
-                    Tổng cộng: <span>{formData.students.length}</span> sinh viên
+                    Tổng cộng: <span
+                        >{students.filter((s) => s.selected).length}</span
+                    > sinh viên
                 </div>
                 <div class="actions">
                     <button type="button" class="btn-cancel" onclick={onClose}

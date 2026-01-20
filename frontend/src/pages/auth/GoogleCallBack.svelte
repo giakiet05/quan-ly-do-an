@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { replace } from "svelte-spa-router";
-  import { authService } from "../services/auth-service";
+  import { authService } from "../../services/auth-service";
 
   onMount(() => {
     const hash = window.location.hash;

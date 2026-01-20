@@ -1,8 +1,8 @@
 <script lang="ts">
     import { link, push } from "svelte-spa-router";
-    import Button from "../components/Button.svelte";
-    import OtpVerification from "../components/OTPVerification.svelte";
-    import { authService } from "../services/auth-service";
+    import Button from "../../components/Button.svelte";
+    import OtpVerification from "../../components/OTPVerification.svelte";
+    import { authService } from "../../services/auth-service";
 
     let step: "email" | "otp" | "reset" = "email";
     let email = "";
@@ -425,12 +425,6 @@
         width: 16px;
         height: 16px;
         margin-right: 6px;
-    }
-    .w-full {
-        width: 100% !important;
-    }
-    .mt-2 {
-        margin-top: 8px;
     }
     .mt-4 {
         margin-top: 16px;

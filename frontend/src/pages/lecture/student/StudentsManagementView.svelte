@@ -198,23 +198,6 @@
         background-color: #f9fafb;
     }
 
-    .btn-add {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background-color: #2563eb;
-        color: white;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        transition: background-color 0.2s;
-    }
-
-    .btn-add:hover {
-        background-color: #1d4ed8;
-    }
-
     table {
         width: 100%;
         table-layout: fixed;
