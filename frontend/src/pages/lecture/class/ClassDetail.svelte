@@ -1,154 +1,207 @@
 <script lang="ts">
-    import { params } from "svelte-spa-router";
-    import type { ClassData } from "../../../types/class";
-    import { ArrowLeft } from "../../../libs/Icons";
+    import { onMount } from "svelte";
     import { fade } from "svelte/transition";
+    import { params } from "svelte-spa-router";
+    import { ArrowLeft } from "../../../libs/Icons";
+
+    // Components
     import CategoryList from "./category/CategoryList.svelte";
     import CreateCategoryModal from "./category/CreateCategoryModal.svelte";
-    import { mockCategoriesList } from "../../../types/category";
     import StudentTab from "./student/StudentTab.svelte";
-    import { mockStudentInClassData } from "../../../types/student";
     import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
     import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
-    import type { Announcement } from "../../../types/announcement";
 
-    let categories = $derived(
-        mockCategoriesList.map((cat) => ({
-            ...cat,
-            status:
-                new Date(cat.endDate) < new Date()
-                    ? "đã kết thúc"
-                    : new Date(cat.startDate) > new Date()
-                      ? "săp diễn ra"
-                      : "đang diễn ra",
-        })),
+    // Stores & Types
+    import { projectRoundStore } from "../../../stores/project-round-store";
+    import type { Announcement } from "../../../types/announcement";
+    import type { ProjectRound } from "../../../types/project-round";
+    import { mockStudentInClassData } from "../../../types/student";
+    import { classStore } from "../../../stores/class-store";
+    import type { ClassItem } from "../../../types/class";
+    import type { UpdateProjectRoundRequest } from "../../../dtos/project-dto";
+
+    const classroomId = $derived($params?.id);
+    const classesStore = classStore.classes;
+    const classData = $derived(
+        $classesStore.find((c: ClassItem) => c.id === classroomId),
     );
+
+    $effect(() => {
+        if (classroomId) {
+            projectRoundStore.fetchRounds(classroomId);
+            if ($classesStore.length === 0) {
+                classStore.fetchMyClasses();
+            }
+        }
+    });
     let students = $state(mockStudentInClassData);
 
-    let classData = $state<ClassData>({
-        id: "1",
-        name: "Phát triển ứng dụng Web",
-        description:
-            "Lớp học tập trung vào phát triển web với React, Node.js và REST API.",
-        studentCount: 45,
-        semester: "HK2 2023–2024",
-        status: "active",
-    });
+    // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
     );
     let isCreateCategoryModalOpen = $state(false);
+    let editingCategory = $state<ProjectRound | null>(null);
+    let editingAnnouncement = $state<Announcement | null>(null);
     let showCreateAnnouncementModal = $state(false);
-    let editingAnnouncement = $state<null | Announcement>(null);
-    let editingCategory = $state<null | any>(null);
+
     const tabs = [
         { id: "overview", label: "Tổng quan" },
         { id: "students", label: "Sinh viên" },
         { id: "announcements", label: "Thông báo" },
         { id: "chat", label: "Chat" },
     ] as const;
+
+    // 4. Handlers
+    async function handleCreateRound(data: any) {
+        try {
+            await projectRoundStore.addRound({
+                ...data,
+                classroomId: classroomId,
+            });
+            isCreateCategoryModalOpen = false;
+        } catch (error) {
+            alert("Có lỗi khi tạo hạng mục!");
+        }
+    }
+
+    async function handleUpdateRound(data: any) {
+        if (!editingCategory) return;
+        try {
+            const payload: UpdateProjectRoundRequest = {
+                roundId: editingCategory.id,
+                projectRoundId: editingCategory.id,
+                classroomId: classroomId,
+                name: data.name,
+                description: data.description,
+                startDate: data.startDate,
+                endDate: data.endDate,
+            };
+
+            await projectRoundStore.editRound(payload);
+            editingCategory = null;
+        } catch (error) {
+            alert("Có lỗi khi cập nhật!");
+        }
+    }
 </script>
 
 <div class="bg-white rounded-lg shadow-sm p-6">
-    <div class="p-2 border-gray-200">
+    <div class="p-2">
         <button
             onclick={() => history.back()}
-            class="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            class="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
         >
-            <ArrowLeft class="w-5 h-5" />
+            <ArrowLeft class="w-5 h-5 mr-1" />
             Quay lại danh sách lớp học
         </button>
-        <h1 class="text-2xl mb-2">
-            Chi tiết Lớp: {classData.name} - {classData.semester}
-        </h1>
+
+        {#if classData}
+            <h1 class="text-2xl font-bold text-gray-800">
+                Lớp: {classData.name}
+            </h1>
+            <p class="text-gray-500">
+                Mã lớp: {classData.id} • {classData.semester} • {classData.studentCount}
+                sinh viên
+            </p>
+        {:else}
+            <div class="animate-pulse">
+                <div class="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+                <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+            </div>
+        {/if}
     </div>
-    <!-- Tabs -->
-    <div class="flex gap-6 border-b border-gray-200">
+
+    <div class="flex gap-6 border-b border-gray-200 mt-6">
         {#each tabs as tab}
             <button
                 onclick={() => (activeTab = tab.id)}
-                class="pb-3 px-1 transition-colors relative
-            {activeTab === tab.id
+                class="pb-3 px-1 transition-all relative font-medium
+                {activeTab === tab.id
                     ? 'text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'}"
+                    : 'text-gray-500 hover:text-gray-700'}"
             >
                 {tab.label}
-
                 {#if activeTab === tab.id}
                     <div
                         class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                        in:fade
                     ></div>
                 {/if}
             </button>
         {/each}
     </div>
-    <!-- Tab Content -->
 </div>
-<div class="bg-white rounded-lg mt-4 shadow-sm">
-    <div class="tab-content" transition:fade>
-        {#if activeTab === "overview"}
-            <div class="tab-content-enter-active">
-                <!-- Content for "Tổng quan" -->
-                <CategoryList
-                    openEditCategoryModal={(category) => {
-                        editingCategory = category;
-                    }}
-                    onOpen={() => (isCreateCategoryModalOpen = true)}
-                    onCLose={() => (isCreateCategoryModalOpen = false)}
-                    {classData}
-                />
-            </div>
-        {:else if activeTab === "students"}
-            <div class="tab-content-enter-active">
-                <!-- Content for "Sinh viên" -->
-                <StudentTab {students} {categories} />
-            </div>
-        {:else if activeTab === "announcements"}
-            <div class="tab-content-enter-active">
-                <!-- Content for "Thông báo" -->
-                <AnnouncementTab
-                    onEdit={(announcement) => {
-                        editingAnnouncement = announcement;
-                    }}
-                    onOpen={() => (showCreateAnnouncementModal = true)}
-                    onCLose={() => (showCreateAnnouncementModal = false)}
-                />
-            </div>
-        {:else if activeTab === "chat"}
-            <div class="tab-content-enter-active">
-                <!-- Content for "Chat" -->
-            </div>
-        {/if}
-    </div>
+
+<div class="mt-4">
+    {#key activeTab}
+        <div in:fade={{ duration: 200 }}>
+            {#if activeTab === "overview"}
+                <div class="bg-white rounded-lg shadow-sm">
+                    <CategoryList
+                        {classData}
+                        openEditCategoryModal={(category) =>
+                            (editingCategory = category)}
+                        onOpen={() => (isCreateCategoryModalOpen = true)}
+                        onClose={() => (isCreateCategoryModalOpen = false)}
+                    />
+                </div>
+            {:else if activeTab === "students"}
+                <div class="bg-white rounded-lg shadow-sm">
+                    <StudentTab {students} />
+                </div>
+            {:else if activeTab === "announcements"}
+                <div class="bg-white rounded-lg shadow-sm">
+                    <AnnouncementTab
+                        onEdit={(announcement) =>
+                            (editingAnnouncement = announcement)}
+                        onOpen={() => (showCreateAnnouncementModal = true)}
+                        onClose={() => (showCreateAnnouncementModal = false)}
+                    />
+                </div>
+            {:else if activeTab === "chat"}
+                <div
+                    class="bg-white rounded-lg shadow-sm p-20 text-center text-gray-400"
+                >
+                    Tính năng Chat đang được phát triển...
+                </div>
+            {/if}
+        </div>
+    {/key}
 </div>
-{#if isCreateCategoryModalOpen}
-    <CreateCategoryModal
-        onClose={() => (isCreateCategoryModalOpen = false)}
-        {classData}
-        onSubmit={() => {}}
-    />
-{/if}
-{#if showCreateAnnouncementModal}
-    <CreateAnnouncementModal
-        onClose={() => (showCreateAnnouncementModal = false)}
-        onSubmit={() => {}}
-    />
+
+{#if classData}
+    {#if isCreateCategoryModalOpen}
+        <CreateCategoryModal
+            {classData}
+            onClose={() => (isCreateCategoryModalOpen = false)}
+            onSubmit={handleCreateRound}
+        />
+    {/if}
+
+    {#if editingCategory}
+        <CreateCategoryModal
+            isEdit={true}
+            initialData={editingCategory}
+            {classData}
+            onClose={() => (editingCategory = null)}
+            onSubmit={handleUpdateRound}
+        />
+    {/if}
 {/if}
 
-{#if editingAnnouncement}
+{#if showCreateAnnouncementModal || editingAnnouncement}
     <CreateAnnouncementModal
         {editingAnnouncement}
-        onClose={() => (editingAnnouncement = null)}
-        onSubmit={() => {}}
-    />
-{/if}
-
-{#if editingCategory}
-    <CreateCategoryModal
-        {editingCategory}
-        {classData}
-        onClose={() => (editingCategory = null)}
-        onSubmit={() => {}}
+        onClose={() => {
+            showCreateAnnouncementModal = false;
+            editingAnnouncement = null;
+        }}
+        onSubmit={(data) => {
+            console.log("Announcement data:", data);
+            showCreateAnnouncementModal = false;
+            editingAnnouncement = null;
+        }}
     />
 {/if}
 

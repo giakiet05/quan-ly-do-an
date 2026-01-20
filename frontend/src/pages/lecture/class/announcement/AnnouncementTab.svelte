@@ -12,9 +12,9 @@
     import type { Announcement } from "../../../../types/announcement";
 
     // Định nghĩa Props bằng $props()
-    let { onOpen, onCLose, onEdit } = $props<{
+    let { onOpen, onClose, onEdit } = $props<{
         onOpen: () => void;
-        onCLose: () => void;
+        onClose: () => void;
         onEdit: (announcement: Announcement) => void;
     }>();
     // State sử dụng Runes

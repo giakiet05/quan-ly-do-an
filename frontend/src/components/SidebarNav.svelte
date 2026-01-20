@@ -72,7 +72,7 @@
     {
       id: "classes",
       label: "Lớp học",
-      route: "/classes*",
+      route: "/student/classes*",
       icon: "/book-open-text.svg",
     },
     {
@@ -98,7 +98,7 @@
   ];
 
   const menuItems = $derived(
-    role === "LECTURER" ? teacherMenuItems : studentMenuItems
+    role === "LECTURER" ? teacherMenuItems : studentMenuItems,
   );
 
   // Helper to check if route is active (supports wildcards)

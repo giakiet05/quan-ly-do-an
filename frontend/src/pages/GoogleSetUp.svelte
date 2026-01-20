@@ -43,12 +43,12 @@
         loading = true;
         try {
             const res = await authService.completeGoogleSetup({
-                setup_token: setupToken,
-                full_name: fullName,
-                //student_code: studentCode,
+                setupToken: setupToken,
+                fullName: fullName,
+                //studentCode: studentCode,
             });
 
-            if (res?.access_token) {
+            if (res?.accessToken) {
                 // Xóa token trên URL để bảo mật sau khi thành công
                 window.history.replaceState(
                     {},

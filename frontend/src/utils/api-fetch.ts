@@ -44,17 +44,12 @@ function clearTokens(): void {
  */
 async function refreshAccessToken(): Promise<boolean> {
   const refreshToken = getRefreshToken();
-  
-  if (!refreshToken) {
-    return false;
-  }
+  if (!refreshToken) return false;
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
@@ -63,11 +58,12 @@ async function refreshAccessToken(): Promise<boolean> {
       return false;
     }
 
-    const data: ApiResponse<{ access_token: string; refresh_token: string }> =
-      await response.json();
+    const rawData = await response.json();
+
+    const data = convertKeysToCamel<ApiResponse<{ accessToken: string; refreshToken: string }>>(rawData);
 
     if (data.success && data.data) {
-      saveTokens(data.data.access_token, data.data.refresh_token);
+      saveTokens(data.data.accessToken, data.data.refreshToken);
       return true;
     }
 
@@ -105,7 +101,7 @@ export async function apiFetch<T = any>(
   // Only set Content-Type to JSON if not FormData (FormData needs browser to set multipart/form-data with boundary)
   if (!(fetchOptions.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
-    
+
     // Convert request body from camelCase to snake_case for backend
     if (fetchOptions.body && typeof fetchOptions.body === 'string') {
       try {
@@ -175,19 +171,19 @@ export async function apiFetch<T = any>(
 
   // Parse and return response
   const contentType = response.headers.get("content-type");
-  
+
   if (contentType?.includes("application/json")) {
     const jsonResponse: ApiResponse<T> = await response.json();
-    
+
     // Convert response from snake_case to camelCase
     const convertedResponse = convertKeysToCamel<ApiResponse<T>>(jsonResponse);
-    
+
     // Backend wraps all responses in ApiResponse { success, message, data }
     // Extract and return only the data field
     if (convertedResponse.data !== undefined) {
       return convertedResponse.data as T;
     }
-    
+
     // If no data field, return the whole response (e.g., for error responses)
     return convertedResponse as any;
   }

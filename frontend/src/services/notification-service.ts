@@ -18,7 +18,7 @@ export async function getMyNotifications(
     if (!response) {
         return {
             notifications: [],
-            pagination: { page, page_size: limit, total_items: 0, total_pages: 0 }
+            pagination: { page, pageSize: limit, totalItems: 0, totalPages: 0 }
         };
     }
 
