@@ -42,10 +42,10 @@
     try {
       const input_token = event.detail.verification_token;
       const res = await authService.verifyEmail({ email, otp: input_token });
-      const verification_token = res.verification_token || input_token;
+      const verificationToken = res.verificationToken || input_token;
       await completeRegistration({
-        verification_token,
-        full_name: fullname,
+        verificationToken,
+        fullName: fullname,
         password,
       });
       replace("/auth/login");

@@ -1,49 +1,52 @@
 <script lang="ts">
     import { X } from "lucide-svelte";
     import type { ClassData } from "../../../../types/class";
-    import type { ProjectCategory } from "../../../../types/category";
+    import type { ProjectRound } from "../../../../types/project-round";
 
-    // Định nghĩa Props theo cú pháp Svelte 5
-    let { onClose, onSubmit, classData, editingCategory } = $props<{
+    // 1. Định nghĩa Props
+    let {
+        onClose,
+        onSubmit,
+        classData,
+        isEdit = false,
+        initialData = null,
+    } = $props<{
         onClose: () => void;
-        onSubmit: (category: any) => void;
+        onSubmit: (data: any) => void;
         classData: ClassData;
-        editingCategory?: ProjectCategory;
+        isEdit?: boolean;
+        initialData?: ProjectRound | null;
     }>();
-    // Helper function để đảm bảo định dạng YYYY-MM-DD
-    const formatToDateInput = (dateStr: string | undefined) => {
+
+    // 2. Helper function để định dạng date input (YYYY-MM-DD)
+    const formatToDateInput = (dateStr: string | undefined | null) => {
         if (!dateStr) return "";
-        // Tách lấy phần trước chữ T (YYYY-MM-DD)
         return dateStr.split("T")[0];
     };
 
-    // Khởi tạo state cho form
+    // 3. Khởi tạo formData trực tiếp từ initialData prop
+    // Svelte 5 sẽ dùng giá trị này khi component được mount
     let formData = $state({
-        name: editingCategory?.name || "",
-        description: editingCategory?.description || "",
-        // Dùng helper để convert '2026-01-01T00:00:00Z' thành '2026-01-01'
-        startDate: formatToDateInput(editingCategory?.startDate),
-        endDate: formatToDateInput(editingCategory?.endDate),
-        status: editingCategory?.status || "upcoming",
+        name: initialData?.name ?? "",
+        description: initialData?.description ?? "",
+        startDate: formatToDateInput(initialData?.startDate),
+        endDate: formatToDateInput(initialData?.endDate),
+        status: initialData?.status ?? "upcoming",
     });
+
     let errors = $state<Record<string, string>>({});
 
+    // 4. Xử lý logic Submit
     function handleSubmit(e: Event) {
         e.preventDefault();
-
         const newErrors: Record<string, string> = {};
 
-        if (!formData.name.trim()) {
+        if (!formData.name.trim())
             newErrors.name = "Vui lòng nhập tên hạng mục";
-        }
-
-        if (!formData.startDate) {
+        if (!formData.startDate)
             newErrors.startDate = "Vui lòng chọn ngày bắt đầu";
-        }
-
-        if (!formData.endDate) {
+        if (!formData.endDate)
             newErrors.endDate = "Vui lòng chọn ngày kết thúc";
-        }
 
         if (
             formData.startDate &&
@@ -58,15 +61,15 @@
             return;
         }
 
-        // Gửi dữ liệu đi (Svelte tự động bóc tách proxy của $state khi truyền ra ngoài)
-        onSubmit({ ...formData });
+        // Trả về dữ liệu kèm ID nếu là đang edit
+        onSubmit({
+            ...formData,
+            id: initialData?.id, // Giữ lại ID để API biết là update
+        });
     }
 
-    // Xử lý xóa lỗi khi người dùng nhập liệu
     function clearError(field: string) {
-        if (errors[field]) {
-            delete errors[field];
-        }
+        if (errors[field]) delete errors[field];
     }
 </script>
 
@@ -77,10 +80,8 @@
         <div
             class="flex justify-between items-center p-6 border-b border-gray-200"
         >
-            <h2 class="text-xl">
-                {editingCategory
-                    ? "Chỉnh sửa hạng mục"
-                    : "Tạo hạng mục đề tài mới"}
+            <h2 class="text-xl font-semibold">
+                {isEdit ? "Chỉnh sửa hạng mục" : "Tạo hạng mục đề tài mới"}
             </h2>
             <button
                 onclick={onClose}
@@ -94,12 +95,12 @@
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p class="text-sm text-blue-800">
                     <strong>Lớp học:</strong>
-                    {classData.name} - {classData.semester}
+                    {classData?.name} - {classData?.semester}
                 </p>
             </div>
 
             <div>
-                <label class="block text-sm mb-2" for="name">
+                <label class="block text-sm font-medium mb-2" for="name">
                     Tên hạng mục <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -107,7 +108,7 @@
                     type="text"
                     bind:value={formData.name}
                     oninput={() => clearError("name")}
-                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.name
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none {errors.name
                         ? 'border-red-500'
                         : 'border-gray-300'}"
                     placeholder="Ví dụ: Hạng mục 1 - Đề tài Web Application"
@@ -118,12 +119,13 @@
             </div>
 
             <div>
-                <label class="block text-sm mb-2" for="description">Mô tả</label
+                <label class="block text-sm font-medium mb-2" for="description"
+                    >Mô tả</label
                 >
                 <textarea
                     id="description"
                     bind:value={formData.description}
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     rows={3}
                     placeholder="Mô tả ngắn về hạng mục này"
                 ></textarea>
@@ -131,7 +133,10 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm mb-2" for="startDate">
+                    <label
+                        class="block text-sm font-medium mb-2"
+                        for="startDate"
+                    >
                         Ngày bắt đầu <span class="text-red-500">*</span>
                     </label>
                     <input
@@ -139,7 +144,7 @@
                         type="date"
                         bind:value={formData.startDate}
                         oninput={() => clearError("startDate")}
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.startDate
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none {errors.startDate
                             ? 'border-red-500'
                             : 'border-gray-300'}"
                     />
@@ -151,7 +156,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm mb-2" for="endDate">
+                    <label class="block text-sm font-medium mb-2" for="endDate">
                         Ngày kết thúc <span class="text-red-500">*</span>
                     </label>
                     <input
@@ -159,7 +164,7 @@
                         type="date"
                         bind:value={formData.endDate}
                         oninput={() => clearError("endDate")}
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.endDate
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none {errors.endDate
                             ? 'border-red-500'
                             : 'border-gray-300'}"
                     />
@@ -169,13 +174,6 @@
                         </p>
                     {/if}
                 </div>
-            </div>
-
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p class="text-sm text-yellow-800">
-                    <strong>Lưu ý:</strong> Sau khi tạo hạng mục, bạn có thể thêm
-                    đề tài, thiết lập báo cáo và cài đặt cho hạng mục này.
-                </p>
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -190,7 +188,7 @@
                     type="submit"
                     class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                    {editingCategory ? "Cập nhật" : "Tạo hạng mục"}
+                    {isEdit ? "Cập nhật" : "Tạo hạng mục"}
                 </button>
             </div>
         </form>

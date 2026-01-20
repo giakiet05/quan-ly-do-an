@@ -14,7 +14,7 @@
     console.log("Callback nhận được:", { accessToken, setupToken });
 
     if (setupToken) {
-      replace(`/auth/google-setup?setup_token=${setupToken}`);
+      replace(`/auth/google-setup?setupToken=${setupToken}`);
       return;
     }
 
