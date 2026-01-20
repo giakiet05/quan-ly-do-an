@@ -13,6 +13,8 @@
     import { z } from "zod";
     import ClassInfoSidebar from "../../../components/ClassInfoSidebar.svelte";
     import StudentManagement from "../../../components/StudentManagement.svelte";
+    import { uploadWhitelistStudentCodes } from "../../../services/classroom-service";
+    import { classStore } from "../../../stores/class-store";
 
     const { onClose, onSubmit } = $props<{
         onClose: () => void;
@@ -44,9 +46,11 @@
             .optional(),
     });
     let uploadedFile = $state<File | null>(null);
-    let activeTab = $state<ActiveTab>("excel");
+    let activeTab = $state<ActiveTab>("list");
     let searchTerm = $state("");
     let errors = $state<Record<string, string>>({});
+    let whitelistStudentCodes = $state<string[]>([]);
+    let allowedEmailDomain = $state("");
 
     let formData = $state<CreateClassRequest>({
         name: "",
@@ -59,6 +63,15 @@
         allowedEmailDomains: [],
         enableWhitelist: false,
         enableEmailRestriction: false,
+    });
+
+    // Update formData when whitelist or domain changes
+    $effect(() => {
+        formData.allowedEmailDomains = allowedEmailDomain
+            ? [allowedEmailDomain]
+            : [];
+        formData.enableWhitelist = whitelistStudentCodes.length > 0;
+        formData.enableEmailRestriction = !!allowedEmailDomain;
     });
 
     let students = $state<Student[]>(
@@ -96,7 +109,7 @@
         reader.readAsDataURL(input.files[0]);
     }
 
-    function handleSubmit(event: SubmitEvent) {
+    async function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
         errors = {};
 
@@ -109,7 +122,28 @@
             return;
         }
 
-        onSubmit(formData, uploadedFile);
+        try {
+            // 1. Create classroom first (without file, using JSON whitelist instead)
+            const newClassroom = await classStore.addClass(formData);
+
+            console.log("✅ Classroom created:", newClassroom);
+            console.log("📋 Whitelist codes:", whitelistStudentCodes);
+
+            // 2. Upload whitelist if there are student codes
+            if (whitelistStudentCodes.length > 0) {
+                await uploadWhitelistStudentCodes(newClassroom.id, {
+                    studentCodes: whitelistStudentCodes,
+                });
+            } else {
+                console.log("⚠️ No whitelist codes to upload");
+            }
+
+            // Close modal without calling onSubmit (avoid double creation)
+            onClose();
+        } catch (error) {
+            console.error("Error creating classroom:", error);
+            alert("Lỗi khi tạo lớp học!");
+        }
     }
     function stopPropagation(event: MouseEvent) {
         event.stopPropagation();
@@ -166,6 +200,12 @@
                     setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
                     {uploadedFile}
                     setUploadedFile={(file: File) => (uploadedFile = file)}
+                    onWhitelistChange={(whitelist) => {
+                        whitelistStudentCodes = whitelist;
+                    }}
+                    onDomainChange={(domain) => {
+                        allowedEmailDomain = domain;
+                    }}
                 />
             </div>
 
@@ -263,8 +303,9 @@
     /* Layout chính */
     .main-layout {
         display: grid;
-        grid-template-columns: 320px 1fr;
-        min-height: 550px;
+        grid-template-columns: 55% 45%;
+        min-height: 450px;
+        overflow: hidden;
     }
 
     /* Footer */

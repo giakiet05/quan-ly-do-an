@@ -14,7 +14,10 @@
     import ClassInfoSidebar from "../../../components/ClassInfoSidebar.svelte";
     import StudentManagement from "../../../components/StudentManagement.svelte";
     import { classStore } from "../../../stores/class-store";
-    import { getClassroom } from "../../../services/classroom-service";
+    import {
+        getClassroom,
+        uploadWhitelistStudentCodes,
+    } from "../../../services/classroom-service";
     import type { Classroom } from "../../../models";
     import type { ClassroomResponse } from "../../../dtos";
 
@@ -44,8 +47,18 @@
     $effect(() => {
         getClassroom(classData.id)
             .then((res) => {
-                detail = res; // Đảm bảo `res` có dữ liệu hợp lệ
-                console.log("Fetched class detail:", res.whitelistStudentCode);
+                detail = res;
+
+                if (
+                    res.whitelistStudentCode &&
+                    res.whitelistStudentCode.length > 0
+                ) {
+                    const codes = res.whitelistStudentCode.map(
+                        (entry) => entry.studentCode,
+                    );
+                    whitelistStudentCodes = codes;
+                    console.log("✅ Whitelist codes loaded:", codes);
+                }
             })
             .catch((err) => {
                 console.error("Failed to fetch class detail:", err);
@@ -53,7 +66,12 @@
     });
 
     let activeTab = $state<ActiveTab>("list");
+    let uploadedFile = $state<File | null>(null);
     let errors = $state<Record<string, string>>({});
+    let whitelistStudentCodes = $state<string[]>(
+        classData.whitelistStudentCodes || [],
+    );
+    let allowedEmailDomain = $state(classData.allowedEmailDomains?.[0] || "");
 
     let formData = $state<CreateClassRequest>({
         name: classData.name || "",
@@ -73,6 +91,11 @@
         formData.semester = classData.semester || "";
         formData.description = classData.description || "";
         formData.avatar = classData.avatar || "";
+        formData.allowedEmailDomains = allowedEmailDomain
+            ? [allowedEmailDomain]
+            : [];
+        formData.enableWhitelist = whitelistStudentCodes.length > 0;
+        formData.enableEmailRestriction = !!allowedEmailDomain;
     });
 
     let students = $state<Student[]>(
@@ -97,7 +120,7 @@
         reader.readAsDataURL(input.files[0]);
     }
 
-    function handleSubmit(event: SubmitEvent) {
+    async function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
         errors = {};
 
@@ -109,16 +132,32 @@
             });
             return;
         }
-        classStore
-            .updateClass(classData.id, formData)
-            .then(() => {
-                onSubmit(formData);
-                onClose();
-            })
-            .catch((err) => {
-                console.error(err);
-                alert("Lưu thay đổi thất bại!");
-            });
+
+        try {
+            // 1. Update classroom
+            await classStore.updateClass(classData.id, formData);
+            console.log("✅ Classroom updated");
+            console.log("📋 Whitelist codes:", whitelistStudentCodes);
+
+            // 2. Upload whitelist if there are student codes
+            if (whitelistStudentCodes.length > 0) {
+                console.log("📤 Uploading whitelist...", {
+                    studentCodes: whitelistStudentCodes,
+                });
+                await uploadWhitelistStudentCodes(classData.id, {
+                    studentCodes: whitelistStudentCodes,
+                });
+                console.log("✅ Whitelist uploaded");
+            } else {
+                console.log("⚠️ No whitelist codes to upload");
+            }
+
+            // Close modal without calling onSubmit (avoid side effects)
+            onClose();
+        } catch (err) {
+            console.error(err);
+            alert("Lưu thay đổi thất bại!");
+        }
     }
 
     function stopPropagation(event: MouseEvent) {
@@ -176,6 +215,15 @@
                     classDetail={detail}
                     {activeTab}
                     setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
+                    {uploadedFile}
+                    setUploadedFile={(file) => (uploadedFile = file)}
+                    initialDomain={allowedEmailDomain}
+                    onWhitelistChange={(whitelist) => {
+                        whitelistStudentCodes = whitelist;
+                    }}
+                    onDomainChange={(domain) => {
+                        allowedEmailDomain = domain;
+                    }}
                 />
             </div>
 
@@ -277,8 +325,9 @@
     /* Layout chính */
     .main-layout {
         display: grid;
-        grid-template-columns: 320px 1fr;
-        min-height: 550px;
+        grid-template-columns: 55% 45%;
+        min-height: 450px;
+        overflow: hidden;
     }
 
     /* Footer */

@@ -19,6 +19,7 @@ export interface CreateClassroomRequest {
   allowedEmailDomains: string[];
   enableWhitelist: boolean;
   enableEmailRestriction: boolean;
+  whitelistStudentCodes?: string[];
 }
 
 export interface WhitelistEntry {

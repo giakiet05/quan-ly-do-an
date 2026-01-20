@@ -34,7 +34,9 @@ export const projectRoundStore = {
     async addRound(data: CreateProjectRoundRequest) {
         try {
             const newRound = await createProjectRound(data);
-            roundsStore.update(n => [...n, newRound]);
+            // Fetch lại từ server để đảm bảo dữ liệu từ DB
+            const rounds = await getProjectRounds(data.classroomId);
+            roundsStore.set(rounds);
             return newRound;
         } catch (e) {
             errorStore.set("Lỗi khi tạo vòng dự án");
@@ -44,9 +46,10 @@ export const projectRoundStore = {
     async editRound(data: UpdateProjectRoundRequest) {
         try {
             const updated = await updateProjectRound(data);
-            roundsStore.update(list =>
-                list.map(r => (r.id === data.roundId ? { ...r, ...updated } : r))
-            );
+            console.log("Updated round:", updated);
+            // Fetch lại từ server để đảm bảo dữ liệu từ DB
+            const rounds = await getProjectRounds(data.classroomId);
+            roundsStore.set(rounds);
         } catch (e) {
             errorStore.set("Lỗi khi cập nhật hạng mục");
             throw e;
@@ -54,10 +57,11 @@ export const projectRoundStore = {
     },
 
     async removeRound(roundId: string, classroom_id: string) {
-
         try {
             await deleteProjectRound(roundId, classroom_id);
-            roundsStore.update(n => n.filter(r => r.id !== roundId));
+            // Fetch lại từ server để đảm bảo dữ liệu từ DB
+            const rounds = await getProjectRounds(classroom_id);
+            roundsStore.set(rounds);
         } catch (e) {
             errorStore.set("Lỗi khi xóa vòng dự án");
             alert("Xóa thất bại!");
