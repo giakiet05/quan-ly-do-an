@@ -1,0 +1,27 @@
+User-agent: *
+
+# Cho phep cac trang public (auth)
+Allow: /
+Allow: /auth/login
+Allow: /auth/register
+Allow: /auth/forgot-password
+
+# Chan cac trang yeu cau authentication
+Disallow: /home
+Disallow: /my-profile
+Disallow: /chats
+Disallow: /notifications
+Disallow: /my-projects
+Disallow: /lecture/
+Disallow: /student/
+
+# Chan API endpoints
+Disallow: /api/
+
+# Chan cac trang callback va error
+Disallow: /auth/callback
+Disallow: /auth/google-setup
+Disallow: /auth/error
+
+# Sitemap
+Sitemap: https://project.giakiet.io.vn/sitemap.xml
