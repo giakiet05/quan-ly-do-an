@@ -61,8 +61,14 @@ func (s *notificationService) Start() {
 
 	log.Println("NotificationService started and subscribed to events.")
 
+	go s.handleUnsentNotifications()
+
 	go s.processEvents(eventChannel)
 }
+
+func (s *notificationService) handleUnsentNotifications() {}
+
+func (s *notificationService) handleUnsentReportOpenedNotifications() {}
 
 func (s *notificationService) processEvents(ch bus.EventListener) {
 	for event := range ch {

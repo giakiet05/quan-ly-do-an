@@ -107,30 +107,6 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		},
 	}
 
-	// Add additional members from MemberIDs
-	for _, memberIDStr := range req.MemberIDs {
-		if requesterID == memberIDStr {
-			continue
-		}
-
-		memberObjectID, err := primitive.ObjectIDFromHex(memberIDStr)
-		if err != nil {
-			return nil, apperror.ErrInvalidID
-		}
-
-		user, err := g.userRepo.GetByID(ctx, memberIDStr)
-		if err != nil {
-			return nil, apperror.ErrUserNotFound
-		}
-
-		members = append(members, model.UserInfo{
-			ID:          memberObjectID,
-			FullName:    user.FullName,
-			StudentCode: user.StudentCode,
-			Avatar:      user.Avatar,
-		})
-	}
-
 	classroom, err := g.classroomRepo.GetByID(ctx, req.ClassroomID)
 	if err != nil {
 		return nil, err
@@ -149,20 +125,20 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		return nil, apperror.ErrProjectGroupNotFound
 	}
 
-	// Tìm Project từ collection riêng
-	projectFound, err := g.projectRepo.GetProjectByID(ctx, req.ClassroomID, req.ProjectID)
+	groups, err := g.groupRepo.GetFilter(ctx, req.ClassroomID, &req.ProjectID, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(req.MemberIDs) < projectFound.MinMember || len(req.MemberIDs) > projectFound.MaxMember {
-		return nil, apperror.ErrInvalidMemberNumber
+	projectFound, err := g.projectRepo.GetProjectByID(ctx, req.ClassroomID, req.ProjectID)
+	if err != nil {
+		return nil, err
 	}
-
-	// Validate member count
-	memberCount := len(members)
-	if memberCount > projectFound.MaxMember || memberCount < projectFound.MinMember {
-		return nil, apperror.ErrBadRequest
+	if projectFound == nil {
+		return nil, apperror.ErrProjectNotFound
+	}
+	if len(groups) >= projectFound.Amount {
+		return nil, apperror.ErrProjectGroupLimitReached
 	}
 
 	// Create group object
@@ -173,7 +149,9 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		Members:     members,
 		Tasks:       []model.Task{},
 		Reports:     []model.Report{},
-		Setting:     model.GroupSetting{},
+		Setting: model.GroupSetting{
+			AllowJoinRequest: true,
+		},
 	}
 
 	group, err = g.groupRepo.Create(ctx, group)
@@ -641,7 +619,7 @@ func (g *groupService) AcceptInvitation(req *dto.UpdateGroupInvitationRequest, r
 	if err != nil {
 		return err
 	}
-	
+
 	if invitation.RecipientID.Hex() != requesterID {
 		return apperror.ErrForbidden
 	}
