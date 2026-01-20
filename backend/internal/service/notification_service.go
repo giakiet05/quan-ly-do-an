@@ -61,14 +61,8 @@ func (s *notificationService) Start() {
 
 	log.Println("NotificationService started and subscribed to events.")
 
-	go s.handleUnsentNotifications()
-
 	go s.processEvents(eventChannel)
 }
-
-func (s *notificationService) handleUnsentNotifications() {}
-
-func (s *notificationService) handleUnsentReportOpenedNotifications() {}
 
 func (s *notificationService) processEvents(ch bus.EventListener) {
 	for event := range ch {
@@ -433,7 +427,7 @@ func (s *notificationService) handleGroupJoinRequest(event bus.Event) {
 		notification := &model.Notification{
 			RecipientID: leaderObjectID,
 			ActorID:     requesterObjectID,
-			Type:        model.NotificationTypeSystem,
+			Type:        model.NotificationTypeGroupJoinRequest,
 			Message:     "Bạn có yêu cầu tham gia nhóm mới",
 			Link:        fmt.Sprintf("/groups/%s", groupID),
 			IsRead:      false,

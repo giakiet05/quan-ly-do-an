@@ -22,6 +22,7 @@ type NotificationType string
 
 const (
 	NotificationTypeGroupInvite         NotificationType = "group_invite"
+	NotificationTypeGroupJoinRequest    NotificationType = "group_join_request"
 	NotificationTypeClassroomInvitation NotificationType = "classroom_invitation"
 	NotificationTypeNewMessage          NotificationType = "new_message"
 	NotificationTypeGroupInvitation     NotificationType = "group_invitation"
