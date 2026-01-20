@@ -14,7 +14,6 @@
 
     type ActiveTab = "list" | "excel" | "upload";
 
-    let allCheckbox = $state<HTMLInputElement>();
     let uploadedData = $state<string[]>([]);
 
     const {
@@ -30,9 +29,7 @@
         uploadedFile?: File | null;
         setUploadedFile?: (file: File) => void;
     }>();
-    const whitelistStudents = $derived(
-        classDetail?.whitelistStudentCodes ?? [],
-    );
+    const whitelistStudents = $derived(classDetail?.whitelistStudentCode ?? []);
 
     async function downloadExcel() {
         try {
@@ -80,6 +77,7 @@
 <div class="content-area">
     <div class="tabs">
         <button
+            hidden={!classDetail}
             type="button"
             class:active={activeTab === "list"}
             onclick={() => setActiveTab("list")}
@@ -123,7 +121,9 @@
                         <tbody>
                             {#each whitelistStudents as studentCode (studentCode)}
                                 <tr>
-                                    <td class="code">{studentCode}</td>
+                                    <td class="code"
+                                        >{studentCode.studentCode}</td
+                                    >
                                 </tr>
                             {/each}
                         </tbody>

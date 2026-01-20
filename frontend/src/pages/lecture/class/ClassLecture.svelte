@@ -111,7 +111,7 @@
             <thead class="table-header">
                 <tr>
                     <th class="w-3/15">Thông tin Lớp học</th>
-                    <th class="w-4/15">Mô tả</th>
+                    <!-- <th class="w-4/15">Mô tả</th> -->
                     <th class="w-2/15 text-center">Số lượng SV</th>
                     <th class="w-2/15">Học kỳ</th>
                     <th class="w-2/15 text-center">Trạng thái</th>
@@ -135,9 +135,9 @@
                             </div>
                         </td>
 
-                        <td class="px-6 py-4 text-gray-600 truncate"
+                        <!-- <td class="px-6 py-4 text-gray-600 truncate"
                             >{cls.description || "Không có thông tin mô tả"}</td
-                        >
+                        > -->
 
                         <td class="px-6 py-4 text-center">
                             <span
@@ -158,8 +158,8 @@
                                     : 'bg-red-100 text-red-700'}"
                             >
                                 {cls.status === "active"
-                                    ? "Đang chạy"
-                                    : "Tạm dừng"}
+                                    ? "Đang hoạt động"
+                                    : "Ngưng hoạt động"}
                             </span>
                         </td>
 
@@ -257,8 +257,8 @@
     <EditClassModal
         classData={editingClass}
         onClose={() => (showEditModal = false)}
-        onSubmit={(updatedClass) => {
-            // updateClass(updatedClass);
+        onSubmit={(updatedClass, file) => {
+            updateClass(editingClass?.id || "", updatedClass, file);
             showEditModal = false;
             editingClass = null;
         }}

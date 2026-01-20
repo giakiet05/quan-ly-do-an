@@ -21,7 +21,7 @@
     const { onClose, onSubmit, classData } = $props<{
         classData: ClassData;
         onClose: () => void;
-        onSubmit: (data: CreateClassRequest) => void;
+        onSubmit: (data: CreateClassRequest, file?: File) => void;
     }>();
 
     type ActiveTab = "list" | "excel" | "upload";
@@ -49,15 +49,13 @@
             .optional(),
     });
     let detail = $state<ClassroomResponse>({} as ClassroomResponse);
+    let uploadedFile = $state<File | null>(null);
 
     $effect(() => {
         getClassroom(classData.id)
             .then((res) => {
                 detail = res; // Đảm bảo `res` có dữ liệu hợp lệ
-                console.log(
-                    "Fetched class detail:",
-                    res.whitelist_student_code,
-                );
+                console.log("Fetched class detail:", res.whitelistStudentCode);
             })
             .catch((err) => {
                 console.error("Failed to fetch class detail:", err);
@@ -131,7 +129,7 @@
         classStore
             .updateClass(classData.id, formData)
             .then(() => {
-                onSubmit(formData);
+                onSubmit(formData, uploadedFile);
                 onClose();
             })
             .catch((err) => {
@@ -195,6 +193,8 @@
                     classDetail={detail}
                     {activeTab}
                     setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
+                    {uploadedFile}
+                    setUploadedFile={(file: File) => (uploadedFile = file)}
                 />
             </div>
 

@@ -76,9 +76,12 @@ function createClassStore() {
         }
     }
 
-    async function updateClass(id: string, uiData: CreateClassRequest) {
+    async function updateClass(id: string, uiData: CreateClassRequest, file?: File) {
         try {
             const dtoPayload = mapUIRequestToDTO(uiData);
+            if (file) {
+                await uploadWhitelistStudentCodeFile(id, file);
+            }
             const response = await updateClassroom(id, dtoPayload);
 
             console.log("API update response:", response);
