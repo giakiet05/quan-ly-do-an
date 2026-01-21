@@ -76,20 +76,20 @@ func (s *classroomInvitationService) InviteByEmail(classroomID, inviterID, email
 	}
 
 	// Check if user is already lecturer
-	if classroom.Lecturer.ID == invitee.ID {
+	if classroom.LecturerID == invitee.ID {
 		return nil, apperror.ErrAlreadyLecturer
 	}
 
 	// Check if user is already co-lecturer
-	for _, coLecturer := range classroom.CoLecturers {
-		if coLecturer.ID == invitee.ID {
+	for _, coLecturerID := range classroom.CoLecturerIDs {
+		if coLecturerID == invitee.ID {
 			return nil, apperror.ErrAlreadyCoLecturer
 		}
 	}
 
 	// Check if user is already a student
-	for _, student := range classroom.Students {
-		if student.ID == invitee.ID {
+	for _, studentID := range classroom.StudentIDs {
+		if studentID == invitee.ID {
 			return nil, apperror.ErrAlreadyInClassroom
 		}
 	}
@@ -165,21 +165,8 @@ func (s *classroomInvitationService) AcceptInvitation(invitationID, userID strin
 		return apperror.ErrInvitationAlreadyProcessed
 	}
 
-	// Get user info
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	// Add user as co-lecturer
-	coLecturerInfo := model.UserInfo{
-		ID:          user.ID,
-		FullName:    user.FullName,
-		Avatar:      user.Avatar,
-		StudentCode: user.StudentCode,
-	}
-
-	err = s.classroomRepo.AddCoLecturer(ctx, invitation.ClassroomID.Hex(), coLecturerInfo)
+	// Add user as co-lecturer using user ID only
+	err = s.classroomRepo.AddCoLecturer(ctx, invitation.ClassroomID.Hex(), userID)
 	if err != nil {
 		return err
 	}

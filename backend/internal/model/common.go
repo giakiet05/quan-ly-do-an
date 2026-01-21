@@ -25,12 +25,7 @@ type File struct{}
 type UserInfo struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	FullName    string             `bson:"full_name" json:"full_name"`
+	Email       string             `bson:"email" json:"email"`
 	Avatar      *Image             `bson:"avatar" json:"avatar"`
 	StudentCode *string            `bson:"student_code,omitempty" json:"student_code,omitempty"`
-}
-
-type UserInfoResponse struct {
-	UserID   string `json:"user_id"`
-	FullName string `json:"full_name"`
-	Avatar   *Image `json:"avatar,omitempty"`
 }
