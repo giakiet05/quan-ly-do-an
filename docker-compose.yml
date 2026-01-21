@@ -1,16 +1,15 @@
-
 services:
   redis:
     image: redis
     volumes:
       - redis_data:/data
     networks:
-      - project_gate_net
+      - lkforum_net
 
   backend:
     build: ./backend
     ports:
-      - "8080:8080"
+      - "8082:8080"
     env_file: ./backend/.env
     environment:
       REDIS_ADDR: redis:6379
@@ -18,9 +17,22 @@ services:
     depends_on:
       - redis
     networks:
-      - project_gate_net
+      - lkforum_net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8082
+    ports:
+      - "3002:80"
+    depends_on:
+      - backend
+    networks:
+      - lkforum_net
+    restart: unless-stopped
 networks:
-  project_gate_net:
+  lkforum_net:
 
 volumes:
   redis_data:
