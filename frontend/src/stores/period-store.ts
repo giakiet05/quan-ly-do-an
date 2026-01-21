@@ -22,7 +22,7 @@ function createPeriodStore() {
         [periods, searchTerm],
         ([$periods, $search]) =>
             $periods.filter((p) =>
-                p.name.toLowerCase().includes($search.toLowerCase())
+                p.title.toLowerCase().includes($search.toLowerCase())
             )
     );
 

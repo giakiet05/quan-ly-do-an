@@ -12,7 +12,7 @@
 
     // 2. State cho Form và Errors
     let formData = $state({
-        name: "",
+        title: "",
         description: "",
         startDate: "",
         endDate: "",
@@ -26,8 +26,8 @@
 
         const newErrors: Record<string, string> = {};
 
-        if (!formData.name.trim()) {
-            newErrors.name = "Vui lòng nhập tên";
+        if (!formData.title.trim()) {
+            newErrors.title = "Vui lòng nhập tên";
         }
 
         if (!formData.startDate) {
@@ -85,13 +85,13 @@
 
         <form onsubmit={handleSubmit} class="space-y-6 p-6">
             <div>
-                <label class="mb-2 block text-sm font-medium" for="name">
+                <label class="mb-2 block text-sm font-medium" for="title">
                     Tên giai đoạn <span class="text-red-500">*</span>
                 </label>
                 <input
-                    id="name"
+                    id="title"
                     type="text"
-                    bind:value={formData.name}
+                    bind:value={formData.title}
                     oninput={() => clearError("name")}
                     class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.name
                         ? 'border-red-500'

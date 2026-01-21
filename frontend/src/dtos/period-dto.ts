@@ -1,9 +1,7 @@
 // ==================== REQUEST DTOS (Gửi lên Backend) ====================
 
 export interface CreatePeriodRequest {
-    classroomId: string;
-    roundId: string;
-    name: string;
+    title: string;
     description?: string;
     startDate: string;
     endDate: string;
@@ -19,7 +17,7 @@ export interface UpdatePeriodRequest {
     periodId: string;
     classroomId: string;
     roundId: string;
-    name?: string;
+    title?: string;
     description?: string;
     startDate?: string;
     endDate?: string;
@@ -29,7 +27,7 @@ export interface UpdatePeriodRequest {
 
 export interface PeriodResponse {
     id: string;
-    name: string;
+    title: string;
     description: string;
     startDate: string; // ISO Date String
     endDate: string;   // ISO Date String
