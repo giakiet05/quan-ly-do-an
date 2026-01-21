@@ -5,8 +5,6 @@ import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, upl
 import { mapClassroomToClassItem, mapUIRequestToDTO } from "../mappers/classroom-mapper";
 import type { ClassroomResponse } from "../dtos/classroom-dto";
 
-
-
 function createClassStore() {
     // ===== state =====
     const classes = writable<ClassItem[]>([]);
@@ -93,10 +91,9 @@ function createClassStore() {
         }
     }
 
-    // xóa gọi api xóa lớp học thật sự 
     async function removeClass(id: string) {
         try {
-            deleteClassroom(id);
+            await deleteClassroom(id);
             classes.update((list) => list.filter((c) => c.id !== id));
         } catch (err) {
             console.error("Failed to delete classroom", err);
@@ -107,14 +104,12 @@ function createClassStore() {
     async function fetchMyClasses() {
         try {
             const data = await getMyClassrooms();
-            console.log("Dữ liệu nhận được:", data);
             const rawClasses = (data as any).classrooms || [];
             const mapped = rawClasses.map(mapClassroomToClassItem);
             setData(mapped);
-
         } catch (err) {
             console.error("Failed to fetch classrooms", err);
-            setData([]); // Lỗi thì cho danh sách trống để không vỡ giao diện
+            setData([]); // Clear data on error to avoid UI issues
         }
     }
 

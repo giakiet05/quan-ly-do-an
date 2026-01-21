@@ -3,7 +3,8 @@ import {
     getProjectRounds,
     createProjectRound,
     deleteProjectRound,
-    updateProjectRound
+    updateProjectRound,
+    getProjectRoundById
 } from "../services/project-round-service";
 import type { ProjectRound } from "../types/project-round";
 import type { CreateProjectRoundRequest, UpdateProjectRoundRequest } from "../dtos/project-dto";
@@ -61,6 +62,15 @@ export const projectRoundStore = {
         } catch (e) {
             errorStore.set("Lỗi khi xóa vòng dự án");
             alert("Xóa thất bại!");
+        }
+    },
+    async getRoundById(classroomId: string, roundId: string) {
+        try {
+            const data = await getProjectRoundById(classroomId, roundId);
+            return data;
+        } catch (e) {
+            errorStore.set("Lỗi khi lấy chi tiết vòng dự án");
+            throw e;
         }
     }
 };

@@ -135,10 +135,6 @@
                             </div>
                         </td>
 
-                        <!-- <td class="px-6 py-4 text-gray-600 truncate"
-                            >{cls.description || "Không có thông tin mô tả"}</td
-                        > -->
-
                         <td class="px-6 py-4 text-center">
                             <span
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
