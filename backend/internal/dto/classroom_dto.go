@@ -67,6 +67,7 @@ type ClassroomResponse struct {
 	Lecturer               model.UserInfoResponse   `json:"lecturer"`
 	CoLecturers            []model.UserInfoResponse `json:"co_lecturers"`
 	Students               []model.UserInfoResponse `json:"students"`
+	GeneralChannelID       string                   `json:"general_channel_id"`
 	InvitationCode         string                   `json:"invitation_code"`
 	MaxStudents            int                      `json:"max_students"`
 	AutoApprove            bool                     `json:"auto_approve"`
@@ -141,6 +142,7 @@ func FromClassroom(classroom *model.Classroom) ClassroomResponse {
 		},
 		CoLecturers:            coLecturers,
 		Students:               students,
+		GeneralChannelID:       classroom.GeneralChannelID.Hex(),
 		InvitationCode:         classroom.InvitationCode,
 		MaxStudents:            classroom.MaxStudents,
 		AutoApprove:            classroom.AutoApprove,
