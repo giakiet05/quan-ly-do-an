@@ -10,5 +10,7 @@ export {
     Download,
     X,
     ArrowLeft,
-    ArrowRight
+    ArrowRight,
+    Users,
+    Calendar
 } from 'lucide-svelte';

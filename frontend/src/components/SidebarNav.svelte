@@ -109,6 +109,9 @@
     }
     return currentLocation === route;
   }
+  const currentUser = $derived($authStore.user);
+  const userName = $derived(currentUser?.fullname || "Đang tải...");
+  const userAvatar = $derived(currentUser?.avatar);
 </script>
 
 <aside class="sidebar" class:collapsed>
@@ -167,22 +170,21 @@
   <div class="sidebar-footer">
     <button class="user-profile" onclick={onProfileClick}>
       <div class="avatar">
-        {#if $authStore.user?.avatar}
-          <img src={$authStore.user.avatar} alt="User" />
+        {#if userAvatar}
+          <img src={userAvatar} alt="User" />
         {:else}
           <div class="avatar-placeholder">
-            <span class="icon">
-              <img src="/user.svg" alt="user" width="22" height="22" />
-            </span>
+            <img src="/user.svg" alt="user" width="22" height="22" />
           </div>
         {/if}
       </div>
+
       {#if !collapsed}
         <div class="user-info">
-          <span class="username">{$authStore.user?.fullname || "User"}</span>
-          <span class="role"
-            >{role === "LECTURER" ? "Giáo viên" : "Sinh viên"}</span
-          >
+          <span class="username">{userName}</span>
+          <span class="role">
+            {role === "LECTURER" ? "Giáo viên" : "Sinh viên"}
+          </span>
         </div>
       {/if}
     </button>

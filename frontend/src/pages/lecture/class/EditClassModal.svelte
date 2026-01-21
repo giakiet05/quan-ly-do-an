@@ -14,7 +14,10 @@
     import ClassInfoSidebar from "../../../components/ClassInfoSidebar.svelte";
     import StudentManagement from "../../../components/StudentManagement.svelte";
     import { classStore } from "../../../stores/class-store";
-    import { getClassroom } from "../../../services/classroom-service";
+    import {
+        getClassroom,
+        uploadWhitelistStudentCodes,
+    } from "../../../services/classroom-service";
     import type { Classroom } from "../../../models";
     import type { ClassroomResponse } from "../../../dtos";
 
@@ -38,24 +41,24 @@
         semester: z.string().min(1, "Học kỳ là bắt buộc"),
         avatar: z.string().optional(),
         description: z.string().optional(),
-        students: z
-            .array(
-                z.object({
-                    fullName: z.string(),
-                    studentCode: z.string(),
-                    email: z.string().optional(),
-                }),
-            )
-            .optional(),
     });
     let detail = $state<ClassroomResponse>({} as ClassroomResponse);
-    let uploadedFile = $state<File | null>(null);
 
     $effect(() => {
         getClassroom(classData.id)
             .then((res) => {
-                detail = res; // Đảm bảo `res` có dữ liệu hợp lệ
-                console.log("Fetched class detail:", res.whitelistStudentCode);
+                detail = res;
+
+                if (
+                    res.whitelistStudentCode &&
+                    res.whitelistStudentCode.length > 0
+                ) {
+                    const codes = res.whitelistStudentCode.map(
+                        (entry) => entry.studentCode,
+                    );
+                    whitelistStudentCodes = codes;
+                    console.log("✅ Whitelist codes loaded:", codes);
+                }
             })
             .catch((err) => {
                 console.error("Failed to fetch class detail:", err);
@@ -63,43 +66,46 @@
     });
 
     let activeTab = $state<ActiveTab>("list");
+    let uploadedFile = $state<File | null>(null);
     let errors = $state<Record<string, string>>({});
+    let whitelistStudentCodes = $state<string[]>(
+        classData.whitelistStudentCodes || [],
+    );
+    let allowedEmailDomain = $state(classData.allowedEmailDomains?.[0] || "");
 
     let formData = $state<CreateClassRequest>({
-        name: "",
-        semester: "",
-        avatar: "",
-        description: "",
-        students: [],
+        name: classData.name || "",
+        semester: classData.semester || "HK1",
+        year: classData.year || new Date().getFullYear(),
+        autoApprove: classData.autoApprove ?? false,
+        description: classData.description || "",
+        avatar: classData.avatar || "",
+        maxStudents: classData.maxStudents || 100,
+        allowedEmailDomains: classData.allowedEmailDomains || [],
+        enableWhitelist: classData.enableWhitelist ?? false,
+        enableEmailRestriction: classData.enableEmailRestriction ?? false,
     });
 
     $effect(() => {
         formData.name = classData.name || "";
         formData.semester = classData.semester || "";
         formData.description = classData.description || "";
-        formData.students = classData.students || [];
         formData.avatar = classData.avatar || "";
+        formData.allowedEmailDomains = allowedEmailDomain
+            ? [allowedEmailDomain]
+            : [];
+        formData.enableWhitelist = whitelistStudentCodes.length > 0;
+        formData.enableEmailRestriction = !!allowedEmailDomain;
     });
 
     let students = $state<Student[]>(
         mockStudents.map((s) => ({
             ...s,
-            selected: formData.students.some(
-                (student) => student.studentCode === s.studentCode,
-            ),
+            selected: false,
         })),
     );
 
-    // Cập nhật formData.students khi selected thay đổi
-    $effect(() => {
-        formData.students = students
-            .filter((s) => s.selected)
-            .map(({ fullName, studentCode, email }) => ({
-                fullName,
-                studentCode,
-                email: email || `${studentCode}@student.edu.vn`,
-            }));
-    });
+    // Note: Co-lecturers are managed through StudentManagement component
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -114,7 +120,7 @@
         reader.readAsDataURL(input.files[0]);
     }
 
-    function handleSubmit(event: SubmitEvent) {
+    async function handleSubmit(event: SubmitEvent) {
         event.preventDefault();
         errors = {};
 
@@ -126,16 +132,32 @@
             });
             return;
         }
-        classStore
-            .updateClass(classData.id, formData)
-            .then(() => {
-                onSubmit(formData, uploadedFile);
-                onClose();
-            })
-            .catch((err) => {
-                console.error(err);
-                alert("Lưu thay đổi thất bại!");
-            });
+
+        try {
+            // 1. Update classroom
+            await classStore.updateClass(classData.id, formData);
+            console.log("✅ Classroom updated");
+            console.log("📋 Whitelist codes:", whitelistStudentCodes);
+
+            // 2. Upload whitelist if there are student codes
+            if (whitelistStudentCodes.length > 0) {
+                console.log("📤 Uploading whitelist...", {
+                    studentCodes: whitelistStudentCodes,
+                });
+                await uploadWhitelistStudentCodes(classData.id, {
+                    studentCodes: whitelistStudentCodes,
+                });
+                console.log("✅ Whitelist uploaded");
+            } else {
+                console.log("⚠️ No whitelist codes to upload");
+            }
+
+            // Close modal without calling onSubmit (avoid side effects)
+            onClose();
+        } catch (err) {
+            console.error(err);
+            alert("Lưu thay đổi thất bại!");
+        }
     }
 
     function stopPropagation(event: MouseEvent) {
@@ -194,13 +216,25 @@
                     {activeTab}
                     setActiveTab={(tab: ActiveTab) => (activeTab = tab)}
                     {uploadedFile}
-                    setUploadedFile={(file: File) => (uploadedFile = file)}
+                    setUploadedFile={(file) => (uploadedFile = file)}
+                    initialDomain={allowedEmailDomain}
+                    onWhitelistChange={(whitelist) => {
+                        whitelistStudentCodes = whitelist;
+                    }}
+                    onDomainChange={(domain) => {
+                        allowedEmailDomain = domain;
+                    }}
                 />
             </div>
 
             <div class="modal-footer">
                 <div class="stats">
-                    Tổng cộng: <span>{formData.students.length}</span> sinh viên
+                    {#if detail.coLecturers}
+                        Tổng cộng: <span>{detail.coLecturers.length}</span> giáo
+                        viên phụ trở
+                    {:else}
+                        Chưa có dữ liệu
+                    {/if}
                 </div>
                 <div class="actions">
                     <button type="button" class="btn-cancel" onclick={onClose}>
@@ -291,8 +325,9 @@
     /* Layout chính */
     .main-layout {
         display: grid;
-        grid-template-columns: 320px 1fr;
-        min-height: 550px;
+        grid-template-columns: 55% 45%;
+        min-height: 450px;
+        overflow: hidden;
     }
 
     /* Footer */

@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -19,6 +20,7 @@ type AppConfig struct {
 	TokenTTL             int
 	RefreshTokenTTL      int
 	FrontendURL          string
+	AllowedOrigins       []string
 	OTPExpirationMinutes int
 	SMTP                 SMTPConfig
 	Redis                RedisConfig
@@ -85,6 +87,7 @@ func LoadConfig() {
 	Cfg.MongoURI = getEnv("MONGO_URI", "mongodb://localhost:27017")
 	Cfg.DBName = getEnv("DB_NAME", "lkforum")
 	Cfg.FrontendURL = getEnv("FRONTEND_URL", "http://localhost:5173")
+	Cfg.AllowedOrigins = getEnvSlice("ALLOWED_ORIGINS", []string{"http://localhost:5173"})
 
 	// JWT
 	Cfg.JWTSecret = getEnv("JWT_SECRET", "your-secret-key")
@@ -150,6 +153,24 @@ func getEnvFloat(key string, defaultValue float64) float64 {
 	if valueStr, exists := os.LookupEnv(key); exists {
 		if value, err := strconv.ParseFloat(valueStr, 64); err == nil {
 			return value
+		}
+	}
+	return defaultValue
+}
+
+// Helper function to get slice environment variable with a default value
+func getEnvSlice(key string, defaultValue []string) []string {
+	if valueStr, exists := os.LookupEnv(key); exists && valueStr != "" {
+		values := strings.Split(valueStr, ",")
+		result := make([]string, 0, len(values))
+		for _, v := range values {
+			trimmed := strings.TrimSpace(v)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		if len(result) > 0 {
+			return result
 		}
 	}
 	return defaultValue

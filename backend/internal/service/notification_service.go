@@ -427,7 +427,7 @@ func (s *notificationService) handleGroupJoinRequest(event bus.Event) {
 		notification := &model.Notification{
 			RecipientID: leaderObjectID,
 			ActorID:     requesterObjectID,
-			Type:        model.NotificationTypeSystem,
+			Type:        model.NotificationTypeGroupJoinRequest,
 			Message:     "Bạn có yêu cầu tham gia nhóm mới",
 			Link:        fmt.Sprintf("/groups/%s", groupID),
 			IsRead:      false,

@@ -16,7 +16,23 @@ export interface CreateClassroomRequest {
   year: number;
   maxStudents?: number;
   autoApprove?: boolean;
-  requireEmailDomain?: string;
+  allowedEmailDomains: string[];
+  enableWhitelist: boolean;
+  enableEmailRestriction: boolean;
+  whitelistStudentCodes?: string[];
+}
+
+export interface WhitelistEntry {
+  studentCode: string;
+  joinedBy: string | null; // BE trả về pointer string nên có thể null
+  joinedAt: string | null; // BE trả về pointer string định dạng RFC3339
+}
+
+// UserInfoResponse dùng chung cho Lecturer, CoLecturers, Students
+export interface UserInfo {
+  userId: string;
+  fullName: string;
+  avatar: string;
 }
 
 export interface UpdateClassroomRequest {
@@ -27,8 +43,10 @@ export interface UpdateClassroomRequest {
   year?: number;
   maxStudents?: number;
   autoApprove?: boolean;
-  requireEmailDomain?: string;
   canStudentDeleteGroup?: boolean;
+  allowedEmailDomains: string[];
+  enableWhitelist: boolean;
+  enableEmailRestriction: boolean;
 }
 
 export interface UpdateClassroomStatusRequest {

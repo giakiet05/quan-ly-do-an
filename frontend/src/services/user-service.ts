@@ -1,29 +1,5 @@
 import { apiFetch } from "../utils/api-fetch";
-
-// ==================== INTERFACES ====================
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  fullName: string;
-  studentCode?: string;
-  provider: "local" | "google";
-  avatar?: {
-    url: string;
-    publicId: string;
-  };
-  createdAt: string;
-}
-
-export interface UpdateProfileRequest {
-  fullName?: string;
-  studentCode?: string;
-}
-
-export interface ChangePasswordRequest {
-  old_password: string;
-  new_password: string;
-}
+import type { UserProfile, UpdateProfileRequest, ChangePasswordRequest } from "../types/user";
 
 // ==================== SERVICE FUNCTIONS ====================
 

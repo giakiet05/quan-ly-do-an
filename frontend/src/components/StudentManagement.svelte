@@ -15,6 +15,9 @@
     type ActiveTab = "list" | "excel" | "upload";
 
     let uploadedData = $state<string[]>([]);
+    let manualCode = $state("");
+    let domainInput = $state("");
+    let localWhitelist = $state<string[]>([]);
 
     const {
         classDetail,
@@ -22,14 +25,43 @@
         setActiveTab,
         uploadedFile,
         setUploadedFile,
+        onWhitelistChange,
+        onDomainChange,
+        initialDomain,
     } = $props<{
         classDetail?: ClassroomResponse;
         activeTab: ActiveTab;
         setActiveTab: (tab: ActiveTab) => void;
         uploadedFile?: File | null;
         setUploadedFile?: (file: File) => void;
+        onWhitelistChange?: (whitelist: string[]) => void;
+        onDomainChange?: (domain: string) => void;
+        initialDomain?: string;
     }>();
-    const whitelistStudents = $derived(classDetail?.whitelistStudentCode ?? []);
+    const whitelistStudents = $derived(
+        classDetail?.whitelistStudentCode?.map(
+            (entry: { studentCode: string }) => entry.studentCode,
+        ) ?? [],
+    );
+
+    // Sync data when component mounts or classDetail changes
+    $effect(() => {
+        if (whitelistStudents.length > 0 && localWhitelist.length === 0) {
+            localWhitelist = [...whitelistStudents];
+            console.log(
+                "✅ Whitelist synced:",
+                $state.snapshot(localWhitelist),
+            );
+        }
+    });
+
+    // Initialize domain input
+    $effect(() => {
+        if (initialDomain && !domainInput) {
+            domainInput = initialDomain;
+            console.log("✅ Domain initialized:", domainInput);
+        }
+    });
 
     async function downloadExcel() {
         try {
@@ -72,6 +104,36 @@
         setUploadedFile(null);
         uploadedData = [];
     };
+
+    function mergeUploadedToWhitelist() {
+        // Thêm uploadedData vào localWhitelist (avoid duplicates)
+        const newCodes = uploadedData.filter(
+            (code) => !localWhitelist.includes(code),
+        );
+        if (newCodes.length > 0) {
+            localWhitelist = [...localWhitelist, ...newCodes];
+            onWhitelistChange?.(localWhitelist);
+            console.log("✅ Merged uploaded data:", localWhitelist);
+        }
+    }
+    function addManualStudent() {
+        const code = manualCode.trim().toUpperCase();
+        if (code && !localWhitelist.includes(code)) {
+            localWhitelist = [...localWhitelist, code];
+            onWhitelistChange?.(localWhitelist);
+            manualCode = "";
+        }
+    }
+
+    function removeStudent(code: string) {
+        localWhitelist = localWhitelist.filter((c) => c !== code);
+        onWhitelistChange?.(localWhitelist);
+    }
+
+    function updateDomain(value: string) {
+        domainInput = value;
+        onDomainChange?.(value);
+    }
 </script>
 
 <div class="content-area">
@@ -101,14 +163,54 @@
     </div>
     {#if activeTab === "list"}
         <div class="student-manager">
-            <!-- <div class="search-bar">
-                <Search size={18} />
-                <input
-                    type="text"
-                    placeholder="Tìm kiếm MSSV..."
-                    bind:value={searchTerm}
-                />
-            </div> -->
+            <div class="helper-note">
+                <div class="helper-icon">i</div>
+                <p>
+                    <strong>Cơ chế Whitelist:</strong> Khi bật, chỉ sinh viên có
+                    MSSV trong danh sách này mới có thể vào lớp. Bạn có thể giới
+                    hạn email theo domain (ví dụ: @hcmute.edu.vn) bên dưới.
+                </p>
+            </div>
+
+            <div class="config-row">
+                <div class="input-group">
+                    <label for="domain-email">Giới hạn Domain Email</label>
+                    <div class="flex-row">
+                        <input
+                            id="domain-email"
+                            type="text"
+                            placeholder="VD: hcmute.edu.vn"
+                            value={domainInput}
+                            onchange={(e) =>
+                                updateDomain(
+                                    (e.target as HTMLInputElement).value,
+                                )}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-add">
+                <div class="input-with-icon">
+                    <span class="icon-wrapper">
+                        <Search size={18} />
+                    </span>
+                    <input
+                        type="text"
+                        placeholder="Nhập MSSV thủ công..."
+                        bind:value={manualCode}
+                        onkeydown={(e) =>
+                            e.key === "Enter" && addManualStudent()}
+                    />
+                </div>
+                <button
+                    type="button"
+                    class="add-btn"
+                    onclick={addManualStudent}
+                >
+                    <Plus size={18} /> Thêm
+                </button>
+            </div>
 
             <div class="table-wrapper">
                 <div class="table-container">
@@ -116,26 +218,34 @@
                         <thead>
                             <tr>
                                 <th>MSSV</th>
+                                <th style="text-align: right;">Hành động</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {#each whitelistStudents as studentCode (studentCode)}
+                            {#each localWhitelist as studentCode (studentCode)}
                                 <tr>
-                                    <td class="code"
-                                        >{studentCode.studentCode}</td
-                                    >
+                                    <td class="code">{studentCode}</td>
+                                    <td style="text-align: right;">
+                                        <button
+                                            class="delete-btn"
+                                            onclick={() =>
+                                                removeStudent(studentCode)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
                                 </tr>
                             {/each}
                         </tbody>
                     </table>
 
-                    {#if whitelistStudents.length === 0}
+                    {#if localWhitelist.length === 0}
                         <div class="empty-table">
-                            <!-- {searchTerm
-                                ? "Không tìm thấy MSSV nào khớp"
-                                : "Lớp học chưa có sinh viên nào trong danh sách"} -->
                             <div class="empty-state">
-                                <p>Không có sinh viên nào trong danh sách</p>
+                                <p>
+                                    Chưa có sinh viên nào trong danh sách
+                                    Whitelist
+                                </p>
                             </div>
                         </div>
                     {/if}
@@ -176,6 +286,15 @@
                                 {/each}
                             </tbody>
                         </table>
+                        <div class="upload-actions">
+                            <button
+                                type="button"
+                                class="confirm-btn"
+                                onclick={mergeUploadedToWhitelist}
+                            >
+                                ✓ Xác nhận thêm
+                            </button>
+                        </div>
                     </div>
                 {:else}
                     <p class="empty-table">Không có dữ liệu để hiển thị.</p>
@@ -235,6 +354,8 @@
         display: flex;
         gap: 12px;
         margin-bottom: 16px;
+        align-items: stretch; /* Đảm bảo con cao bằng nhau */
+        width: 100%;
     }
 
     .quick-add input {
@@ -249,95 +370,92 @@
         background: #0045b1;
         color: white;
         border: none;
-        padding: 0 16px;
+        padding: 0 20px;
         border-radius: 8px;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 42px;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: background 0.2s;
     }
 
     .add-btn:hover {
         background: #00358a;
     }
-
-    .search-bar {
-        position: relative;
-        margin-bottom: 16px;
+    .helper-note {
+        display: flex;
+        gap: 12px;
+        background: #f0f7ff;
+        border: 1px solid #bee3f8;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
     }
 
-    .search-bar :global(svg) {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #a0aec0;
+    .helper-icon {
+        background: #3182ce;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        flex-shrink: 0;
     }
 
-    .search-bar input {
+    .helper-note p {
+        margin: 0;
+        font-size: 13px;
+        color: #2c5282;
+        line-height: 1.4;
+    }
+
+    /* Email Config */
+    .config-row {
+        margin-bottom: 20px;
+    }
+
+    .input-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #4a5568;
+        margin-bottom: 6px;
+    }
+
+    .input-group input {
         width: 100%;
-        padding: 10px 10px 10px 40px;
+        padding: 10px;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        font-size: 13px;
-        background: #f8fafc;
+        font-size: 14px;
+        background: #fff;
     }
 
-    .bulk-actions-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #0045b1;
-        padding: 8px 16px;
-        border-radius: 8px;
-        color: white;
-        box-shadow: 0 4px 12px rgba(0, 69, 177, 0.25);
-    }
-
-    .selected-info {
+    .input-with-icon {
+        position: relative;
+        flex: 1;
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 13px;
     }
 
-    .selected-info .count {
-        background: white;
-        color: #0045b1;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-weight: 800;
-    }
-
-    .action-group {
-        display: flex;
-        gap: 8px;
-    }
-
-    .action-group button {
+    .icon-wrapper {
+        position: absolute;
+        left: 14px;
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 600;
-        border: none;
-        cursor: pointer;
-        transition: 0.2s;
-    }
-
-    .btn-bulk-edit {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-    }
-    .btn-bulk-edit:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
-
-    .btn-bulk-delete {
-        background: #ff4d4f;
-        color: white;
-    }
-    .btn-bulk-delete:hover {
-        background: #ff7875;
+        justify-content: center;
+        color: #a0aec0;
+        pointer-events: none; /* Không cho icon cản trở click vào input */
+        z-index: 10;
     }
 
     .table-container {
@@ -373,18 +491,10 @@
         border-bottom: 1px solid #f7fafc;
     }
 
-    tr.selected {
-        background: #f0f7ff;
-    }
-
     .code {
         font-family: monospace;
         font-weight: 600;
         color: #2d3748;
-    }
-
-    .name {
-        color: #4a5568;
     }
 
     .empty-state {
@@ -403,15 +513,6 @@
         color: #718096;
         font-style: italic;
         margin-top: 16px;
-    }
-
-    input[type="checkbox"] {
-        accent-color: #0045b1;
-    }
-
-    .btn-bulk-edit[disabled] {
-        opacity: 0.5;
-        cursor: not-allowed;
     }
 
     .excel-tab,
@@ -473,5 +574,56 @@
 
     .uploaded-file button:hover {
         background: #00358a;
+    }
+
+    .upload-actions {
+        display: flex;
+        justify-content: flex-end;
+        padding: 12px 16px;
+        border-top: 1px solid #edf2f7;
+        background: #f8fafc;
+    }
+
+    .confirm-btn {
+        background: #0045b1;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .confirm-btn:hover {
+        background: #00358a;
+    }
+
+    .input-with-icon input {
+        width: 100%;
+        height: 42px; /* Cố định chiều cao */
+        padding: 0 12px 0 40px; /* Padding trái né cái Icon ra */
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box; /* Quan trọng để padding không làm tăng size input */
+    }
+    .flex-row {
+        display: flex;
+        gap: 8px;
+    }
+
+    .delete-btn {
+        background: none;
+        border: none;
+        color: #e53e3e;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+    }
+
+    .delete-btn:hover {
+        background: #fff5f5;
     }
 </style>

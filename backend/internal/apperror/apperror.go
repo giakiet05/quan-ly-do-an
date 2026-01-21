@@ -117,8 +117,9 @@ var (
 	ErrInvalidMemberNumber  = AppError{Code: "INVALID_MEMBER_NUMBER", Message: "Invalid member number"}
 
 	// Project-related
-	ErrReportAlreadyExists  = AppError{Code: "REPORT_ALREADY_EXISTS", Message: "Report already exists for this period"}
-	ErrReportPeriodNotFound = AppError{Code: "REPORT_PERIOD_NOT_FOUND", Message: "Report period not found"}
+	ErrReportAlreadyExists      = AppError{Code: "REPORT_ALREADY_EXISTS", Message: "Report already exists for this period"}
+	ErrReportPeriodNotFound     = AppError{Code: "REPORT_PERIOD_NOT_FOUND", Message: "Report period not found"}
+	ErrProjectGroupLimitReached = AppError{Code: "PROJECT_GROUP_LIMIT_REACHED", Message: "Project group member limit reached"}
 
 	// Class Membership-related
 	ErrMembershipNotFound     = AppError{Code: "MEMBERSHIP_NOT_FOUND", Message: "Membership not found"}

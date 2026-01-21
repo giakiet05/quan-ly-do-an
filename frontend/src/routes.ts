@@ -1,9 +1,9 @@
-import Login from './pages/Login.svelte';
-import Register from './pages/Register.svelte';
-import ForgotPassword from './pages/ForgotPassword.svelte';
-import GoogleCallBack from './pages/GoogleCallBack.svelte';
-import GoogleSetUp from './pages/GoogleSetUp.svelte';
-import GoogleError from './pages/GoogleError.svelte';
+import Login from './pages/auth/Login.svelte';
+import Register from './pages/auth/Register.svelte';
+import ForgotPassword from './pages/auth/ForgotPassword.svelte';
+import GoogleCallBack from './pages/auth/GoogleCallBack.svelte';
+import GoogleSetUp from './pages/auth/GoogleSetUp.svelte';
+import GoogleError from './pages/auth/GoogleError.svelte';
 import MyProfile from './pages/MyProfile.svelte';
 import Chat from './pages/Chat.svelte';
 import MyProjects from './pages/MyProjects.svelte';
@@ -11,7 +11,6 @@ import MyProjectDetail from './pages/MyProjectDetail.svelte';
 import ClassLecture from './pages/lecture/class/ClassLecture.svelte';
 import ClassDetail from './pages/lecture/class/ClassDetail.svelte';
 import Notification from './pages/Notification.svelte';
-import CreateCategoryModal from './pages/lecture/class/category/CreateCategoryModal.svelte';
 import CategoryDetail from './pages/lecture/class/category/CategoryDetail.svelte';
 import StudentsManagementView from './pages/lecture/student/StudentsManagementView.svelte';
 import ProjectDetailView from './pages/lecture/class/category/project/ProjectDetailView.svelte';
@@ -46,7 +45,6 @@ const routes = {
     // Lecturer routes
     '/lecture/my-classes': ClassLecture,
     '/lecture/my-classes/:id': ClassDetail,
-    '/lecture/my-classes/:id/categories/create': CreateCategoryModal,
     '/lecture/my-classes/:id/categories/:categoryId': CategoryDetail,
     '/lecture/my-classes/:id/categories/:categoryId/projects/:projectId': ProjectDetailView,
     '/lecture/students-management': StudentsManagementView,

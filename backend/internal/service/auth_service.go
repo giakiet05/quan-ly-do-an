@@ -275,7 +275,7 @@ func (s *authService) Login(identifier, password string) (*model.User, string, s
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// Now identifier must be email since we removed username
+	// Now identifier must be email
 	user, err := s.userRepo.GetByEmail(ctx, identifier)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {

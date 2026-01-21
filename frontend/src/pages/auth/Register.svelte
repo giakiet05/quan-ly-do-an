@@ -1,12 +1,12 @@
 <script lang="ts">
   import { link, replace } from "svelte-spa-router";
-  import OtpVerification from "../components/OTPVerification.svelte";
-  import Button from "../components/Button.svelte";
+  import OtpVerification from "../../components/OTPVerification.svelte";
+  import Button from "../../components/Button.svelte";
   import {
     authService,
     sendEmailVerification,
     completeRegistration,
-  } from "../services/auth-service";
+  } from "../../services/auth-service";
 
   // --- STATE ---
   let fullname = "";
@@ -480,10 +480,6 @@
   .link-text:hover {
     color: #1e40af;
     text-decoration: underline;
-  }
-  .w-full {
-    width: 100% !important;
-    display: flex !important;
   }
   /* Utility */
 </style>

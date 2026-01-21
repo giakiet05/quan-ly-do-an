@@ -6,7 +6,7 @@
 
     // Components
     import CategoryList from "./category/CategoryList.svelte";
-    import CreateCategoryModal from "./category/CreateCategoryModal.svelte";
+    import CategoryDetailModal from "./category/CategoryDetailModal.svelte";
     import StudentTab from "./student/StudentTab.svelte";
     import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
     import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
@@ -68,6 +68,7 @@
     async function handleUpdateRound(data: any) {
         if (!editingCategory) return;
         try {
+            console.log("📝 Updating category:", data);
             const payload: UpdateProjectRoundRequest = {
                 roundId: editingCategory.id,
                 projectRoundId: editingCategory.id,
@@ -78,9 +79,12 @@
                 endDate: data.endDate,
             };
 
+            console.log("📤 Sending payload:", $state.snapshot(payload));
             await projectRoundStore.editRound(payload);
+            console.log("✅ Category updated successfully");
             editingCategory = null;
         } catch (error) {
+            console.error("❌ Error updating category:", error);
             alert("Có lỗi khi cập nhật!");
         }
     }
@@ -97,17 +101,77 @@
         </button>
 
         {#if classData}
-            <h1 class="text-2xl font-bold text-gray-800">
-                Lớp: {classData.name}
-            </h1>
-            <p class="text-gray-500">
-                Mã lớp: {classData.id} • {classData.semester} • {classData.studentCount}
-                sinh viên
-            </p>
+            <div
+                class="flex flex-col md:flex-row md:items-end justify-between gap-4"
+            >
+                <div>
+                    <h1
+                        class="text-3xl font-bold text-gray-800 flex items-center gap-3"
+                    >
+                        {classData.name}
+                        <span
+                            class="text-sm font-normal px-2 py-1 bg-blue-100 text-blue-700 rounded"
+                        >
+                            {classData.status === "active"
+                                ? "Đang hoạt động"
+                                : "Lưu trữ"}
+                        </span>
+                    </h1>
+
+                    <div
+                        class="flex flex-wrap items-center gap-y-2 gap-x-4 mt-2 text-gray-600"
+                    >
+                        <div class="flex items-center gap-1">
+                            <span class="font-medium text-gray-900"></span>
+                            {classData.semester} — Năm {classData.year}
+                        </div>
+
+                        <div class="hidden md:block w-px h-4 bg-gray-300"></div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-gray-900"
+                                >Mã mời:</span
+                            >
+                            <code
+                                class="bg-gray-100 px-2 py-0.5 rounded font-mono text-blue-600 font-bold border border-gray-200"
+                            >
+                                {classData.invitationCode}
+                            </code>
+                            <button
+                                onclick={() => {
+                                    navigator.clipboard.writeText(
+                                        classData.invitationCode,
+                                    );
+                                    // Mày có thể thêm toast thông báo ở đây nếu muốn
+                                }}
+                                class="text-xs text-blue-500 hover:underline"
+                            >
+                                Sao chép
+                            </button>
+                        </div>
+
+                        <div class="hidden md:block w-px h-4 bg-gray-300"></div>
+
+                        <div class="flex items-center gap-1">
+                            <span class="font-medium text-gray-900">Sĩ số:</span
+                            >
+                            {classData.studentCount} sinh viên
+                        </div>
+                    </div>
+                </div>
+
+                {#if classData.avatar}
+                    <img
+                        src={classData.avatar}
+                        alt="Class Avatar"
+                        class="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm"
+                    />
+                {/if}
+            </div>
         {:else}
             <div class="animate-pulse">
                 <div class="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
-                <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded w-1/2"></div>
             </div>
         {/if}
     </div>
@@ -172,7 +236,7 @@
 
 {#if classData}
     {#if isCreateCategoryModalOpen}
-        <CreateCategoryModal
+        <CategoryDetailModal
             {classData}
             onClose={() => (isCreateCategoryModalOpen = false)}
             onSubmit={handleCreateRound}
@@ -180,7 +244,7 @@
     {/if}
 
     {#if editingCategory}
-        <CreateCategoryModal
+        <CategoryDetailModal
             isEdit={true}
             initialData={editingCategory}
             {classData}
@@ -204,27 +268,3 @@
         }}
     />
 {/if}
-
-<style>
-    .tab-content {
-        transition:
-            opacity 0.3s ease,
-            transform 0.3s ease;
-    }
-    .tab-content-enter {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    .tab-content-enter-active {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    .tab-content-leave {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    .tab-content-leave-active {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-</style>

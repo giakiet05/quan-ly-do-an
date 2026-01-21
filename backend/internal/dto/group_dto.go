@@ -7,10 +7,9 @@ import (
 )
 
 type CreateGroupRequest struct {
-	ClassroomID    string   `json:"classroom_id"`
-	ProjectID      string   `json:"project_id"`
-	ProjectRoundID string   `json:"project_round_id"`
-	MemberIDs      []string `json:"member_ids"`
+	ClassroomID    string `json:"classroom_id"`
+	ProjectID      string `json:"project_id"`
+	ProjectRoundID string `json:"project_round_id"`
 }
 
 type UpdateGroupRequest struct {

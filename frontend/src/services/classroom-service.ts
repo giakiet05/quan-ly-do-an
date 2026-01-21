@@ -130,7 +130,7 @@ export async function uploadWhitelistStudentCodes(
   data: UploadWhitelistStudentCodeRequest
 ): Promise<{ message: string }> {
   const response = await apiFetch<ApiResponse<{ message: string }>>(
-    `/api/classrooms/${classroomId}/whitelist`,
+    `/api/classrooms/${classroomId}/whitelist-student-code`,
     {
       method: "POST",
       body: JSON.stringify(data),
