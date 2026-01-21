@@ -12,7 +12,6 @@ import ClassLecture from './pages/lecture/class/ClassLecture.svelte';
 import ClassDetail from './pages/lecture/class/ClassDetail.svelte';
 import Notification from './pages/Notification.svelte';
 import CategoryDetail from './pages/lecture/class/category/CategoryDetail.svelte';
-import StudentsManagementView from './pages/lecture/student/StudentsManagementView.svelte';
 import ProjectDetailView from './pages/lecture/class/category/project/ProjectDetailView.svelte';
 
 // Student pages
@@ -47,7 +46,6 @@ const routes = {
     '/lecture/my-classes/:id': ClassDetail,
     '/lecture/my-classes/:id/categories/:categoryId': CategoryDetail,
     '/lecture/my-classes/:id/categories/:categoryId/projects/:projectId': ProjectDetailView,
-    '/lecture/students-management': StudentsManagementView,
 
     // Student routes
     '/student/classes': StudentClassList,

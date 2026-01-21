@@ -14,7 +14,6 @@ export interface CreateProjectRoundsRequest {
 }
 
 export interface UpdateProjectRoundRequest {
-    roundId: string;
     classroomId: string;
     projectRoundId: string;
     name?: string;

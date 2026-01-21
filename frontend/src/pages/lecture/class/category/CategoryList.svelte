@@ -25,20 +25,20 @@
         $projectRoundStore.map((round) => {
             let statusConfig = {
                 text: "Đang diễn ra",
-                colorClass: "border-green-500 bg-green-50",
+                colorClass: "border-green-500",
                 badgeClass: "bg-green-100 text-green-600",
             };
 
             if (round.status === "ended") {
                 statusConfig = {
                     text: "Đã kết thúc",
-                    colorClass: "border-red-500 bg-red-50",
+                    colorClass: "border-red-500",
                     badgeClass: "bg-red-100 text-red-600",
                 };
             } else if (round.status === "upcoming") {
                 statusConfig = {
                     text: "Sắp diễn ra",
-                    colorClass: "border-yellow-500 bg-yellow-50",
+                    colorClass: "border-yellow-500",
                     badgeClass: "bg-yellow-100 text-yellow-600",
                 };
             }

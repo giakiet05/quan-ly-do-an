@@ -70,7 +70,7 @@
         channelsData.channels.map(async (channel) => {
           // Get the other user (not current user)
           const otherMember = channel.members.find(
-            (m) => m.userId !== currentUserId
+            (m) => m.userId !== currentUserId,
           );
 
           // Try to fetch last message
@@ -90,7 +90,7 @@
                 {
                   hour: "2-digit",
                   minute: "2-digit",
-                }
+                },
               );
             }
           } catch (err) {
@@ -109,7 +109,7 @@
             unread: channel.unread_message_count || 0,
             messages: [],
           };
-        })
+        }),
       );
     } catch (err) {
       error =
@@ -199,12 +199,12 @@
     conversations.filter(
       (conv) =>
         conv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        conv.userRole.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+        conv.userRole.toLowerCase().includes(searchTerm.toLowerCase()),
+    ),
   );
 
   const currentConversation = $derived(
-    conversations.find((c) => c.id === selectedConversation)
+    conversations.find((c) => c.id === selectedConversation),
   );
 
   function handleSendMessage() {
@@ -303,14 +303,14 @@
                     senderName: realMessage.sender_username,
                     content: realMessage.content,
                     timestamp: new Date(
-                      realMessage.created_at
+                      realMessage.created_at,
                     ).toLocaleTimeString("vi-VN", {
                       hour: "2-digit",
                       minute: "2-digit",
                     }),
                     read: realMessage.read_by.includes(currentUserId),
                   }
-                : m
+                : m,
             ),
           };
         });
@@ -336,7 +336,7 @@
           {
             hour: "2-digit",
             minute: "2-digit",
-          }
+          },
         ),
         read: incomingMessage.read_by.includes(currentUserId),
       };
