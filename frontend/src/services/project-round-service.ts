@@ -31,6 +31,7 @@ export async function getProjectRoundById(roundId: string): Promise<ProjectRound
  * Tạo mới vòng dự án
  */
 export async function createProjectRound(data: CreateProjectRoundRequest): Promise<ProjectRound> {
+    console.log("CreateProjectRound request data:", data);
     const response = await apiFetch<ProjectRoundResponse>("/api/projects/rounds", {
         method: "POST",
         body: JSON.stringify(data)
@@ -45,12 +46,17 @@ export async function createProjectRound(data: CreateProjectRoundRequest): Promi
 export async function updateProjectRound(
     data: UpdateProjectRoundRequest
 ): Promise<ProjectRound> {
+    console.log("UpdateProjectRound request data:", data);
+
     const response = await apiFetch<ProjectRoundResponse>(`/api/projects/rounds`, {
         method: "PUT",
         body: JSON.stringify(data)
     });
+
+    console.log("Updated Project Round Response:", response);
     return projectRoundMapper.toEntity(response);
 }
+
 
 /**
  * Xóa vòng dự án (Soft delete)

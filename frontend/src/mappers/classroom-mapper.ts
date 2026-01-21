@@ -1,3 +1,4 @@
+import { email } from "zod";
 import type { ClassroomResponse, CreateClassroomRequest } from "../dtos/classroom-dto";
 import type { ClassItem, CreateClassRequest } from "../types/class";
 
@@ -34,7 +35,9 @@ export function mapClassroomToClassItem(cls: ClassroomResponse): ClassItem {
         students: (cls.students || []).map(u => ({
             userId: u.userId,
             fullName: u.fullName,
-            avatar: u.avatar
+            avatar: u.avatar,
+            email: u.email,
+            studentCode: u.studentCode,
         })),
 
         // Whitelist
