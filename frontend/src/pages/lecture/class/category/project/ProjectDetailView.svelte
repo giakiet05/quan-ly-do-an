@@ -126,7 +126,7 @@
         <!-- {#if $selectedProject?.tags && $selectedProject.tags.length > 0}
             <div class="mt-4">
                 <h3 class="text-sm font-bold mb-2 text-gray-700">Tags:</h3>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2">  
                     {#each $selectedProject.tags as tag}
                         <span
                             class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"

@@ -41,14 +41,15 @@ export async function getProject(
 export async function createProject(
     data: CreateProjectRequest
 ): Promise<ProjectResponse> {
-    const response = await apiFetch<ApiResponse<ProjectResponse>>(
+    const response = await apiFetch<ProjectResponse>(
         "/api/projects",
         {
             method: "POST",
             body: JSON.stringify(data),
         }
     );
-    return response.data!;
+    console.log("API response:", response);
+    return response;
 }
 
 /**

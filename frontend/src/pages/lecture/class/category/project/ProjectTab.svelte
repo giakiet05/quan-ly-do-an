@@ -45,9 +45,18 @@
     });
 
     const handleCreateProject = async (newProject: CreateProjectRequest) => {
-        await addProject({ ...newProject, classroomId, projectRoundId });
-
-        showCreateModal = false;
+        try {
+            const createdProject = await addProject({
+                ...newProject,
+                classroomId,
+                projectRoundId,
+            });
+            console.log("Created project:", createdProject); // Debug log
+            showCreateModal = false; // Đóng modal sau khi tạo thành công
+        } catch (error) {
+            console.error("Lỗi khi thêm đề tài:", error);
+            alert("Không thể thêm đề tài. Vui lòng thử lại.");
+        }
     };
 
     const handleUpdateProject = async (

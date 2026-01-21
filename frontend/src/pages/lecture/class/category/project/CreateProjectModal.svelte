@@ -10,7 +10,7 @@
     }>();
 
     // 2. Form State sử dụng Rune $state
-    let formData = $derived({
+    let formData = $state({
         projectRoundId,
         title: editingProject?.title || "",
         amount: editingProject?.amount || 1, // Map to "amount" field

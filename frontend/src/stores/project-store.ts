@@ -82,6 +82,10 @@ function createProjectStore() {
     async function addProject(data: CreateProjectRequest) {
         try {
             const newProject = await createProject(data);
+            if (!newProject || !newProject.id) {
+                console.error("Dữ liệu trả về từ Service bị sai cấu trúc:", newProject);
+                return;
+            }
             projects.update((list) => [newProject, ...list]);
             return newProject;
         } catch (err) {
