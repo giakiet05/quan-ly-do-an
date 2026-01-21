@@ -66,3 +66,35 @@ func FromUsers(users []*model.User) []UserResponse {
 	}
 	return responses
 }
+
+type UserInfoResponse struct {
+	UserID      string       `json:"user_id"`
+	FullName    string       `json:"full_name"`
+	Email       string       `json:"email"`
+	Avatar      *model.Image `json:"avatar,omitempty"`
+	StudentCode *string      `json:"student_code,omitempty"`
+}
+
+func ToUserInfoResponse(u *model.User) UserInfoResponse {
+	if u == nil {
+		return UserInfoResponse{}
+	}
+	return UserInfoResponse{
+		UserID:      u.ID.Hex(),
+		FullName:    u.FullName,
+		Email:       u.Email,
+		Avatar:      u.Avatar,
+		StudentCode: u.StudentCode,
+	}
+}
+
+func ToUserInfoResponses(users []*model.User) []UserInfoResponse {
+	responses := make([]UserInfoResponse, 0, len(users))
+	for _, u := range users {
+		if u == nil {
+			continue
+		}
+		responses = append(responses, ToUserInfoResponse(u))
+	}
+	return responses
+}

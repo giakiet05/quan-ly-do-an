@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -14,23 +15,23 @@ import (
 )
 
 type ClassroomService interface {
-	CreateClassroom(req dto.CreateClassroomRequest, lecturerID string) (*model.Classroom, error)
-	GetClassroomByID(classroomID string) (*model.Classroom, error)
-	GetClassroomsByLecturer(lecturerID string, page, pageSize int) ([]model.Classroom, int64, error)
-	GetClassroomsByStudent(studentID string, page, pageSize int) ([]model.Classroom, int64, error)
+	CreateClassroom(req dto.CreateClassroomRequest, lecturerID string) (*dto.ClassroomResponse, error)
+	GetClassroomByID(classroomID string) (*dto.ClassroomResponse, error)
+	GetClassroomsByLecturer(lecturerID string, page, pageSize int) ([]dto.ClassroomResponse, int64, error)
+	GetClassroomsByStudent(studentID string, page, pageSize int) ([]dto.ClassroomResponse, int64, error)
 	UpdateClassroom(classroomID, lecturerID string, req dto.UpdateClassroomRequest) error
 	UpdateClassroomStatus(classroomID, lecturerID string, status string) error
 	DeleteClassroom(classroomID, lecturerID string) error
 	RemoveStudentFromClassroom(classroomID, lecturerID, studentID string) error
 	RemoveCoLecturerFromClassroom(classroomID, lecturerID, coLecturerID string) error
 	LeaveClassroom(classroomID, userID string) error
-	
+
 	// Whitelist management
 	UploadWhitelistStudentCode(classroomID, lecturerID string, studentCodes []string) error
 	UpdateWhitelistStudentCode(classroomID, lecturerID string, addCodes, removeCodes []string) error
 	ClearWhitelistStudentCode(classroomID, lecturerID string) error
 	GetWhitelistStudentCode(classroomID, lecturerID string) ([]model.WhitelistEntry, error)
-	
+
 	RegenerateInvitationCode(classroomID, lecturerID string) (string, error)
 }
 
@@ -53,7 +54,7 @@ func NewClassroomService(
 }
 
 // CreateClassroom creates a new classroom
-func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lecturerID string) (*model.Classroom, error) {
+func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lecturerID string) (*dto.ClassroomResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
@@ -77,20 +78,15 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 
 	// Create classroom model
 	classroom := &model.Classroom{
-		Name:        req.Name,
-		Description: req.Description,
-		Avatar:      req.Avatar,
-		Semester:    req.Semester,
-		Year:        req.Year,
-		Status:      model.ClassroomActive, // Default to active
-		Lecturer: model.UserInfo{
-			ID:          lecturer.ID,
-			FullName:    lecturer.FullName,
-			Avatar:      lecturer.Avatar,
-			StudentCode: lecturer.StudentCode,
-		},
-		CoLecturers:            []model.UserInfo{},
-		Students:               []model.UserInfo{},
+		Name:                   req.Name,
+		Description:            req.Description,
+		Avatar:                 req.Avatar,
+		Semester:               req.Semester,
+		Year:                   req.Year,
+		Status:                 model.ClassroomActive, // Default to active
+		LecturerID:             lecturer.ID,
+		CoLecturerIDs:          []primitive.ObjectID{},
+		StudentIDs:             []primitive.ObjectID{},
 		ProjectRounds:          []model.ProjectRound{},
 		InvitationCode:         invitationCode,
 		MaxStudents:            maxStudents,
@@ -113,30 +109,80 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 		return nil, err
 	}
 
-	return createdClassroom, nil
+	// Convert to DTO response (no co-lecturers or students yet)
+	response := dto.FromClassroomWithUsers(createdClassroom, lecturer, []*model.User{}, []*model.User{})
+	return &response, nil
 }
 
 // GetClassroomByID retrieves a classroom by ID
-func (s *classroomService) GetClassroomByID(classroomID string) (*model.Classroom, error) {
+func (s *classroomService) GetClassroomByID(classroomID string) (*dto.ClassroomResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	return s.classroomRepo.GetByID(ctx, classroomID)
+	// Get classroom
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate users
+	lecturer, coLecturers, students, err := s.PopulateClassroomUsers(ctx, classroom)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DTO
+	response := dto.FromClassroomWithUsers(classroom, lecturer, coLecturers, students)
+	return &response, nil
 }
 
 // GetClassroomsByLecturer retrieves classrooms by lecturer ID
-func (s *classroomService) GetClassroomsByLecturer(lecturerID string, page, pageSize int) ([]model.Classroom, int64, error) {
+func (s *classroomService) GetClassroomsByLecturer(lecturerID string, page, pageSize int) ([]dto.ClassroomResponse, int64, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	return s.classroomRepo.GetByLecturer(ctx, lecturerID, page, pageSize)
+	// Get classrooms
+	classrooms, total, err := s.classroomRepo.GetByLecturer(ctx, lecturerID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Populate users for each classroom and convert to DTO
+	responses := make([]dto.ClassroomResponse, 0, len(classrooms))
+	for _, classroom := range classrooms {
+		lecturer, coLecturers, students, err := s.PopulateClassroomUsers(ctx, &classroom)
+		if err != nil {
+			return nil, 0, err
+		}
+		response := dto.FromClassroomWithUsers(&classroom, lecturer, coLecturers, students)
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
 }
 
-func (s *classroomService) GetClassroomsByStudent(studentID string, page, pageSize int) ([]model.Classroom, int64, error) {
+func (s *classroomService) GetClassroomsByStudent(studentID string, page, pageSize int) ([]dto.ClassroomResponse, int64, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	return s.classroomRepo.GetByStudent(ctx, studentID, page, pageSize)
+	// Get classrooms
+	classrooms, total, err := s.classroomRepo.GetByStudent(ctx, studentID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Populate users for each classroom and convert to DTO
+	responses := make([]dto.ClassroomResponse, 0, len(classrooms))
+	for _, classroom := range classrooms {
+		lecturer, coLecturers, students, err := s.PopulateClassroomUsers(ctx, &classroom)
+		if err != nil {
+			return nil, 0, err
+		}
+		response := dto.FromClassroomWithUsers(&classroom, lecturer, coLecturers, students)
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
 }
 
 // UpdateClassroom updates classroom information (lecturer or co-lecturer)
@@ -259,8 +305,31 @@ func (s *classroomService) RemoveStudentFromClassroom(classroomID, userID, stude
 		return apperror.ErrForbidden
 	}
 
+	// Get student info to retrieve student_code
+	student, err := s.userRepo.GetByID(ctx, studentID)
+	if err != nil {
+		return err
+	}
+
+	// Get classroom to check whitelist settings
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return err
+	}
+
 	// Remove student
-	return s.classroomRepo.RemoveStudent(ctx, classroomID, studentID)
+	err = s.classroomRepo.RemoveStudent(ctx, classroomID, studentID)
+	if err != nil {
+		return err
+	}
+
+	// Reset whitelist entry if student has student_code and whitelist is enabled
+	if classroom.EnableWhitelist && student.StudentCode != nil && *student.StudentCode != "" {
+		// Reset the whitelist entry (set joined_by and joined_at to null)
+		_ = s.classroomRepo.ResetWhitelistEntry(ctx, classroomID, *student.StudentCode)
+	}
+
+	return nil
 }
 
 // RemoveCoLecturerFromClassroom removes a co-lecturer from classroom (lecturer only)
@@ -310,7 +379,30 @@ func (s *classroomService) LeaveClassroom(classroomID, userID string) error {
 		return err
 	}
 	if isStudent {
-		return s.classroomRepo.RemoveStudent(ctx, classroomID, userID)
+		// Get student info to retrieve student_code
+		student, err := s.userRepo.GetByID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		// Get classroom to check whitelist settings
+		classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+		if err != nil {
+			return err
+		}
+
+		// Remove student
+		err = s.classroomRepo.RemoveStudent(ctx, classroomID, userID)
+		if err != nil {
+			return err
+		}
+
+		// Reset whitelist entry if student has student_code and whitelist is enabled
+		if classroom.EnableWhitelist && student.StudentCode != nil && *student.StudentCode != "" {
+			_ = s.classroomRepo.ResetWhitelistEntry(ctx, classroomID, *student.StudentCode)
+		}
+
+		return nil
 	}
 
 	return apperror.ErrForbidden // User is not a member of this classroom
@@ -434,4 +526,53 @@ func (s *classroomService) RegenerateInvitationCode(classroomID, lecturerID stri
 	}
 
 	return newCode, nil
+}
+
+// Helper function to populate users for a classroom
+func (s *classroomService) PopulateClassroomUsers(ctx context.Context, classroom *model.Classroom) (*model.User, []*model.User, []*model.User, error) {
+	// Collect all user IDs
+	userIDs := []string{classroom.LecturerID.Hex()}
+
+	for _, coLecturerID := range classroom.CoLecturerIDs {
+		userIDs = append(userIDs, coLecturerID.Hex())
+	}
+
+	for _, studentID := range classroom.StudentIDs {
+		userIDs = append(userIDs, studentID.Hex())
+	}
+
+	// Batch query all users
+	users, err := s.userRepo.GetByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Create a map for quick lookup
+	userMap := make(map[string]*model.User)
+	for _, user := range users {
+		if user != nil {
+			userMap[user.ID.Hex()] = user
+		}
+	}
+
+	// Get lecturer
+	lecturer := userMap[classroom.LecturerID.Hex()]
+
+	// Get co-lecturers
+	coLecturers := make([]*model.User, 0, len(classroom.CoLecturerIDs))
+	for _, coLecturerID := range classroom.CoLecturerIDs {
+		if user, exists := userMap[coLecturerID.Hex()]; exists {
+			coLecturers = append(coLecturers, user)
+		}
+	}
+
+	// Get students
+	students := make([]*model.User, 0, len(classroom.StudentIDs))
+	for _, studentID := range classroom.StudentIDs {
+		if user, exists := userMap[studentID.Hex()]; exists {
+			students = append(students, user)
+		}
+	}
+
+	return lecturer, coLecturers, students, nil
 }

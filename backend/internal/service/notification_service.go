@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
@@ -18,8 +19,11 @@ import (
 
 type NotificationService interface {
 	Start()
-	GetNotifications(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error)
+	GetNotificationsByRecipientID(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error)
+	GetNotificationsByClassroomID(classroomID string, page, pageSize int, requesterID string) (*dto.PaginatedNotificationsResponse, error)
+	MarkAsRead(notificationID, recipientID string) error
 	MarkAllAsRead(recipientID string) (int64, error)
+	DeleteNotification(notificationID string, requesterID string) error
 }
 
 type notificationService struct {
@@ -581,7 +585,7 @@ func (s *notificationService) handleReportGraded(event bus.Event) {
 	}
 }
 
-func (s *notificationService) GetNotifications(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error) {
+func (s *notificationService) GetNotificationsByRecipientID(recipientID string, page, pageSize int) (*dto.PaginatedNotificationsResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
@@ -599,9 +603,70 @@ func (s *notificationService) GetNotifications(recipientID string, page, pageSiz
 	}, nil
 }
 
+func (s *notificationService) GetNotificationsByClassroomID(
+	classroomID string,
+	page,
+	pageSize int,
+	requesterID string,
+) (*dto.PaginatedNotificationsResponse, error) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	ok, err := s.classroomRepo.IsMember(ctx, classroomID, requesterID)
+	if err != nil {
+		return nil, apperror.ErrInternal
+	}
+	if !ok {
+		return nil, apperror.ErrForbidden
+	}
+
+	notifications, total, err := s.notificationRepo.GetByClassroomID(ctx, classroomID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.PaginatedNotificationsResponse{
+		Notifications: dto.FromNotifications(notifications),
+		Pagination: dto.Pagination{
+			Total: total,
+			Page:  page,
+		},
+	}, nil
+}
+
+func (s *notificationService) MarkAsRead(notificationID, recipientID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	ok, err := s.notificationRepo.IsOwnerNotification(ctx, notificationID, recipientID)
+	if err != nil {
+		return apperror.ErrInternal
+	}
+	if !ok {
+		return apperror.ErrForbidden
+	}
+
+	return s.notificationRepo.MarkAsRead(ctx, notificationID, recipientID)
+}
+
 func (s *notificationService) MarkAllAsRead(recipientID string) (int64, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
 	return s.notificationRepo.MarkAllAsRead(ctx, recipientID)
+}
+
+func (s *notificationService) DeleteNotification(notificationID string, requesterID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	isOwner, err := s.notificationRepo.IsOwnerNotification(ctx, notificationID, requesterID)
+	if err != nil {
+		return apperror.ErrInternal
+	}
+	if !isOwner {
+		return apperror.ErrForbidden
+	}
+
+	return s.notificationRepo.Delete(ctx, notificationID)
 }

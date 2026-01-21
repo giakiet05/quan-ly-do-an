@@ -19,7 +19,7 @@ func NewNotificationController(service service.NotificationService) *Notificatio
 	return &NotificationController{service: service}
 }
 
-func (c *NotificationController) GetNotifications(ctx *gin.Context) {
+func (c *NotificationController) GetNotificationsRecipientID(ctx *gin.Context) {
 	authUser, exists := ctx.Get("authUser")
 	if !exists {
 		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
@@ -29,13 +29,55 @@ func (c *NotificationController) GetNotifications(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "15"))
 
-	notifications, err := c.service.GetNotifications(authUser.(auth.AuthUser).ID, page, pageSize)
+	notifications, err := c.service.GetNotificationsByRecipientID(authUser.(auth.AuthUser).ID, page, pageSize)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
 	dto.SendSuccess(ctx, http.StatusOK, "Notifications retrieved successfully", notifications)
+}
+
+func (c *NotificationController) GetNotificationsByClassroomID(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	classroomID := ctx.Param("classroom_id")
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "15"))
+
+	notifications, err := c.service.GetNotificationsByClassroomID(classroomID, page, pageSize, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Notifications retrieved successfully", notifications)
+}
+
+func (c *NotificationController) MarkAsRead(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	notificationID := ctx.Param("notification_id")
+	if notificationID == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "Notification ID is required", "BAD_REQUEST")
+		return
+	}
+
+	err := c.service.MarkAsRead(notificationID, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Notification marked as read", nil)
 }
 
 func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
@@ -52,4 +94,26 @@ func (c *NotificationController) MarkAllAsRead(ctx *gin.Context) {
 	}
 
 	dto.SendSuccess(ctx, http.StatusOK, "All notifications marked as read", gin.H{"marked_count": modifiedCount})
+}
+
+func (c *NotificationController) DeleteNotification(ctx *gin.Context) {
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusUnauthorized, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	notificationID := ctx.Param("notification_id")
+	if notificationID == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "Notification ID is required", "BAD_REQUEST")
+		return
+	}
+
+	err := c.service.DeleteNotification(notificationID, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Notification deleted successfully", nil)
 }

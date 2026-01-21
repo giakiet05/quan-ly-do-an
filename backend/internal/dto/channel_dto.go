@@ -28,7 +28,7 @@ type UpdateChannelRequest struct {
 
 type ChannelResponse struct {
 	ID                 string                   `json:"id"`
-	Members            []model.UserInfoResponse `json:"members"`
+	Members            []UserInfoResponse       `json:"members"`
 	Settings           []ChannelSettingResponse `json:"settings"`
 	Background         *string                  `json:"background"`
 	Status             model.ChannelStatus      `json:"status"`
@@ -49,12 +49,14 @@ func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
 		return ChannelResponse{}
 	}
 
-	members := make([]model.UserInfoResponse, len(channel.Members))
+	members := make([]UserInfoResponse, len(channel.Members))
 	for i, m := range channel.Members {
-		members[i] = model.UserInfoResponse{
-			UserID:   m.ID.Hex(),
-			FullName: m.FullName,
-			Avatar:   m.Avatar,
+		members[i] = UserInfoResponse{
+			UserID:      m.ID.Hex(),
+			FullName:    m.FullName,
+			Email:       m.Email,
+			Avatar:      m.Avatar,
+			StudentCode: m.StudentCode,
 		}
 	}
 

@@ -99,16 +99,16 @@ type GetGroupsFilterQuery struct {
 }
 
 type GroupResponse struct {
-	ID             string                   `json:"id"`
-	ClassroomID    string                   `json:"classroom_id"`
-	ProjectID      string                   `json:"project_id"`
-	GroupChannelID string                   `json:"group_channel_id"`
-	LeaderID       string                   `json:"leader_id"`
-	Members        []model.UserInfoResponse `json:"members"`
-	Tasks          []TaskResponse           `json:"tasks"`
-	TaskStatuses   []string                 `json:"task_statuses"`
-	Reports        []ReportResponse         `json:"reports"`
-	Setting        model.GroupSetting       `json:"setting"`
+	ID             string             `json:"id"`
+	ClassroomID    string             `json:"classroom_id"`
+	ProjectID      string             `json:"project_id"`
+	GroupChannelID string             `json:"group_channel_id"`
+	LeaderID       string             `json:"leader_id"`
+	Members        []UserInfoResponse `json:"members"`
+	Tasks          []TaskResponse     `json:"tasks"`
+	TaskStatuses   []string           `json:"task_statuses"`
+	Reports        []ReportResponse   `json:"reports"`
+	Setting        model.GroupSetting `json:"setting"`
 }
 
 type TaskResponse struct {
@@ -178,12 +178,14 @@ func FromGroup(group *model.Group) *GroupResponse {
 	}
 
 	// Convert Members
-	members := make([]model.UserInfoResponse, len(group.Members))
+	members := make([]UserInfoResponse, len(group.Members))
 	for i, m := range group.Members {
-		members[i] = model.UserInfoResponse{
-			UserID:   m.ID.Hex(),
-			FullName: m.FullName,
-			Avatar:   m.Avatar,
+		members[i] = UserInfoResponse{
+			UserID:      m.ID.Hex(),
+			FullName:    m.FullName,
+			Email:       m.Email,
+			Avatar:      m.Avatar,
+			StudentCode: m.StudentCode,
 		}
 	}
 

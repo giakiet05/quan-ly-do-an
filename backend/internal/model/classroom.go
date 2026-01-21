@@ -21,18 +21,18 @@ type WhitelistEntry struct {
 }
 
 type Classroom struct {
-	ID               primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name             string             `bson:"name" json:"name"`
-	Description      string             `bson:"description" json:"description"`
-	Avatar           string             `bson:"avatar" json:"avatar"`
-	Semester         string             `bson:"semester" json:"semester"` // "Fall 2026", "Spring 2027"
-	Year             int                `bson:"year" json:"year"`
-	Status           ClassroomStatus    `bson:"status" json:"status"` // "active", "inactive", "archived"
-	GeneralChannelID primitive.ObjectID `bson:"general_channel_id" json:"general_channel_id"`
-	Lecturer         UserInfo           `bson:"lecturer" json:"lecturer"`
-	CoLecturers      []UserInfo         `bson:"co_lecturers" json:"co_lecturers"`
-	Students         []UserInfo         `bson:"students" json:"students"`
-	ProjectRounds    []ProjectRound     `bson:"project_rounds" json:"project_rounds"`
+	ID               primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
+	Name             string               `bson:"name" json:"name"`
+	Description      string               `bson:"description" json:"description"`
+	Avatar           string               `bson:"avatar" json:"avatar"`
+	Semester         string               `bson:"semester" json:"semester"` // "Fall 2026", "Spring 2027"
+	Year             int                  `bson:"year" json:"year"`
+	Status           ClassroomStatus      `bson:"status" json:"status"` // "active", "inactive", "archived"
+	GeneralChannelID primitive.ObjectID   `bson:"general_channel_id" json:"general_channel_id"`
+	LecturerID       primitive.ObjectID   `bson:"lecturer_id" json:"lecturer_id"`
+	CoLecturerIDs    []primitive.ObjectID `bson:"co_lecturer_ids" json:"co_lecturer_ids"`
+	StudentIDs       []primitive.ObjectID `bson:"student_ids" json:"student_ids"`
+	ProjectRounds    []ProjectRound       `bson:"project_rounds" json:"project_rounds"`
 
 	// Settings
 	InvitationCode         string           `bson:"invitation_code" json:"invitation_code"`

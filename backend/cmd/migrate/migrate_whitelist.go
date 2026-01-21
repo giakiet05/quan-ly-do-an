@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/config"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -13,7 +14,12 @@ import (
 func main() {
 	log.Println("🚀 Starting whitelist migration...")
 
-	// Load config
+	// Load .env from multiple possible locations
+	if err := godotenv.Load("../../.env"); err != nil {
+		if err := godotenv.Load(".env"); err != nil {
+			log.Println("⚠️  .env file not found, using environment variables")
+		}
+	}
 	config.LoadConfig()
 
 	// Connect to MongoDB
