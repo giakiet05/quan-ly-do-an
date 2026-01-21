@@ -12,6 +12,7 @@
     } from "lucide-svelte";
     import type { ReportStage } from "../../../../../types/report";
     import GradeReportModal from "./GradeReportModal.svelte";
+    import type { PeriodResponse } from "../../../../../dtos/period-dto";
 
     // Định nghĩa Interface địa phương
     interface GroupReport {
@@ -27,8 +28,8 @@
     }
 
     // 1. Nhận Props
-    let { stage, onBack } = $props<{
-        stage: ReportStage;
+    let { period, onBack } = $props<{
+        period: PeriodResponse;
         onBack: () => void;
     }>();
 
@@ -170,14 +171,14 @@
         <div class="flex justify-between items-start">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">
-                    {stage.title}
+                    {period.title}
                 </h2>
-                <p class="text-gray-600 mb-4">{stage.description}</p>
+                <p class="text-gray-600 mb-4">{period.description}</p>
                 <div class="flex items-center gap-6 text-sm text-gray-500">
                     <span class="flex items-center gap-2">
-                        Từ {new Date(stage.startDate).toLocaleDateString(
+                        Từ {new Date(period.startDate).toLocaleDateString(
                             "vi-VN",
-                        )} - Đến {new Date(stage.endDate).toLocaleDateString(
+                        )} - Đến {new Date(period.endDate).toLocaleDateString(
                             "vi-VN",
                         )}
                     </span>

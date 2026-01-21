@@ -111,7 +111,7 @@
 {#if activeTab === "projects"}
     <ProjectTab {classroomId} {projectRoundId} />
 {:else if activeTab === "reports"}
-    <ReportsTab />
+    <ReportsTab {classroomId} {projectRoundId} />
 {:else if activeTab === "settings"}
     <div class="rounded-lg bg-white p-6 shadow-sm">
         <h2 class="mb-6 text-xl font-semibold">Cài đặt hạng mục</h2>

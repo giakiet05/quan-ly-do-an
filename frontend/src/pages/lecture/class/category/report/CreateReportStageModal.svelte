@@ -1,18 +1,18 @@
 <script lang="ts">
     import { X } from "lucide-svelte";
     import type { ReportStage } from "../../../../../types/report";
+    import type { CreatePeriodRequest } from "../../../../../dtos/period-dto";
     // 1. Định nghĩa Props
-    let { onClose, onSubmit, totalStudents } = $props<{
+    let { onClose, onSubmit, totalStudents, maxStudents } = $props<{
         onClose: () => void;
-        onSubmit: (
-            stage: Omit<ReportStage, "id" | "submittedCount" | "status">,
-        ) => void;
+        onSubmit: (data: CreatePeriodRequest) => void;
         totalStudents: number;
+        maxStudents: number;
     }>();
 
     // 2. State cho Form và Errors
     let formData = $state({
-        title: "",
+        name: "",
         description: "",
         startDate: "",
         endDate: "",
@@ -26,8 +26,8 @@
 
         const newErrors: Record<string, string> = {};
 
-        if (!formData.title.trim()) {
-            newErrors.title = "Vui lòng nhập tiêu đề";
+        if (!formData.name.trim()) {
+            newErrors.name = "Vui lòng nhập tên";
         }
 
         if (!formData.startDate) {
@@ -53,7 +53,8 @@
 
         onSubmit({
             ...formData,
-            totalStudents,
+            startDate: new Date(formData.startDate),
+            endDate: new Date(formData.endDate),
         });
     };
 
@@ -84,21 +85,21 @@
 
         <form onsubmit={handleSubmit} class="space-y-6 p-6">
             <div>
-                <label class="mb-2 block text-sm font-medium" for="title">
-                    Tiêu đề giai đoạn <span class="text-red-500">*</span>
+                <label class="mb-2 block text-sm font-medium" for="name">
+                    Tên giai đoạn <span class="text-red-500">*</span>
                 </label>
                 <input
-                    id="title"
+                    id="name"
                     type="text"
-                    bind:value={formData.title}
-                    oninput={() => clearError("title")}
-                    class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.title
+                    bind:value={formData.name}
+                    oninput={() => clearError("name")}
+                    class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.name
                         ? 'border-red-500'
                         : 'border-gray-300'}"
                     placeholder="Ví dụ: Báo cáo tuần 1-2"
                 />
-                {#if errors.title}
-                    <p class="mt-1 text-sm text-red-500">{errors.title}</p>
+                {#if errors.name}
+                    <p class="mt-1 text-sm text-red-500">{errors.name}</p>
                 {/if}
             </div>
 

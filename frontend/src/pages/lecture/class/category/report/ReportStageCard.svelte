@@ -8,18 +8,18 @@
         Trash2,
         Eye,
     } from "lucide-svelte";
-    import type { ReportStage } from "../../../../../types/report";
+    import type { PeriodResponse } from "../../../../../dtos/period-dto";
 
-    // 1. Định nghĩa Props bằng $props()
-    let { stage, onDelete, onViewDetail } = $props<{
-        stage: ReportStage;
+    // Props
+    let { period, onDelete, onViewDetail } = $props<{
+        period: PeriodResponse;
         onDelete: (id: string) => void;
-        onViewDetail: (stage: ReportStage) => void;
+        onViewDetail: (period: PeriodResponse) => void;
     }>();
 
-    // 2. Logic tính toán cấu hình trạng thái (Derived state)
+    // Derived state for status configuration
     const statusConfig = $derived.by(() => {
-        switch (stage.status) {
+        switch (period.status) {
             case "completed":
                 return {
                     icon: CheckCircle,
@@ -63,21 +63,21 @@
         }
     });
 
-    // 3. Các biến tính toán khác
+    // Derived variables
     const submissionPercentage = $derived(
-        (stage.submittedCount / stage.totalStudents) * 100,
+        (period.submittedCount / period.totalStudents) * 100,
     );
     const StatusIcon = $derived(statusConfig.icon);
 </script>
 
-<button onclick={() => onViewDetail(stage)}>
+<button onclick={() => onViewDetail(period)}>
     <div
         class="border {statusConfig.border} rounded-lg p-6 hover:shadow-md transition-shadow bg-white"
     >
         <div class="flex justify-between items-start mb-4">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2">
-                    <h3 class="text-lg font-medium">{stage.title}</h3>
+                    <h3 class="text-lg font-medium">{period.title}</h3>
                     <span
                         class={`flex items-center gap-1 px-3 py-1 ${statusConfig.bg} ${statusConfig.color} rounded-full text-sm font-medium`}
                     >
@@ -85,31 +85,15 @@
                         {statusConfig.label}
                     </span>
                 </div>
-                <p class="text-gray-600 text-sm">{stage.description}</p>
+                <p class="text-gray-600 text-sm">{period.description}</p>
             </div>
-
-            <!-- <div class="flex items-center gap-2 ml-4">
-                <button
-                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    aria-label="Xem chi tiết"
-                >
-                    <Eye class="w-5 h-5 text-gray-600" />
-                </button>
-                <button
-                    onclick={() => onDelete(stage.id)}
-                    class="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                    aria-label="Xóa giai đoạn"
-                >
-                    <Trash2 class="w-5 h-5 text-red-600" />
-                </button>
-            </div> -->
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div class="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar class="w-4 h-4" />
                 <span
-                    >Từ {new Date(stage.startDate).toLocaleDateString(
+                    >Từ {new Date(period.startDate).toLocaleDateString(
                         "vi-VN",
                     )}</span
                 >
@@ -117,7 +101,7 @@
             <div class="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar class="w-4 h-4" />
                 <span
-                    >Đến {new Date(stage.endDate).toLocaleDateString(
+                    >Đến {new Date(period.endDate).toLocaleDateString(
                         "vi-VN",
                     )}</span
                 >
@@ -129,7 +113,7 @@
                 <div class="flex items-center gap-2 text-gray-600">
                     <Users class="w-4 h-4" />
                     <span
-                        >Đã nộp: {stage.submittedCount}/{stage.totalStudents}</span
+                        >Đã nộp: {period.submittedCount}/{period.totalStudents}</span
                     >
                 </div>
                 <span class="text-gray-600 font-medium"
