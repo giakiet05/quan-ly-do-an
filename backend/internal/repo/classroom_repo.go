@@ -54,6 +54,7 @@ type ClassroomRepo interface {
 	//GetRoundStats(ctx context.Context, classroomID, roundID string) (*model.RoundStats, error)
 
 	IsLecturer(ctx context.Context, classroomID, lecturerID string) (bool, error)
+	IsMember(ctx context.Context, classroomID, userID string) (bool, error)
 }
 
 type classroomRepo struct {
@@ -374,6 +375,34 @@ func (c *classroomRepo) IsLecturer(ctx context.Context, classroomID, lecturerID 
 	return count > 0, nil
 }
 
+func (c *classroomRepo) IsMember(ctx context.Context, classroomID, userID string) (bool, error) {
+	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return false, apperror.ErrInvalidID
+	}
+
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return false, apperror.ErrInvalidID
+	}
+
+	filter := bson.M{
+		"_id": classroomObjectID,
+		"$or": []bson.M{
+			{"lecturer._id": userObjectID},
+			{"co_lecturers._id": userObjectID},
+			{"students._id": userObjectID},
+		},
+	}
+
+	count, err := c.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 // ==================== CO-LECTURER MANAGEMENT ====================
 
 func (c *classroomRepo) AddCoLecturer(ctx context.Context, classroomID, coLecturerID string) error {
@@ -576,7 +605,7 @@ func (c *classroomRepo) MarkWhitelistEntryAsJoined(ctx context.Context, classroo
 	now := time.Now()
 	_, err = c.collection.UpdateOne(ctx,
 		bson.M{
-			"_id": classroomOID,
+			"_id":                                 classroomOID,
 			"whitelist_student_code.student_code": studentCode,
 		},
 		bson.M{"$set": bson.M{
