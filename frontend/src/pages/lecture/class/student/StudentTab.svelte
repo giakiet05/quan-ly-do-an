@@ -6,7 +6,7 @@
   let { students } = $props<{
     students: StudentInClass[];
   }>();
-
+  console.log("Students in StudentTab:", students);
   // State quản lý tìm kiếm
   let searchTerm = $state("");
 
@@ -15,9 +15,9 @@
     students.filter((student: StudentInClass) => {
       const search = searchTerm.toLowerCase();
       return (
-        student.name.toLowerCase().includes(search) ||
-        student.studentCode.toLowerCase().includes(search) ||
-        student.email.toLowerCase().includes(search)
+        student.fullName.toLowerCase().includes(search) ||
+        student.studentCode?.toLowerCase().includes(search) ||
+        student.email?.toLowerCase().includes(search)
       );
     }),
   );
@@ -108,10 +108,10 @@
                   <div
                     class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm"
                   >
-                    {getInitials(student.name)}
+                    {getInitials(student.fullName)}
                   </div>
                   <span class="text-sm font-medium text-gray-900"
-                    >{student.name}</span
+                    >{student.fullName}</span
                   >
                 </div>
               </td>

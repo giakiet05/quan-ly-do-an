@@ -1,5 +1,7 @@
 // ==================== INTERFACES ====================
 
+import type { StudentInfo } from "../types/class";
+
 export interface WhitelistEntry {
   studentCode: string;
   joinedBy: string | null;
@@ -33,6 +35,8 @@ export interface UserInfo {
   userId: string;
   fullName: string;
   avatar: string;
+  studentCode?: string;
+  email?: string;
 }
 
 export interface UpdateClassroomRequest {
@@ -83,11 +87,7 @@ export interface ClassroomResponse {
     fullName: string;
     avatar: string;
   }>;
-  students: Array<{
-    userId: string;
-    fullName: string;
-    avatar: string;
-  }>;
+  students: Array<UserInfo>;
   projectRounds: Array<{
     id: string;
     name: string;

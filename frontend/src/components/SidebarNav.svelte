@@ -41,12 +41,6 @@
       icon: "/book-open-text.svg",
     },
     {
-      id: "students",
-      label: "Sinh viên",
-      route: "/lecture/students-management",
-      icon: "/users.svg",
-    },
-    {
       id: "notifications",
       label: "Thông báo",
       route: "/notifications",

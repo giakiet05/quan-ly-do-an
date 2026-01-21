@@ -10,12 +10,12 @@
     import StudentTab from "./student/StudentTab.svelte";
     import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
     import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
+    import ChatTab from "./ChatTab.svelte";
 
-    // Stores & Types
+    // Stores & Type
     import { projectRoundStore } from "../../../stores/project-round-store";
     import type { Announcement } from "../../../types/announcement";
     import type { ProjectRound } from "../../../types/project-round";
-    import { mockStudentInClassData } from "../../../types/student";
     import { classStore } from "../../../stores/class-store";
     import type { ClassItem } from "../../../types/class";
     import type { UpdateProjectRoundRequest } from "../../../dtos/project-dto";
@@ -34,7 +34,7 @@
             }
         }
     });
-    let students = $state(mockStudentInClassData);
+    const students = $derived(classData?.students ?? []);
 
     // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
@@ -68,9 +68,7 @@
     async function handleUpdateRound(data: any) {
         if (!editingCategory) return;
         try {
-            console.log("📝 Updating category:", data);
             const payload: UpdateProjectRoundRequest = {
-                roundId: editingCategory.id,
                 projectRoundId: editingCategory.id,
                 classroomId: classroomId,
                 name: data.name,
@@ -78,10 +76,7 @@
                 startDate: data.startDate,
                 endDate: data.endDate,
             };
-
-            console.log("📤 Sending payload:", $state.snapshot(payload));
             await projectRoundStore.editRound(payload);
-            console.log("✅ Category updated successfully");
             editingCategory = null;
         } catch (error) {
             console.error("❌ Error updating category:", error);
@@ -113,7 +108,7 @@
                             class="text-sm font-normal px-2 py-1 bg-blue-100 text-blue-700 rounded"
                         >
                             {classData.status === "active"
-                                ? "Đang hoạt động"
+                                ? "Đang chạy"
                                 : "Lưu trữ"}
                         </span>
                     </h1>
@@ -129,7 +124,7 @@
                         <div class="hidden md:block w-px h-4 bg-gray-300"></div>
 
                         <div class="flex items-center gap-2">
-                            <span class="font-medium text-gray-900"
+                            <span class="font-regular text-gray-900"
                                 >Mã mời:</span
                             >
                             <code
@@ -153,9 +148,11 @@
                         <div class="hidden md:block w-px h-4 bg-gray-300"></div>
 
                         <div class="flex items-center gap-1">
-                            <span class="font-medium text-gray-900">Sĩ số:</span
+                            <span class="font-regular text-gray-900"
+                                >Sĩ số:</span
                             >
-                            {classData.studentCount} sinh viên
+                            {classData.studentCount}/{classData.maxStudents} sinh
+                            viên
                         </div>
                     </div>
                 </div>
@@ -220,14 +217,12 @@
                         onEdit={(announcement) =>
                             (editingAnnouncement = announcement)}
                         onOpen={() => (showCreateAnnouncementModal = true)}
-                        onClose={() => (showCreateAnnouncementModal = false)}
+                        id={classroomId}
                     />
                 </div>
             {:else if activeTab === "chat"}
-                <div
-                    class="bg-white rounded-lg shadow-sm p-20 text-center text-gray-400"
-                >
-                    Tính năng Chat đang được phát triển...
+                <div class="w-full h-full min-h-[650px]">
+                    <ChatTab {classroomId} />
                 </div>
             {/if}
         </div>
