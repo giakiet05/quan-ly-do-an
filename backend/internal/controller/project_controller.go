@@ -259,7 +259,6 @@ func (c *ProjectController) CreateReportPeriod(ctx *gin.Context) {
 		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
 		return
 	}
-	user := authUser.(auth.AuthUser)
 
 	classroomID := ctx.Param("classroom_id")
 	roundID := ctx.Param("round_id")
@@ -270,7 +269,7 @@ func (c *ProjectController) CreateReportPeriod(ctx *gin.Context) {
 		return
 	}
 
-	period, err := c.projectService.CreateReportPeriod(&req, classroomID, roundID, user.ID)
+	period, err := c.projectService.CreateReportPeriod(&req, classroomID, roundID, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
