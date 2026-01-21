@@ -9,79 +9,61 @@
         Crown,
         UserCircle,
     } from "lucide-svelte";
-    import { params } from "svelte-spa-router";
-    // import StudentProfileModal from "./StudentProfileModal.svelte";
-    // let { id } = $params();
-    // --- State (Svelte 5 $state) ---
-    let showAddStudentModal = $state(false);
-    let showStudentProfileModal = $state(false);
+    import { projectStore } from "../../../../../stores/project-store";
+    import {
+        projectRoundStore,
+        currentProjectRound,
+    } from "../../../../../stores/project-round-store";
+    import { classStore } from "../../../../../stores/class-store"; // Import classStore
+    import type { ClassroomResponse } from "../../../../../dtos";
 
-    // --- Logic Functions ---
-    // function handleAddStudent(studentData: Omit<Student, "id">) {
-    //     const newStudent: Student = {
-    //         ...studentData,
-    //         id: Date.now().toString(),
-    //     };
-    //     onUpdateStudents([...students, newStudent]);
-    //     showAddStudentModal = false;
-    // }
+    let { params } = $props();
 
-    // function handleRemoveStudent(id: string) {
-    //     if (confirm("Bạn có chắc chắn muốn xóa sinh viên này khỏi đề tài?")) {
-    //         onUpdateStudents(students.filter((s) => s.id !== id));
-    //     }
-    // }
+    let classroomId: string = $derived(params.id);
+    let projectRoundId: string = $derived(params.categoryId);
+    let projectId: string = $derived(params.projectId);
 
-    // function handleSetLeader(id: string) {
-    //     const updated = students.map((s) => ({
-    //         ...s,
-    //         role: (s.id === id ? "leader" : "member") as "leader" | "member",
-    //     }));
-    //     onUpdateStudents(updated);
-    // }
+    const { selectedProject, fetchProject } = projectStore;
+    const { getRoundById } = projectRoundStore;
 
-    // function handleOpenStudentProfile(student: Student) {
-    //     selectedStudent = student;
-    //     showStudentProfileModal = true;
-    // }
+    let currentRound = $currentProjectRound;
 
-    //mock data
-    let classData = $state({
-        id: "1",
-        name: "Phát triển ứng dụng Web",
-        semester: "HK2 2023–2024",
+    let classDetails = $state<ClassroomResponse | null>(null);
+
+    $effect(() => {
+        fetchProject(classroomId, projectId);
+        getRoundById(classroomId, projectRoundId); // Fetch the current round
     });
-    let category = $state({
-        id: "1",
-        name: "Phát triển ứng dụng Web",
+
+    $effect(() => {
+        (async () => {
+            classDetails = await classStore.fetchClassById(classroomId);
+        })();
     });
-    let project = $state({
-        id: "1",
-        maxStudents: 3,
-        name: "Phát triển ứng dụng Web",
-        description:
-            "Đề tài tập trung vào việc xây dựng các ứng dụng web hiện đại sử dụng React cho frontend và Node.js cho backend. Sinh viên sẽ học cách thiết kế giao diện người dùng, quản lý trạng thái ứng dụng, và xây dựng API RESTful.",
-        status: "available",
-        tags: ["React", "Node.js", "RESTful API"],
-    });
+
+    //state
+    //students in the selected project mockdata
+
     let students = $state([
         {
             id: "1",
-            studentCode: "SV001",
             name: "Nguyễn Văn A",
-            email: "oRw5S@example.com",
-            phone: "0123456789",
+            studentCode: "B1234567",
+            email: "a@b.com",
             role: "leader",
+            phone: "0123456789",
         },
         {
             id: "2",
-            studentCode: "SV002",
             name: "Trần Thị B",
-            email: "WgFk3@example.com",
-            phone: "0123456789",
+            studentCode: "B2345678",
+            email: "b@c.com",
             role: "member",
+            phone: "0987654321",
         },
     ]);
+    let showAddStudentModal = $state(false);
+    let showStudentProfileModal = $state(false);
 </script>
 
 <div class="space-y-6">
@@ -95,10 +77,17 @@
         </button>
 
         <div class="mb-4">
-            <h1 class="text-2xl font-bold mb-2">{project.name}</h1>
+            <h1 class="text-2xl font-bold mb-2">{$selectedProject?.title}</h1>
             <p class="text-sm text-gray-500">
-                Hạng mục: {category.name} | Lớp: {classData.name} - {classData.semester}
+                Hạng mục: {currentRound?.name} | Lớp: {classDetails?.name} -
+                {classDetails?.semester}
             </p>
+            {#if classDetails}
+                <p class="text-sm text-gray-500">
+                    Giáo viên: {classDetails.lecturer.fullName} | Số lượng sinh viên:
+                    {classDetails.students.length}
+                </p>
+            {/if}
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -107,7 +96,7 @@
                     Số lượng sinh viên
                 </div>
                 <div class="text-2xl font-bold text-blue-900">
-                    {students.length}/{project.maxStudents}
+                    <!-- {students.length}/{$selectedProject?.maxMember} -->
                 </div>
             </div>
 
@@ -116,9 +105,9 @@
                     Trạng thái
                 </div>
                 <div class="text-lg font-semibold text-purple-900">
-                    {#if project.status === "available"}
+                    {#if $selectedProject?.status === "available"}
                         Còn chỗ
-                    {:else if project.status === "full"}
+                    {:else if $selectedProject?.status === "full"}
                         Đã đủ
                     {:else}
                         Đã khóa
@@ -129,14 +118,16 @@
 
         <div class="mt-4">
             <h3 class="font-bold mb-2 text-gray-800">Mô tả đề tài:</h3>
-            <p class="text-gray-600 leading-relaxed">{project.description}</p>
+            <p class="text-gray-600 leading-relaxed">
+                {$selectedProject?.description}
+            </p>
         </div>
 
-        {#if project.tags && project.tags.length > 0}
+        <!-- {#if $selectedProject?.tags && $selectedProject.tags.length > 0}
             <div class="mt-4">
                 <h3 class="text-sm font-bold mb-2 text-gray-700">Tags:</h3>
                 <div class="flex flex-wrap gap-2">
-                    {#each project.tags as tag}
+                    {#each $selectedProject.tags as tag}
                         <span
                             class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"
                         >
@@ -145,7 +136,7 @@
                     {/each}
                 </div>
             </div>
-        {/if}
+        {/if} -->
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6">

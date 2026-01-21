@@ -31,13 +31,14 @@
         searchTerm,
         fetchProjects,
         addProject,
+        addProjects,
         updateProjectData,
         removeProject,
     } = projectStore;
     //log projects
-    let showCreateModal = false;
-    let editingProject: UpdateProjectRequest | null = null;
-    let selectedProjectIds = new Set<string>();
+    let showCreateModal = $state(false);
+    let editingProject = $state<UpdateProjectRequest | null>(null);
+    let selectedProjectIds = $state<Set<string>>(new Set<string>());
 
     $effect(() => {
         fetchProjects(classroomId, projectRoundId);
@@ -45,6 +46,7 @@
 
     const handleCreateProject = async (newProject: CreateProjectRequest) => {
         await addProject({ ...newProject, classroomId, projectRoundId });
+
         showCreateModal = false;
     };
 
@@ -221,7 +223,7 @@
                                 <button
                                     onclick={() =>
                                         push(
-                                            `/lecture/my-classes/${classroomId}/projects/${project.id}`,
+                                            `/lecture/my-classes/${classroomId}/categories/${projectRoundId}/projects/${project.id}`,
                                         )}
                                     class="rounded p-2 text-blue-600 hover:bg-blue-50"
                                     title="Xem chi tiết"
