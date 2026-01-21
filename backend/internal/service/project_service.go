@@ -242,6 +242,10 @@ func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, 
 		return nil, apperror.ErrBadRequest
 	}
 
+	if endDate.Before(startDate) {
+		return nil, apperror.ErrBadRequest
+	}
+
 	round := &model.ProjectRound{
 		Name:          req.Name,
 		StartDate:     startDate,
@@ -393,6 +397,10 @@ func (p *projectService) CreateProject(req *dto.CreateProjectRequest, requesterI
 	roundOID, err := primitive.ObjectIDFromHex(req.ProjectRoundID)
 	if err != nil {
 		return nil, apperror.ErrInvalidID
+	}
+
+	if req.MinMember > req.MaxMember || req.MinMember <= 0 || req.MaxMember <= 0 {
+		return nil, apperror.ErrBadRequest
 	}
 
 	project := &model.Project{
@@ -551,6 +559,10 @@ func (p *projectService) CreateReportPeriod(req *dto.CreateReportPeriodRequest, 
 		return nil, apperror.ErrBadRequest
 	}
 
+	if endDate.Before(startDate) {
+		return nil, apperror.ErrBadRequest
+	}
+
 	period := &model.ReportPeriod{
 		ID:          primitive.NewObjectID(),
 		Title:       req.Title,
@@ -664,7 +676,7 @@ func (p *projectService) UpdateReportPeriod(req *dto.UpdateReportPeriodRequest, 
 		period.EndDate = endDate
 	}
 
-	err = p.projectRepo.ReplaceReportPeriod(ctx, period)
+	err = p.projectRepo.ReplaceReportPeriod(ctx, req.ClassroomID, req.ProjectRoundID, period)
 	if err != nil {
 		return nil, err
 	}

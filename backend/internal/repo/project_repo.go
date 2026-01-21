@@ -40,7 +40,7 @@ type ProjectRepo interface {
 	CreateReportPeriods(ctx context.Context, classroomID, roundID string, reportPeriods []model.ReportPeriod) error
 	GetReportPeriodByID(ctx context.Context, classroomID, roundID, reportPeriodID string) (*model.ReportPeriod, error)
 	GetReportPeriodsByRoundID(ctx context.Context, classroomID, roundID string) ([]model.ReportPeriod, error)
-	ReplaceReportPeriod(ctx context.Context, reportPeriod *model.ReportPeriod) error
+	ReplaceReportPeriod(ctx context.Context, classroomID, roundID string, reportPeriod *model.ReportPeriod) error
 	DeleteReportPeriod(ctx context.Context, classroomID string, roundID string, reportPeriodID string) error
 
 	ReportPeriodExists(ctx context.Context, classroomID string, roundID string, periodID string) (bool, error)
@@ -135,7 +135,7 @@ func (p *projectRepo) GetProjectRoundByID(ctx context.Context, classroomID, roun
 	// Aggregation pipeline để lấy round cụ thể
 	pipeline := []bson.M{
 		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "project_rounds"},
+		{"$unwind": "$project_rounds"},
 		{"$match": bson.M{"project_rounds._id": roundObjectID}},
 		{"$replaceRoot": bson.M{"newRoot": "$project_rounds"}},
 	}
@@ -200,7 +200,7 @@ func (p *projectRepo) ListProjectRounds(ctx context.Context, classroomID string,
 
 	pipeline := []bson.M{
 		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "project_rounds"},
+		{"$unwind": "$project_rounds"},
 		{"$sort": bson.D{{Key: "project_rounds.created_at", Value: -1}}},
 		{"$skip": skip},
 		{"$limit": pageSize},
@@ -221,7 +221,7 @@ func (p *projectRepo) ListProjectRounds(ctx context.Context, classroomID string,
 	// COUNT TOTAL (pipeline riêng KHÔNG có skip/limit)
 	countPipeline := []bson.M{
 		{"$match": bson.M{"_id": classroomObjectID}},
-		{"$unwind": "project_rounds"},
+		{"$unwind": "$project_rounds"},
 		{"$count": "total"},
 	}
 
@@ -308,9 +308,9 @@ func (p *projectRepo) GetJustOpenReportPeriods(ctx context.Context, now time.Tim
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$unwind", Value: "project_rounds"}},
+		{{Key: "$unwind", Value: "$project_rounds"}},
 
-		{{Key: "$unwind", Value: "project_rounds.report_periods"}},
+		{{Key: "$unwind", Value: "$project_rounds.report_periods"}},
 
 		{{Key: "$match", Value: bson.M{
 			"project_rounds.report_periods.start_date": bson.M{
@@ -354,9 +354,9 @@ func (p *projectRepo) GetNearDeadlineReportPeriods(ctx context.Context, now time
 	endOfDeadlineDay := startOfToday.AddDate(0, 0, daysBeforeDeadline).Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$unwind", Value: "project_rounds"}},
+		{{Key: "$unwind", Value: "$project_rounds"}},
 
-		{{Key: "$unwind", Value: "project_rounds.report_periods"}},
+		{{Key: "$unwind", Value: "$project_rounds.report_periods"}},
 
 		{{Key: "$match", Value: bson.M{
 			"project_rounds.report_periods.end_date": bson.M{
@@ -404,7 +404,7 @@ func (p *projectRepo) GetJustOpenProjectRounds(
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$unwind", Value: "project_rounds"}},
+		{{Key: "$unwind", Value: "$project_rounds"}},
 
 		{{Key: "$match", Value: bson.M{
 			"project_rounds.start_date": bson.M{
@@ -447,7 +447,7 @@ func (p *projectRepo) GetNearDeadlineProjectRounds(ctx context.Context, now time
 	endOfDeadlineDay := startOfToday.AddDate(0, 0, daysBeforeDeadline).Add(24 * time.Hour)
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$unwind", Value: "project_rounds"}},
+		{{Key: "$unwind", Value: "$project_rounds"}},
 
 		{{Key: "$match", Value: bson.M{
 			"project_rounds.end_date": bson.M{
@@ -680,7 +680,6 @@ func (p *projectRepo) GetReportPeriodByID(
 	ctx context.Context,
 	classroomID, roundID, reportPeriodID string,
 ) (*model.ReportPeriod, error) {
-
 	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
 		return nil, err
@@ -698,16 +697,16 @@ func (p *projectRepo) GetReportPeriodByID(
 		{{Key: "$match", Value: bson.M{
 			"_id": classroomOID,
 		}}},
-		{{Key: "$unwind", Value: "project_rounds"}},
+		{{Key: "$unwind", Value: "$project_rounds"}},
 		{{Key: "$match", Value: bson.M{
 			"project_rounds._id": roundOID,
 		}}},
-		{{Key: "$unwind", Value: "project_rounds.report_periods"}},
+		{{Key: "$unwind", Value: "$project_rounds.report_periods"}},
 		{{Key: "$match", Value: bson.M{
 			"project_rounds.report_periods._id": reportPeriodOID,
 		}}},
 		{{Key: "$replaceRoot", Value: bson.M{
-			"newRoot": "project_rounds.report_periods",
+			"newRoot": "$project_rounds.report_periods",
 		}}},
 	}
 
@@ -718,6 +717,9 @@ func (p *projectRepo) GetReportPeriodByID(
 	defer cursor.Close(ctx)
 
 	if !cursor.Next(ctx) {
+		if err := cursor.Err(); err != nil {
+			return nil, err
+		}
 		return nil, apperror.ErrNotFound
 	}
 
@@ -754,9 +756,9 @@ func (p *projectRepo) GetReportPeriodsByRoundID(
 		ctx,
 		bson.M{"_id": classroomOID},
 		options.FindOne().SetProjection(bson.M{
-			"rounds": bson.M{
+			"project_rounds": bson.M{
 				"$filter": bson.M{
-					"input": "project_rounds",
+					"input": "$project_rounds",
 					"as":    "r",
 					"cond": bson.M{
 						"$eq": []interface{}{"$$r._id", roundOID},
@@ -780,22 +782,50 @@ func (p *projectRepo) GetReportPeriodsByRoundID(
 	return result.Rounds[0].ReportPeriods, nil
 }
 
-func (p *projectRepo) ReplaceReportPeriod(ctx context.Context, reportPeriod *model.ReportPeriod) error {
-	// find classroom/round that contains this report period and replace it
-	filter := bson.M{"project_rounds.report_periods._id": reportPeriod.ID}
-	update := bson.M{"$set": bson.M{"project_rounds.$[r].report_periods.$[p]": reportPeriod}}
-	arrayFilters := options.ArrayFilters{Filters: []interface{}{
-		bson.M{"p._id": reportPeriod.ID},
-	}}
+func (p *projectRepo) ReplaceReportPeriod(
+	ctx context.Context,
+	classroomID, roundID string,
+	reportPeriod *model.ReportPeriod,
+) error {
+
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return err
+	}
+
+	roundOID, err := primitive.ObjectIDFromHex(roundID)
+	if err != nil {
+		return err
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"project_rounds.$.report_periods.$[p]": reportPeriod,
+		},
+	}
+
+	arrayFilters := options.ArrayFilters{
+		Filters: []interface{}{
+			bson.M{"p._id": reportPeriod.ID},
+		},
+	}
+
 	opts := options.Update().SetArrayFilters(arrayFilters)
+
+	filter := bson.M{
+		"_id":                classroomOID,
+		"project_rounds._id": roundOID,
+	}
 
 	res, err := p.classroomCollection.UpdateOne(ctx, filter, update, opts)
 	if err != nil {
 		return err
 	}
+
 	if res.ModifiedCount == 0 {
 		return apperror.ErrNotFound
 	}
+
 	return nil
 }
 
