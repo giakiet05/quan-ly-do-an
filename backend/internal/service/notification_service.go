@@ -612,7 +612,7 @@ func (s *notificationService) GetNotificationsByClassroomID(
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	ok, err := s.classroomRepo.IsMember(ctx, classroomID, requesterID)
+	ok, err := s.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
 	if err != nil {
 		return nil, apperror.ErrInternal
 	}

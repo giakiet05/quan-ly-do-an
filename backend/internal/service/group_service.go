@@ -40,6 +40,8 @@ type GroupService interface {
 	CreateReportFeedback(req *dto.CreateReportFeedbackRequest, requesterID string) (*model.ReportFeedback, error)
 	UpdateReportFeedback(req *dto.UpdateReportFeedbackRequest, groupID string, reportID string) error
 	DeleteReportFeedback(groupID string, reportID string, requesterID string) error
+
+	AddMemberToGroup(groupID string, userID string) error
 }
 
 type groupService struct {
@@ -96,11 +98,11 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		return nil, err
 	}
 
-	// Initialize members slice with leader
 	members := []model.UserInfo{
 		{
-			ID:       requesterObjectID,
+			ID:       leader.ID,
 			FullName: leader.FullName,
+			Email:    leader.Email,
 			Avatar:   leader.Avatar,
 		},
 	}
@@ -139,14 +141,19 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		return nil, apperror.ErrProjectGroupLimitReached
 	}
 
-	// Create group object
+	channel, err := g.channelRepo.CreateGroupChannel(ctx, requesterID, members)
+	if err != nil {
+		return nil, err
+	}
+
 	group := &model.Group{
-		ClassroomID: classroomObjectID,
-		ProjectID:   projectObjectID,
-		LeaderID:    requesterObjectID,
-		Members:     members,
-		Tasks:       []model.Task{},
-		Reports:     []model.Report{},
+		ClassroomID:    classroomObjectID,
+		ProjectID:      projectObjectID,
+		LeaderID:       requesterObjectID,
+		GroupChannelID: &channel.ID,
+		Members:        members,
+		Tasks:          []model.Task{},
+		Reports:        []model.Report{},
 		Setting: model.GroupSetting{
 			AllowJoinRequest: true,
 		},
@@ -414,12 +421,7 @@ func (g *groupService) AcceptJoinRequest(req *dto.UpdateJoinGroupRequest, reques
 		return apperror.ErrBadRequest
 	}
 
-	user, err := g.userRepo.GetByID(ctx, joinRequest.UserID.Hex())
-	if err != nil {
-		return err
-	}
-
-	err = g.groupRepo.AddMember(ctx, req.GroupID, user)
+	err = g.AddMemberToGroup(req.GroupID, joinRequest.UserID.Hex())
 	if err != nil {
 		return err
 	}
@@ -635,14 +637,7 @@ func (g *groupService) AcceptInvitation(req *dto.UpdateGroupInvitationRequest, r
 		return apperror.ErrBadRequest
 	}
 
-	// Get user info
-	user, err := g.userRepo.GetByID(ctx, requesterID)
-	if err != nil {
-		return err
-	}
-
-	// Add user to group
-	err = g.groupRepo.AddMember(ctx, req.GroupID, user)
+	err = g.AddMemberToGroup(req.GroupID, requesterID)
 	if err != nil {
 		return err
 	}
@@ -1440,4 +1435,31 @@ func (g *groupService) DeleteReportFeedback(groupID string, reportID string, req
 	}
 
 	return g.groupRepo.Update(ctx, filter, update)
+}
+
+func (g *groupService) AddMemberToGroup(groupID string, userID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	user, err := g.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	group, err := g.groupRepo.GetByID(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	err = g.groupRepo.AddMember(ctx, groupID, user)
+	if err != nil {
+		return err
+	}
+
+	err = g.channelRepo.AddMember(ctx, group.GroupChannelID.Hex(), userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
