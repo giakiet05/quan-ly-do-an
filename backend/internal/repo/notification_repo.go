@@ -14,9 +14,12 @@ import (
 type NotificationRepo interface {
 	Create(ctx context.Context, notification *model.Notification) (*model.Notification, error)
 	GetByRecipientID(ctx context.Context, recipientID string, page, pageSize int) ([]*model.Notification, int64, error)
+	GetByClassroomID(ctx context.Context, classroomID string, page, pageSize int) ([]*model.Notification, int64, error)
 	MarkAsRead(ctx context.Context, notificationID, recipientID string) error
 	MarkAllAsRead(ctx context.Context, recipientID string) (int64, error)
 	CountUnread(ctx context.Context, recipientID string) (int64, error)
+	Delete(ctx context.Context, notificationID string) error
+	IsOwnerNotification(ctx context.Context, notificationID, recipientID string) (bool, error)
 }
 
 type notificationRepo struct {
@@ -47,6 +50,44 @@ func (r *notificationRepo) GetByRecipientID(ctx context.Context, recipientID str
 	}
 
 	filter := bson.M{"recipient_id": recipientObjID}
+	skip := (page - 1) * pageSize
+
+	findOptions := options.Find().
+		SetSort(bson.D{{Key: "created_at", Value: -1}}).
+		SetSkip(int64(skip)).
+		SetLimit(int64(pageSize))
+
+	cursor, err := r.notificationCollection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var notifications []*model.Notification
+	if err := cursor.All(ctx, &notifications); err != nil {
+		return nil, 0, err
+	}
+
+	total, err := r.notificationCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return notifications, total, nil
+}
+
+func (r *notificationRepo) GetByClassroomID(
+	ctx context.Context,
+	classroomID string,
+	page, pageSize int,
+) ([]*model.Notification, int64, error) {
+	filter := bson.M{
+		"metadata.classroom_id": bson.M{
+			"$exists": true,
+			"$eq":     classroomID,
+		},
+	}
+
 	skip := (page - 1) * pageSize
 
 	findOptions := options.Find().
@@ -137,4 +178,47 @@ func (r *notificationRepo) CountUnread(ctx context.Context, recipientID string) 
 	}
 
 	return r.notificationCollection.CountDocuments(ctx, filter)
+}
+
+func (r *notificationRepo) Delete(ctx context.Context, notificationID string) error {
+	notificationObjID, err := primitive.ObjectIDFromHex(notificationID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": notificationObjID}
+
+	result, err := r.notificationCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+func (r *notificationRepo) IsOwnerNotification(ctx context.Context, notificationID, recipientID string) (bool, error) {
+	notificationObjID, err := primitive.ObjectIDFromHex(notificationID)
+	if err != nil {
+		return false, err
+	}
+	recipientObjID, err := primitive.ObjectIDFromHex(recipientID)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{
+		"_id":          notificationObjID,
+		"recipient_id": recipientObjID,
+	}
+
+	count, err := r.notificationCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
