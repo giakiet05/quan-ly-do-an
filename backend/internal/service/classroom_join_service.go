@@ -50,11 +50,17 @@ func (s *classroomJoinService) PreviewClassroom(code string) (*dto.ClassroomPrev
 		return nil, err
 	}
 
+	// Get lecturer info
+	lecturer, err := s.userRepo.GetByID(ctx, classroom.LecturerID.Hex())
+	if err != nil {
+		return nil, err
+	}
+
 	return &dto.ClassroomPreviewResponse{
 		ID:           classroom.ID.Hex(),
 		Name:         classroom.Name,
-		Lecturer:     classroom.Lecturer.FullName,
-		StudentCount: len(classroom.Students),
+		Lecturer:     lecturer.FullName,
+		StudentCount: len(classroom.StudentIDs),
 		MaxStudents:  classroom.MaxStudents,
 	}, nil
 }
@@ -93,36 +99,35 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 		}
 	}
 
-	// Only validate student code if user has one (skip for lecturers/TAs)
-	if user.StudentCode != nil && *user.StudentCode != "" {
-		// Validate student code in whitelist if whitelist is enabled
-		if classroom.EnableWhitelist && len(classroom.WhitelistStudentCode) > 0 {
-			if !containsWhitelistEntry(classroom.WhitelistStudentCode, *user.StudentCode) {
-				return nil, apperror.ErrStudentCodeNotInWhitelist
-			}
-
-			// Check if student code has already been claimed in whitelist
-			isClaimed, err := s.classroomRepo.IsStudentCodeClaimedInWhitelist(ctx, classroom.ID.Hex(), *user.StudentCode)
-			if err != nil {
-				return nil, err
-			}
-			if isClaimed {
-				return nil, apperror.ErrStudentCodeAlreadyUsed
-			}
+	// Validate whitelist if enabled
+	if classroom.EnableWhitelist {
+		// User must have student_code when whitelist is enabled
+		if user.StudentCode == nil || *user.StudentCode == "" {
+			return nil, apperror.ErrStudentCodeNotInWhitelist
 		}
 
-		// Check student code not already used in classroom (fallback check)
-		exists, err := s.classroomRepo.StudentCodeExistsInClassroom(ctx, classroom.ID.Hex(), *user.StudentCode)
+		// Whitelist must not be empty when whitelist is enabled
+		if len(classroom.WhitelistStudentCode) == 0 {
+			return nil, apperror.ErrStudentCodeNotInWhitelist
+		}
+
+		// Check if student_code is in whitelist
+		if !containsWhitelistEntry(classroom.WhitelistStudentCode, *user.StudentCode) {
+			return nil, apperror.ErrStudentCodeNotInWhitelist
+		}
+
+		// Check if student code has already been claimed in whitelist
+		isClaimed, err := s.classroomRepo.IsStudentCodeClaimedInWhitelist(ctx, classroom.ID.Hex(), *user.StudentCode)
 		if err != nil {
 			return nil, err
 		}
-		if exists {
+		if isClaimed {
 			return nil, apperror.ErrStudentCodeAlreadyUsed
 		}
 	}
 
 	// Check classroom capacity
-	if classroom.MaxStudents > 0 && len(classroom.Students) >= classroom.MaxStudents {
+	if classroom.MaxStudents > 0 && len(classroom.StudentIDs) >= classroom.MaxStudents {
 		return nil, apperror.ErrClassroomFull
 	}
 
@@ -155,15 +160,8 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 
 	// Auto-approve or create pending request
 	if classroom.AutoApprove {
-		// Add student directly
-		studentInfo := model.UserInfo{
-			ID:          user.ID,
-			FullName:    user.FullName,
-			Avatar:      user.Avatar,
-			StudentCode: user.StudentCode,
-		}
-
-		err = s.classroomRepo.AddStudent(ctx, classroom.ID.Hex(), studentInfo)
+		// Add student directly using user ID only
+		err = s.classroomRepo.AddStudent(ctx, classroom.ID.Hex(), userID)
 		if err != nil {
 			return nil, err
 		}
@@ -300,19 +298,12 @@ func (s *classroomJoinService) ApproveRequest(requestID, reviewerID string) erro
 	}
 
 	// Check classroom capacity
-	if classroom.MaxStudents > 0 && len(classroom.Students) >= classroom.MaxStudents {
+	if classroom.MaxStudents > 0 && len(classroom.StudentIDs) >= classroom.MaxStudents {
 		return apperror.ErrClassroomFull
 	}
 
-	// Add student to classroom
-	studentInfo := model.UserInfo{
-		ID:          user.ID,
-		FullName:    user.FullName,
-		Avatar:      user.Avatar,
-		StudentCode: user.StudentCode,
-	}
-
-	err = s.classroomRepo.AddStudent(ctx, classroom.ID.Hex(), studentInfo)
+	// Add student to classroom using user ID only
+	err = s.classroomRepo.AddStudent(ctx, classroom.ID.Hex(), request.UserID.Hex())
 	if err != nil {
 		return err
 	}

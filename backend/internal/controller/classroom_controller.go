@@ -41,13 +41,13 @@ func (c *ClassroomController) CreateClassroom(ctx *gin.Context) {
 	}
 
 	// Call service
-	classroom, err := c.classroomService.CreateClassroom(req, user.ID)
+	response, err := c.classroomService.CreateClassroom(req, user.ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
-	dto.SendSuccess(ctx, http.StatusCreated, "Classroom created successfully", dto.FromClassroom(classroom))
+	dto.SendSuccess(ctx, http.StatusCreated, "Classroom created successfully", response)
 }
 
 // GetClassroomByID gets classroom by ID
@@ -55,13 +55,13 @@ func (c *ClassroomController) CreateClassroom(ctx *gin.Context) {
 func (c *ClassroomController) GetClassroomByID(ctx *gin.Context) {
 	classroomID := ctx.Param("id")
 
-	classroom, err := c.classroomService.GetClassroomByID(classroomID)
+	response, err := c.classroomService.GetClassroomByID(classroomID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
-	dto.SendSuccess(ctx, http.StatusOK, "Classroom retrieved", dto.FromClassroom(classroom))
+	dto.SendSuccess(ctx, http.StatusOK, "Classroom retrieved", response)
 }
 
 // GetMyClassrooms gets classrooms where user is lecturer
@@ -94,14 +94,14 @@ func (c *ClassroomController) GetMyClassrooms(ctx *gin.Context) {
 	}
 
 	// Call service
-	classrooms, total, err := c.classroomService.GetClassroomsByLecturer(user.ID, query.Page, query.PageSize)
+	responses, total, err := c.classroomService.GetClassroomsByLecturer(user.ID, query.Page, query.PageSize)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
 	data := gin.H{
-		"classrooms": dto.FromClassrooms(classrooms),
+		"classrooms": responses,
 		"total":      total,
 		"page":       query.Page,
 		"page_size":  query.PageSize,
@@ -140,14 +140,14 @@ func (c *ClassroomController) GetJoinedClassrooms(ctx *gin.Context) {
 	}
 
 	// Call service
-	classrooms, total, err := c.classroomService.GetClassroomsByStudent(user.ID, query.Page, query.PageSize)
+	responses, total, err := c.classroomService.GetClassroomsByStudent(user.ID, query.Page, query.PageSize)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
 	data := gin.H{
-		"classrooms": dto.FromClassrooms(classrooms),
+		"classrooms": responses,
 		"total":      total,
 		"page":       query.Page,
 		"page_size":  query.PageSize,

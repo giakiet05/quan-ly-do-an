@@ -26,13 +26,13 @@ type ClassroomRepo interface {
 	GetByStudent(ctx context.Context, studentID string, page, pageSize int) ([]model.Classroom, int64, error)
 
 	// Student management
-	AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error
+	AddStudent(ctx context.Context, classroomID, studentID string) error
 	RemoveStudent(ctx context.Context, classroomID, studentID string) error
 	IsStudentInClassroom(ctx context.Context, classroomID, studentID string) (bool, error)
 	GetStudentIDsByClassroomID(ctx context.Context, classroomID string) ([]string, error)
 
 	// CoLecturer management
-	AddCoLecturer(ctx context.Context, classroomID string, coLecturer model.UserInfo) error
+	AddCoLecturer(ctx context.Context, classroomID, coLecturerID string) error
 	RemoveCoLecturer(ctx context.Context, classroomID, coLecturerID string) error
 	IsCoLecturer(ctx context.Context, classroomID, userID string) (bool, error)
 	IsLecturerOrCoLecturer(ctx context.Context, classroomID, userID string) (bool, error)
@@ -45,6 +45,7 @@ type ClassroomRepo interface {
 	RemoveFromWhitelistStudentCode(ctx context.Context, classroomID string, studentCodes []string) error
 	ClearWhitelistStudentCode(ctx context.Context, classroomID string) error
 	MarkWhitelistEntryAsJoined(ctx context.Context, classroomID, studentCode string, userID primitive.ObjectID) error
+	ResetWhitelistEntry(ctx context.Context, classroomID, studentCode string) error
 	IsStudentCodeClaimedInWhitelist(ctx context.Context, classroomID, studentCode string) (bool, error)
 	RegenerateInvitationCode(ctx context.Context, classroomID, newCode string) error
 
@@ -173,7 +174,7 @@ func (c *classroomRepo) GetByLecturer(ctx context.Context, lecturerID string, pa
 	}
 
 	filter := bson.M{
-		"lecturer._id": lecturerObjectID,
+		"lecturer_id": lecturerObjectID,
 	}
 
 	skip := int64((page - 1) * pageSize)
@@ -209,7 +210,7 @@ func (c *classroomRepo) GetByStudent(ctx context.Context, studentID string, page
 	}
 
 	filter := bson.M{
-		"students._id": studentObjectID,
+		"student_ids": studentObjectID,
 	}
 
 	log.Printf("🔍 GetByStudent - studentID: %s, filter: %+v", studentID, filter)
@@ -243,14 +244,19 @@ func (c *classroomRepo) GetByStudent(ctx context.Context, studentID string, page
 	return classrooms, total, nil
 }
 
-func (c *classroomRepo) AddStudent(ctx context.Context, classroomID string, student model.UserInfo) error {
+func (c *classroomRepo) AddStudent(ctx context.Context, classroomID, studentID string) error {
 	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
 		return apperror.ErrInvalidID
 	}
 
+	studentObjectID, err := primitive.ObjectIDFromHex(studentID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
 	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{"$addToSet": bson.M{"students": student}}
+	update := bson.M{"$addToSet": bson.M{"student_ids": studentObjectID}}
 
 	result, err := c.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
@@ -276,7 +282,7 @@ func (c *classroomRepo) RemoveStudent(ctx context.Context, classroomID, studentI
 	}
 
 	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{"$pull": bson.M{"students": bson.M{"_id": studentObjectID}}}
+	update := bson.M{"$pull": bson.M{"student_ids": studentObjectID}}
 
 	result, err := c.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
@@ -302,8 +308,8 @@ func (c *classroomRepo) IsStudentInClassroom(ctx context.Context, classroomID, s
 	}
 
 	filter := bson.M{
-		"_id":          classroomObjectID,
-		"students._id": studentObjectID,
+		"_id":         classroomObjectID,
+		"student_ids": studentObjectID,
 	}
 
 	count, err := c.collection.CountDocuments(ctx, filter)
@@ -321,13 +327,13 @@ func (c *classroomRepo) GetStudentIDsByClassroomID(ctx context.Context, classroo
 	}
 
 	var result struct {
-		Students []model.UserInfo `bson:"students"`
+		StudentIDs []primitive.ObjectID `bson:"student_ids"`
 	}
 
 	err = c.collection.FindOne(
 		ctx,
 		bson.M{"_id": classroomObjectID},
-		options.FindOne().SetProjection(bson.M{"students": 1}),
+		options.FindOne().SetProjection(bson.M{"student_ids": 1}),
 	).Decode(&result)
 
 	if err != nil {
@@ -337,9 +343,9 @@ func (c *classroomRepo) GetStudentIDsByClassroomID(ctx context.Context, classroo
 		return nil, err
 	}
 
-	studentIDs := make([]string, 0, len(result.Students))
-	for _, student := range result.Students {
-		studentIDs = append(studentIDs, student.ID.Hex())
+	studentIDs := make([]string, 0, len(result.StudentIDs))
+	for _, studentID := range result.StudentIDs {
+		studentIDs = append(studentIDs, studentID.Hex())
 	}
 
 	return studentIDs, nil
@@ -357,8 +363,8 @@ func (c *classroomRepo) IsLecturer(ctx context.Context, classroomID, lecturerID 
 	}
 
 	filter := bson.M{
-		"_id":          classroomObjectID,
-		"lecturer._id": lecturerObjectID,
+		"_id":         classroomObjectID,
+		"lecturer_id": lecturerObjectID,
 	}
 
 	count, err := c.collection.CountDocuments(ctx, filter)
@@ -399,14 +405,19 @@ func (c *classroomRepo) IsMember(ctx context.Context, classroomID, userID string
 
 // ==================== CO-LECTURER MANAGEMENT ====================
 
-func (c *classroomRepo) AddCoLecturer(ctx context.Context, classroomID string, coLecturer model.UserInfo) error {
+func (c *classroomRepo) AddCoLecturer(ctx context.Context, classroomID, coLecturerID string) error {
 	classroomObjectID, err := primitive.ObjectIDFromHex(classroomID)
 	if err != nil {
 		return apperror.ErrInvalidID
 	}
 
+	coLecturerObjectID, err := primitive.ObjectIDFromHex(coLecturerID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
 	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{"$addToSet": bson.M{"co_lecturers": coLecturer}}
+	update := bson.M{"$addToSet": bson.M{"co_lecturer_ids": coLecturerObjectID}}
 
 	result, err := c.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
@@ -432,7 +443,7 @@ func (c *classroomRepo) RemoveCoLecturer(ctx context.Context, classroomID, coLec
 	}
 
 	filter := bson.M{"_id": classroomObjectID}
-	update := bson.M{"$pull": bson.M{"co_lecturers": bson.M{"_id": coLecturerObjectID}}}
+	update := bson.M{"$pull": bson.M{"co_lecturer_ids": coLecturerObjectID}}
 
 	result, err := c.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
@@ -458,8 +469,8 @@ func (c *classroomRepo) IsCoLecturer(ctx context.Context, classroomID, userID st
 	}
 
 	filter := bson.M{
-		"_id":              classroomObjectID,
-		"co_lecturers._id": userObjectID,
+		"_id":             classroomObjectID,
+		"co_lecturer_ids": userObjectID,
 	}
 
 	count, err := c.collection.CountDocuments(ctx, filter)
@@ -484,8 +495,8 @@ func (c *classroomRepo) IsLecturerOrCoLecturer(ctx context.Context, classroomID,
 	filter := bson.M{
 		"_id": classroomObjectID,
 		"$or": []bson.M{
-			{"lecturer._id": userObjectID},
-			{"co_lecturers._id": userObjectID},
+			{"lecturer_id": userObjectID},
+			{"co_lecturer_ids": userObjectID},
 		},
 	}
 
@@ -512,20 +523,10 @@ func (c *classroomRepo) GetByInvitationCode(ctx context.Context, code string) (*
 }
 
 func (c *classroomRepo) StudentCodeExistsInClassroom(ctx context.Context, classroomID, studentCode string) (bool, error) {
-	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
-	if err != nil {
-		return false, apperror.ErrInvalidID
-	}
-
-	count, err := c.collection.CountDocuments(ctx, bson.M{
-		"_id":                   classroomOID,
-		"students.student_code": studentCode,
-	})
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
+	// This method is no longer needed since we don't store student_code in classroom
+	// Student code validation should be done through user lookup instead
+	// Keeping this as a placeholder or can be removed
+	return false, nil
 }
 
 // UpdateWhitelistStudentCode replaces the entire whitelist with new entries
@@ -610,6 +611,27 @@ func (c *classroomRepo) MarkWhitelistEntryAsJoined(ctx context.Context, classroo
 		bson.M{"$set": bson.M{
 			"whitelist_student_code.$.joined_by": userID,
 			"whitelist_student_code.$.joined_at": now,
+		}},
+	)
+
+	return err
+}
+
+// ResetWhitelistEntry resets a whitelist entry by clearing joined_by and joined_at
+func (c *classroomRepo) ResetWhitelistEntry(ctx context.Context, classroomID, studentCode string) error {
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return apperror.ErrInvalidID
+	}
+
+	_, err = c.collection.UpdateOne(ctx,
+		bson.M{
+			"_id": classroomOID,
+			"whitelist_student_code.student_code": studentCode,
+		},
+		bson.M{"$set": bson.M{
+			"whitelist_student_code.$.joined_by": nil,
+			"whitelist_student_code.$.joined_at": nil,
 		}},
 	)
 

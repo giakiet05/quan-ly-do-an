@@ -31,15 +31,15 @@ type AttachmentUpload struct {
 // ===== RESPONSE DTOs =====
 
 type ClassPostResponse struct {
-	ID          string                 `json:"id"`
-	ClassroomID string                 `json:"classroom_id"`
-	Author      model.UserInfoResponse `json:"author"`
-	Title       string                 `json:"title"`
-	Content     string                 `json:"content"`
-	Attachments []model.Attachment     `json:"attachments,omitempty"`
-	IsPinned    bool                   `json:"is_pinned"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID          string             `json:"id"`
+	ClassroomID string             `json:"classroom_id"`
+	Author      UserInfoResponse   `json:"author"`
+	Title       string             `json:"title"`
+	Content     string             `json:"content"`
+	Attachments []model.Attachment `json:"attachments,omitempty"`
+	IsPinned    bool               `json:"is_pinned"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 func FromClassPost(post *model.ClassPost) ClassPostResponse {
@@ -49,10 +49,12 @@ func FromClassPost(post *model.ClassPost) ClassPostResponse {
 	return ClassPostResponse{
 		ID:          post.ID.Hex(),
 		ClassroomID: post.ClassroomID.Hex(),
-		Author: model.UserInfoResponse{
-			UserID:   post.Author.ID.Hex(),
-			FullName: post.Author.FullName,
-			Avatar:   post.Author.Avatar,
+		Author: UserInfoResponse{
+			UserID:      post.Author.ID.Hex(),
+			FullName:    post.Author.FullName,
+			Email:       post.Author.Email,
+			Avatar:      post.Author.Avatar,
+			StudentCode: post.Author.StudentCode,
 		},
 		Title:       post.Title,
 		Content:     post.Content,

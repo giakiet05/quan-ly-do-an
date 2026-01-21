@@ -57,25 +57,24 @@ type UpdateWhitelistStudentCodeRequest struct {
 // ===== RESPONSE DTOs =====
 
 type ClassroomResponse struct {
-	ID                     string                   `json:"id"`
-	Name                   string                   `json:"name"`
-	Description            string                   `json:"description"`
-	Avatar                 string                   `json:"avatar"`
-	Semester               string                   `json:"semester"`
-	Year                   int                      `json:"year"`
-	Status                 string                   `json:"status"`
-	Lecturer               model.UserInfoResponse   `json:"lecturer"`
-	CoLecturers            []model.UserInfoResponse `json:"co_lecturers"`
-	Students               []model.UserInfoResponse `json:"students"`
-	GeneralChannelID       string                   `json:"general_channel_id"`
-	InvitationCode         string                   `json:"invitation_code"`
-	MaxStudents            int                      `json:"max_students"`
-	AutoApprove            bool                     `json:"auto_approve"`
+	ID                     string               `json:"id"`
+	Name                   string               `json:"name"`
+	Description            string               `json:"description"`
+	Avatar                 string               `json:"avatar"`
+	Semester               string               `json:"semester"`
+	Year                   int                  `json:"year"`
+	Status                 string               `json:"status"`
+	Lecturer               UserInfoResponse     `json:"lecturer"`
+	CoLecturers            []UserInfoResponse   `json:"co_lecturers"`
+	Students               []UserInfoResponse   `json:"students"`
+	InvitationCode         string               `json:"invitation_code"`
+	MaxStudents            int                  `json:"max_students"`
+	AutoApprove            bool                 `json:"auto_approve"`
 	WhitelistStudentCode   []WhitelistEntryResponse `json:"whitelist_student_code,omitempty"`
-	AllowedEmailDomains    []string                 `json:"allowed_email_domains,omitempty"`
-	EnableWhitelist        bool                     `json:"enable_whitelist"`
-	EnableEmailRestriction bool                     `json:"enable_email_restriction"`
-	CreatedAt              time.Time                `json:"created_at"`
+	AllowedEmailDomains    []string             `json:"allowed_email_domains,omitempty"`
+	EnableWhitelist        bool                 `json:"enable_whitelist"`
+	EnableEmailRestriction bool                 `json:"enable_email_restriction"`
+	CreatedAt              time.Time            `json:"created_at"`
 }
 
 type RegenerateCodeResponse struct {
@@ -85,27 +84,28 @@ type RegenerateCodeResponse struct {
 
 // ===== CONVERTERS =====
 
-func FromClassroom(classroom *model.Classroom) ClassroomResponse {
+func FromClassroomWithUsers(classroom *model.Classroom, lecturer *model.User, coLecturers []*model.User, students []*model.User) ClassroomResponse {
 	if classroom == nil {
 		return ClassroomResponse{}
 	}
 
-	coLecturers := make([]model.UserInfoResponse, 0, len(classroom.CoLecturers))
-	for _, coLecturer := range classroom.CoLecturers {
-		coLecturers = append(coLecturers, model.UserInfoResponse{
-			UserID:   coLecturer.ID.Hex(),
-			FullName: coLecturer.FullName,
-			Avatar:   coLecturer.Avatar,
-		})
+	var lecturerInfo UserInfoResponse
+	if lecturer != nil {
+		lecturerInfo = ToUserInfoResponse(lecturer)
 	}
 
-	students := make([]model.UserInfoResponse, 0, len(classroom.Students))
-	for _, student := range classroom.Students {
-		students = append(students, model.UserInfoResponse{
-			UserID:   student.ID.Hex(),
-			FullName: student.FullName,
-			Avatar:   student.Avatar,
-		})
+	coLecturersInfo := make([]UserInfoResponse, 0, len(coLecturers))
+	for _, coLecturer := range coLecturers {
+		if coLecturer != nil {
+			coLecturersInfo = append(coLecturersInfo, ToUserInfoResponse(coLecturer))
+		}
+	}
+
+	studentsInfo := make([]UserInfoResponse, 0, len(students))
+	for _, student := range students {
+		if student != nil {
+			studentsInfo = append(studentsInfo, ToUserInfoResponse(student))
+		}
 	}
 
 	whitelist := make([]WhitelistEntryResponse, 0, len(classroom.WhitelistStudentCode))
@@ -128,21 +128,16 @@ func FromClassroom(classroom *model.Classroom) ClassroomResponse {
 	}
 
 	return ClassroomResponse{
-		ID:          classroom.ID.Hex(),
-		Name:        classroom.Name,
-		Description: classroom.Description,
-		Avatar:      classroom.Avatar,
-		Semester:    classroom.Semester,
-		Year:        classroom.Year,
-		Status:      string(classroom.Status),
-		Lecturer: model.UserInfoResponse{
-			UserID:   classroom.Lecturer.ID.Hex(),
-			FullName: classroom.Lecturer.FullName,
-			Avatar:   classroom.Lecturer.Avatar,
-		},
-		CoLecturers:            coLecturers,
-		Students:               students,
-		GeneralChannelID:       classroom.GeneralChannelID.Hex(),
+		ID:                     classroom.ID.Hex(),
+		Name:                   classroom.Name,
+		Description:            classroom.Description,
+		Avatar:                 classroom.Avatar,
+		Semester:               classroom.Semester,
+		Year:                   classroom.Year,
+		Status:                 string(classroom.Status),
+		Lecturer:               lecturerInfo,
+		CoLecturers:            coLecturersInfo,
+		Students:               studentsInfo,
 		InvitationCode:         classroom.InvitationCode,
 		MaxStudents:            classroom.MaxStudents,
 		AutoApprove:            classroom.AutoApprove,
@@ -152,12 +147,4 @@ func FromClassroom(classroom *model.Classroom) ClassroomResponse {
 		EnableEmailRestriction: classroom.EnableEmailRestriction,
 		CreatedAt:              classroom.CreatedAt,
 	}
-}
-
-func FromClassrooms(classrooms []model.Classroom) []ClassroomResponse {
-	responses := make([]ClassroomResponse, 0, len(classrooms))
-	for _, classroom := range classrooms {
-		responses = append(responses, FromClassroom(&classroom))
-	}
-	return responses
 }
