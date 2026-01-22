@@ -169,7 +169,7 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 			return nil, err
 		}
 
-		err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), userID)
+		err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), user)
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +316,7 @@ func (s *classroomJoinService) ApproveRequest(requestID, reviewerID string) erro
 		return err
 	}
 
-	err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), request.UserID.Hex())
+	err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), user)
 	if err != nil {
 		return err
 	}

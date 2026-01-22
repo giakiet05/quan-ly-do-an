@@ -26,7 +26,7 @@ type ChannelRepo interface {
 	UpdateUserAvatar(ctx context.Context, userID string, newAvatar string) error
 	Delete(ctx context.Context, channelID string, userID string) error
 	IsMember(ctx context.Context, channelID string, userID string) (bool, error)
-	AddMember(ctx context.Context, channelID string, userID string) error
+	AddMember(ctx context.Context, channelID string, user *model.User) error
 	RemoveMember(ctx context.Context, channelID string, userID string) error
 }
 
@@ -368,25 +368,24 @@ func (c *channelRepo) Delete(ctx context.Context, channelID string, userID strin
 	return err
 }
 
-func (c *channelRepo) AddMember(ctx context.Context, channelID string, userID string) error {
+func (c *channelRepo) AddMember(ctx context.Context, channelID string, user *model.User) error {
 	channelObjectID, err := primitive.ObjectIDFromHex(channelID)
 	if err != nil {
 		return err
 	}
 
-	userObjectID, err := primitive.ObjectIDFromHex(userID)
-	if err != nil {
-		return err
+	member := model.UserInfo{
+		ID:       user.ID,
+		FullName: user.FullName,
+		Email:    user.Email,
+		Avatar:   user.Avatar,
 	}
 
 	update := bson.M{
 		"$addToSet": bson.M{
-			"members": bson.M{
-				"user_id":   userObjectID,
-				"joined_at": time.Now(),
-			},
+			"members": member,
 			"settings": bson.M{
-				"user_id":          userObjectID,
+				"user_id":          user.ID,
 				"notification":     true,
 				"typing_indicator": true,
 				"is_deleted":       false,
@@ -415,7 +414,7 @@ func (c *channelRepo) RemoveMember(ctx context.Context, channelID string, userID
 	update := bson.M{
 		"$pull": bson.M{
 			"members": bson.M{
-				"user_id": userObjectID,
+				"_id": userObjectID,
 			},
 			"settings": bson.M{
 				"user_id": userObjectID,
