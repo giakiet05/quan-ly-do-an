@@ -152,6 +152,11 @@ func (s *classroomInvitationService) AcceptInvitation(invitationID, userID strin
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return apperror.ErrUserNotFound
+	}
+
 	// Get invitation
 	invitation, err := s.invitationRepo.GetByID(ctx, invitationID)
 	if err != nil {
@@ -179,7 +184,7 @@ func (s *classroomInvitationService) AcceptInvitation(invitationID, userID strin
 		return err
 	}
 
-	err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), userID)
+	err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), user)
 	if err != nil {
 		return err
 	}
