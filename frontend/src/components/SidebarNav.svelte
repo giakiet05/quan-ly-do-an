@@ -104,7 +104,7 @@
   // --- LOGIC PHẢN XẠ (REACTIVE) ---
   const currentUser = $derived($authStore.user);
   const userName = $derived(
-    currentUser?.fullname || "Nhấn vào đây để refresh...",
+    currentUser?.fullname || "Refresh tài khoản tại đây..",
   );
   const userAvatar = $derived(currentUser?.avatar);
 
@@ -197,7 +197,7 @@
           <img src={userAvatar} alt="User" />
         {:else}
           <div class="avatar-placeholder">
-            <img src="/user.svg" alt="user" width="22" height="22" />
+            <img src="/user.svg" />
           </div>
         {/if}
       </div>
