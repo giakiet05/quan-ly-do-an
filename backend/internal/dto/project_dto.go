@@ -7,11 +7,13 @@ import (
 )
 
 type CreateProjectRoundRequest struct {
-	ClassroomID string `json:"classroom_id" binding:"required"`
-	Name        string `json:"name" binding:"required"`
-	StartDate   string `json:"start_date" binding:"required,datetime=2006-01-02"`
-	EndDate     string `json:"end_date" binding:"required,datetime=2006-01-02"`
-	Description string `json:"description"`
+	ClassroomID      string `json:"classroom_id" binding:"required"`
+	Name             string `json:"name" binding:"required"`
+	StartDate        string `json:"start_date" binding:"required,datetime=2006-01-02"`
+	EndDate          string `json:"end_date" binding:"required,datetime=2006-01-02"`
+	Description      string `json:"description"`
+	DefaultMinMember int    `bson:"default_min_member" binding:"required"`
+	DefaultMaxMember int    `bson:"default_max_member" binding:"required"`
 }
 
 type CreateProjectRoundsRequest struct {
@@ -19,12 +21,14 @@ type CreateProjectRoundsRequest struct {
 	Rounds      []CreateProjectRoundRequest `json:"rounds" binding:"required,min=1"`
 }
 type UpdateProjectRoundRequest struct {
-	ClassroomID    string `json:"classroom_id" binding:"required"`
-	ProjectRoundID string `json:"project_round_id" binding:"required"`
-	Name           string `json:"name,omitempty"`
-	StartDate      string `json:"start_date,omitempty" binding:"datetime=2006-01-02"`
-	EndDate        string `json:"end_date,omitempty" binding:"datetime=2006-01-02"`
-	Description    string `json:"description,omitempty"`
+	ClassroomID      string `json:"classroom_id" binding:"required"`
+	ProjectRoundID   string `json:"project_round_id" binding:"required"`
+	Name             string `json:"name,omitempty"`
+	StartDate        string `json:"start_date,omitempty" binding:"datetime=2006-01-02"`
+	EndDate          string `json:"end_date,omitempty" binding:"datetime=2006-01-02"`
+	Description      string `json:"description,omitempty"`
+	DefaultMinMember int    `json:"default_min_member,omitempty"`
+	DefaultMaxMember int    `json:"default_max_member,omitempty"`
 }
 
 type CreateProjectRequest struct {
@@ -80,14 +84,16 @@ type UpdateReportPeriodRequest struct {
 // Response DTOs
 
 type ProjectRoundResponse struct {
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	StartDate     time.Time              `json:"start_date"`
-	EndDate       time.Time              `json:"end_date"`
-	Description   string                 `json:"description"`
-	ReportPeriods []ReportPeriodResponse `json:"report_periods"`
-	CreatedAt     time.Time              `json:"created_at"`
-	IsDeleted     bool                   `json:"is_deleted"`
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	StartDate        time.Time              `json:"start_date"`
+	EndDate          time.Time              `json:"end_date"`
+	Description      string                 `json:"description"`
+	ReportPeriods    []ReportPeriodResponse `json:"report_periods"`
+	DefaultMinMember int                    `json:"default_min_member"`
+	DefaultMaxMember int                    `json:"default_max_member"`
+	CreatedAt        time.Time              `json:"created_at"`
+	IsDeleted        bool                   `json:"is_deleted"`
 }
 
 type ProjectResponse struct {

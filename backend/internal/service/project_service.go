@@ -246,12 +246,18 @@ func (p *projectService) CreateProjectRound(req *dto.CreateProjectRoundRequest, 
 		return nil, apperror.ErrBadRequest
 	}
 
+	if req.DefaultMinMember <= 0 || req.DefaultMaxMember <= 0 || req.DefaultMinMember > req.DefaultMaxMember {
+		return nil, apperror.ErrBadRequest
+	}
+
 	round := &model.ProjectRound{
-		Name:          req.Name,
-		StartDate:     startDate,
-		EndDate:       endDate,
-		Description:   req.Description,
-		ReportPeriods: []model.ReportPeriod{},
+		Name:             req.Name,
+		StartDate:        startDate,
+		EndDate:          endDate,
+		Description:      req.Description,
+		ReportPeriods:    []model.ReportPeriod{},
+		DefaultMinMember: req.DefaultMinMember,
+		DefaultMaxMember: req.DefaultMaxMember,
 	}
 
 	err = p.projectRepo.CreateProjectRound(ctx, req.ClassroomID, round)
@@ -336,6 +342,7 @@ func (p *projectService) UpdateProjectRound(req *dto.UpdateProjectRoundRequest, 
 	if req.Name != "" {
 		round.Name = req.Name
 	}
+
 	if req.StartDate != "" {
 		startDate, err := time.Parse("2006-01-02", req.StartDate)
 		if err != nil {
@@ -350,8 +357,22 @@ func (p *projectService) UpdateProjectRound(req *dto.UpdateProjectRoundRequest, 
 		}
 		round.EndDate = endDate
 	}
+	if round.EndDate.Before(round.StartDate) {
+		return nil, apperror.ErrBadRequest
+	}
+
 	if req.Description != "" {
 		round.Description = req.Description
+	}
+
+	if req.DefaultMinMember > 0 {
+		round.DefaultMinMember = req.DefaultMinMember
+	}
+	if req.DefaultMaxMember > 0 {
+		round.DefaultMaxMember = req.DefaultMaxMember
+	}
+	if round.DefaultMinMember > round.DefaultMaxMember {
+		return nil, apperror.ErrBadRequest
 	}
 
 	err = p.projectRepo.ReplaceProjectRound(ctx, round)

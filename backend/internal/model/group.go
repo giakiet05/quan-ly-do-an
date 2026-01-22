@@ -17,8 +17,6 @@ type Group struct {
 	TaskStatuses   []string              `bson:"task_statuses" json:"task_statuses"`
 	Reports        []Report              `bson:"reports" json:"reports"`
 	Setting        GroupSetting          `bson:"setting" json:"setting"`
-	MinMember      int                   `bson:"min_member" json:"min_member"`
-	MaxMember      int                   `bson:"max_member" json:"max_member"`
 	JoinRequests   []JoinGroupRequest    `bson:"join_requests" json:"join_requests"`
 	JoinInvitation []JoinGroupInvitation `bson:"join_invitations" json:"join_invitations"`
 }
