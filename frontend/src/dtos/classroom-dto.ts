@@ -94,6 +94,8 @@ export interface ClassroomResponse {
     startDate: string;
     endDate: string;
     description: string;
+    defaultMinMember: number;
+    defaultMaxMember: number;
     reportPeriods: Array<{
       id: string;
       title: string;

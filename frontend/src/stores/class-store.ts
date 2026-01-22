@@ -63,7 +63,6 @@ function createClassStore() {
             if (file) {
                 await uploadWhitelistStudentCodeFile(newClassRaw.id, file);
             }
-            console.log("New class created:", newClassRaw);
             const newClassMapped = mapClassroomToClassItem(newClassRaw);
             classes.update((list) => [newClassMapped, ...list]);
 
@@ -82,7 +81,6 @@ function createClassStore() {
             }
             const response = await updateClassroom(id, dtoPayload);
 
-            console.log("API update response:", response);
 
             await fetchMyClasses();
         } catch (err) {

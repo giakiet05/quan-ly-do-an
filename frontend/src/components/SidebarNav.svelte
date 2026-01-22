@@ -1,7 +1,11 @@
 <script lang="ts">
-  import { link, location, push } from "svelte-spa-router";
-  import active from "svelte-spa-router/active";
+  import { link, location } from "svelte-spa-router";
   import { authStore } from "../stores/auth-store";
+  import {
+    unreadNotificationCount,
+    notificationStore,
+  } from "../stores/notification-store";
+  import { onMount } from "svelte"; // Thêm import này
 
   type MenuItem = {
     id: string;
@@ -27,6 +31,7 @@
     onLogout,
   }: SidebarProps = $props();
 
+  // Danh sách menu gốc
   const teacherMenuItems: MenuItem[] = [
     {
       id: "dashboard",
@@ -45,14 +50,12 @@
       label: "Thông báo",
       route: "/notifications",
       icon: "/bell.svg",
-      badge: 0,
     },
     {
       id: "chats",
       label: "Tin nhắn",
       route: "/chats",
       icon: "/message-circle.svg",
-      badge: 0,
     },
   ];
 
@@ -80,32 +83,53 @@
       label: "Thông báo",
       route: "/notifications",
       icon: "/bell.svg",
-      badge: 0,
     },
     {
       id: "chats",
       label: "Tin nhắn",
       route: "/chats",
       icon: "/message-circle.svg",
-      badge: 0,
     },
   ];
 
-  const menuItems = $derived(
-    role === "LECTURER" ? teacherMenuItems : studentMenuItems,
-  );
-
-  // Helper to check if route is active (supports wildcards)
+  // Helper check active route
   function isActiveRoute(route: string, currentLocation: string): boolean {
     if (route.endsWith("*")) {
-      const baseRoute = route.slice(0, -1); // Remove *
+      const baseRoute = route.slice(0, -1);
       return currentLocation.startsWith(baseRoute);
     }
     return currentLocation === route;
   }
+
+  // --- LOGIC PHẢN XẠ (REACTIVE) ---
   const currentUser = $derived($authStore.user);
-  const userName = $derived(currentUser?.fullname || "Đang tải...");
+  const userName = $derived(
+    currentUser?.fullname || "Nhấn vào đây để refresh...",
+  );
   const userAvatar = $derived(currentUser?.avatar);
+
+  // Lấy số lượng từ Store
+  const unreadCount = $derived($unreadNotificationCount);
+
+  // Map lại menuItems để gắn số badge động
+  const menuItems = $derived(
+    (role === "LECTURER" ? teacherMenuItems : studentMenuItems).map((item) => {
+      if (item.id === "notifications") {
+        return { ...item, badge: unreadCount };
+      }
+      return item;
+    }),
+  );
+  onMount(() => {
+    notificationStore.fetchNotifications();
+
+    // Nếu muốn tự động cập nhật mỗi 1 phút để hiện badge mới:
+    const interval = setInterval(() => {
+      notificationStore.fetchNotifications();
+    }, 60000); // 60.000ms = 1 phút
+
+    return () => clearInterval(interval); // Xóa bộ đợi khi logout/hủy component
+  });
 </script>
 
 <aside class="sidebar" class:collapsed>
@@ -134,8 +158,14 @@
           >
             <span class="icon">
               <img src={item.icon} alt={item.label} width="22" height="22" />
+
+              {#if collapsed && item.badge && item.badge > 0}
+                <div class="mini-badge-dot"></div>
+              {/if}
             </span>
+
             <span class="label" class:hidden={collapsed}>{item.label}</span>
+
             {#if item.badge && item.badge > 0 && !collapsed}
               <span class="badge">
                 {item.badge > 99 ? "99+" : item.badge}
@@ -147,7 +177,6 @@
     </ul>
   </nav>
 
-  <!-- Logout Button -->
   <div class="logout-wrapper">
     <button
       onclick={onLogout}
@@ -186,6 +215,7 @@
 </aside>
 
 <style>
+  /* --- GIỮ NGUYÊN CSS CŨ CỦA BẠN --- */
   .sidebar {
     height: 100vh;
     width: 256px;
@@ -196,11 +226,9 @@
     transition: width 0.3s ease;
     flex-shrink: 0;
   }
-
   .sidebar.collapsed {
     width: 80px;
   }
-
   .sidebar-header {
     height: 70px;
     display: flex;
@@ -209,18 +237,15 @@
     padding: 0 20px;
     border-bottom: 1px solid #e2e8f0;
   }
-
   .collapsed .sidebar-header {
     justify-content: center;
     padding: 0;
   }
-
   .logo {
     font-weight: 700;
     letter-spacing: 1px;
     color: #1e293b;
   }
-
   .toggle-btn {
     background: rgba(0, 0, 0, 0.05);
     border: none;
@@ -231,29 +256,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
   }
-
-  .toggle-btn:hover {
-    background: rgba(0, 0, 0, 0.1);
-  }
-
   .sidebar-nav {
     flex: 1;
     overflow-y: auto;
     padding: 16px 12px;
   }
-
   .sidebar-nav ul {
     list-style: none;
     margin: 0;
     padding: 0;
   }
-
   .sidebar-nav li {
     margin-bottom: 4px;
   }
-
   .sidebar-nav a {
     display: flex;
     align-items: center;
@@ -263,28 +279,25 @@
     color: #1e293b;
     text-decoration: none;
     transition: all 0.2s;
-    position: relative;
+    position: relative; /* Quan trọng để căn badge */
   }
-
   .sidebar-nav a:hover {
     background: #f1f5f9;
   }
-
   .active-link {
     background: #dbeafe !important;
     color: #2563eb !important;
   }
-
   .label {
     font-size: 14px;
     font-weight: 500;
     flex: 1;
   }
-
   .label.hidden {
     display: none;
   }
 
+  /* --- CSS CHO BADGE SỐ (GIỮ CŨ & CẢI TIẾN) --- */
   .badge {
     background: #ef4444;
     color: white;
@@ -293,17 +306,52 @@
     border-radius: 10px;
     min-width: 20px;
     text-align: center;
+    font-weight: 600;
   }
 
+  /* --- THÊM MỚI: CSS CHO CHẤM ĐỎ POP-UP --- */
+  .icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .mini-badge-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background-color: #ef4444;
+    border: 2px solid white;
+    border-radius: 50%;
+    z-index: 10;
+  }
+
+  /* --- PHẦN CÒN LẠI CỦA SIDEBAR FOOTER (GIỮ CŨ) --- */
+  .logout-wrapper {
+    padding: 0 12px 12px 12px;
+    border-top: 1px solid #e2e8f0;
+    margin-top: auto;
+  }
+  .logout-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    gap: 8px;
+  }
   .sidebar-footer {
     padding: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
     border-top: 1px solid #e2e8f0;
   }
-
   .user-profile {
     display: flex;
     align-items: center;
@@ -313,25 +361,20 @@
     border: 0;
     background: none;
     cursor: pointer;
-    transition: background 0.2s;
     gap: 12px;
   }
-
-  .user-profile:hover {
-    background: #f1f5f9;
-  }
-
   .avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
     overflow: hidden;
+    flex-shrink: 0;
   }
-
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
   .avatar-placeholder {
     width: 100%;
     height: 100%;
@@ -339,67 +382,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
   }
-
-  .avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
   .user-info {
     display: flex;
     flex-direction: column;
     text-align: left;
     min-width: 0;
   }
-
   .username {
     font-weight: 600;
     font-size: 0.9rem;
-    color: #1e293b;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
   .role {
     font-size: 0.75rem;
     color: #64748b;
-  }
-
-  .logout-wrapper {
-    padding: 0 12px 12px 12px;
-    border-top: 1px solid #e2e8f0;
-    margin-top: auto;
-  }
-
-  .logout-menu-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    padding: 12px;
-    margin-top: 8px;
-    border-radius: 10px;
-    color: #1e293b;
-    text-decoration: none;
-    border: none;
-    background: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    gap: 8px;
-  }
-
-  .logout-menu-item:hover {
-    background: #f1f5f9;
-  }
-
-  @media (max-width: 768px) {
-    .sidebar {
-      width: 100%;
-      max-width: 320px;
-    }
   }
 </style>

@@ -12,6 +12,7 @@
     import type { ProjectRound } from "../../../../types/project-round";
     import { getClassroom } from "../../../../services/classroom-service";
     import type { ClassroomResponse } from "../../../../dtos";
+    import { push } from "svelte-spa-router";
 
     // Lấy params từ URL
     let { params } = $props();
@@ -39,6 +40,7 @@
                 });
         }
     });
+
     // state cho class
     let classDetail = $state<ClassroomResponse | null>(null);
     $effect(() => {
@@ -62,9 +64,64 @@
         { id: "settings", label: "Cài đặt" },
     ];
 
+    // ... các phần code khác giữ nguyên ...
+
+    async function handleUpdate() {
+        if (!projectRound) return;
+
+        try {
+            // Svelte 5: Chụp ảnh dữ liệu hiện tại (loại bỏ Proxy)
+            const snapshot = $state.snapshot(projectRound);
+
+            // Gọi store và truyền snapshot vào
+            await projectRoundStore.editRound(snapshot, classroomId);
+
+            alert("✅ Cập nhật hạng mục thành công!");
+            activeTab = "projects";
+        } catch (err) {
+            console.error("Lỗi cập nhật:", err);
+        }
+    }
+
+    async function handleDelete() {
+        if (!confirm(`Bạn có chắc muốn xóa hạng mục "${projectRound?.name}"?`))
+            return;
+
+        try {
+            await projectRoundStore.removeRound(projectRoundId, classroomId);
+
+            alert("🗑️ Đã xóa hạng mục thành công.");
+            push(`/lecture/my-classes/${classroomId}`); // Điều hướng về trang lớp học
+        } catch (err) {
+            console.error("Lỗi khi xóa:", err);
+            alert("❌ Xóa thất bại. Vui lòng thử lại!");
+        }
+    }
+
+    // Hàm này để xử lý input type="date" vì nó trả về string, cần convert sang Date để state đồng bộ
+    const onDateChange = (field: "startDate" | "endDate", val: string) => {
+        if (projectRound) {
+            // @ts-ignore
+            projectRound[field] = new Date(val);
+        }
+    };
+
     // Helper format ngày
-    const formatDate = (date: string) =>
-        new Date(date).toLocaleDateString("vi-VN");
+    const formatDate = (date: any) => {
+        if (!date) return "";
+        const d = typeof date === "string" ? new Date(date) : date;
+        return d instanceof Date && !isNaN(d.getTime())
+            ? d.toLocaleDateString("vi-VN")
+            : "";
+    };
+
+    const toInputDate = (date: any) => {
+        if (!date) return "";
+        const d = typeof date === "string" ? new Date(date) : date;
+        return d instanceof Date && !isNaN(d.getTime())
+            ? d.toISOString().split("T")[0]
+            : "";
+    };
 </script>
 
 <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
@@ -82,8 +139,8 @@
             <p class="mb-2 text-gray-600">{projectRound?.description}</p>
             <p class="text-sm text-gray-500">
                 Lớp: {classDetail?.name} - {classDetail?.semester} | Thời gian: {formatDate(
-                    projectRound?.startDate.toDateString() || "",
-                )} - {formatDate(projectRound?.endDate.toDateString() || "")}
+                    projectRound?.startDate,
+                )} - {formatDate(projectRound?.endDate)}
             </p>
         </div>
     </div>
@@ -126,7 +183,7 @@
                         >
                         <input
                             type="text"
-                            value={projectRound?.name}
+                            bind:value={projectRound!.name}
                             class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -165,7 +222,12 @@
                             >
                             <input
                                 type="date"
-                                value={projectRound?.startDate}
+                                value={toInputDate(projectRound?.startDate)}
+                                onchange={(e) =>
+                                    onDateChange(
+                                        "startDate",
+                                        e.currentTarget.value,
+                                    )}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -175,7 +237,12 @@
                             >
                             <input
                                 type="date"
-                                value={projectRound?.endDate}
+                                value={toInputDate(projectRound?.endDate)}
+                                onchange={(e) =>
+                                    onDateChange(
+                                        "endDate",
+                                        e.currentTarget.value,
+                                    )}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -217,7 +284,7 @@
                             >
                             <input
                                 type="number"
-                                value={1}
+                                bind:value={projectRound!.minStudents}
                                 min={1}
                                 max={10}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -229,7 +296,7 @@
                             >
                             <input
                                 type="number"
-                                value={3}
+                                bind:value={projectRound!.maxStudents}
                                 min={1}
                                 max={10}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -281,19 +348,25 @@
 
             <div class="flex justify-end gap-3">
                 <button
+                    type="button"
+                    onclick={() => (activeTab = "projects")}
                     class="rounded-lg border border-gray-300 px-6 py-2 transition-colors hover:bg-gray-50"
                 >
                     Hủy
                 </button>
                 <button
+                    type="button"
+                    onclick={handleUpdate}
                     class="rounded-lg bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
                 >
                     Lưu thay đổi
                 </button>
                 <button
+                    type="button"
+                    onclick={handleDelete}
                     class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
                 >
-                    Xóa hạng mục
+                    Xóa hạng mục
                 </button>
             </div>
         </div>
