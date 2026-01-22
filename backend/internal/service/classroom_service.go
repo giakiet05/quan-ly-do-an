@@ -99,12 +99,17 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 		CreatedAt:              time.Now(),
 	}
 
-	// TODO: Create general channel for classroom
-	//generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, classroom)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//classroom.GeneralChannelID = generalChannel.ID
+	adminIDs := make([]string, 0, 1+len(classroom.CoLecturerIDs))
+	adminIDs = append(adminIDs, classroom.LecturerID.Hex())
+	for _, id := range classroom.CoLecturerIDs {
+		adminIDs = append(adminIDs, id.Hex())
+	}
+
+	generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, adminIDs, []model.UserInfo{})
+	if err != nil {
+		return nil, err
+	}
+	classroom.GeneralChannelID = generalChannel.ID
 
 	// Save to database
 	createdClassroom, err := s.classroomRepo.Create(ctx, classroom)
@@ -358,6 +363,11 @@ func (s *classroomService) LeaveClassroom(classroomID, userID string) error {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return err
+	}
+
 	// Check if user is the main lecturer (cannot leave)
 	isLecturer, err := s.classroomRepo.IsLecturer(ctx, classroomID, userID)
 	if err != nil {
@@ -373,6 +383,11 @@ func (s *classroomService) LeaveClassroom(classroomID, userID string) error {
 		return err
 	}
 	if isCoLecturer {
+		err = s.channelRepo.RemoveMember(ctx, classroom.GeneralChannelID.Hex(), userID)
+		if err != nil {
+			return err
+		}
+
 		return s.classroomRepo.RemoveCoLecturer(ctx, classroomID, userID)
 	}
 
@@ -388,12 +403,6 @@ func (s *classroomService) LeaveClassroom(classroomID, userID string) error {
 			return err
 		}
 
-		// Get classroom to check whitelist settings
-		classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
-		if err != nil {
-			return err
-		}
-
 		// Remove student
 		err = s.classroomRepo.RemoveStudent(ctx, classroomID, userID)
 		if err != nil {
@@ -403,6 +412,11 @@ func (s *classroomService) LeaveClassroom(classroomID, userID string) error {
 		// Reset whitelist entry if student has student_code and whitelist is enabled
 		if classroom.EnableWhitelist && student.StudentCode != nil && *student.StudentCode != "" {
 			_ = s.classroomRepo.ResetWhitelistEntry(ctx, classroomID, *student.StudentCode)
+		}
+
+		err = s.channelRepo.RemoveMember(ctx, classroom.GeneralChannelID.Hex(), userID)
+		if err != nil {
+			return err
 		}
 
 		return nil
