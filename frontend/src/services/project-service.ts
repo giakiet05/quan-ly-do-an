@@ -48,7 +48,6 @@ export async function createProject(
             body: JSON.stringify(data),
         }
     );
-    console.log("API response:", response);
     return response;
 }
 

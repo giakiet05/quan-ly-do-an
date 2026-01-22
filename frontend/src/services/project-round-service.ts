@@ -12,7 +12,7 @@ export async function getProjectRounds(classroomId: string): Promise<ProjectRoun
     const response = await apiFetch<ProjectRoundResponse[]>(
         `/api/projects/classrooms/${classroomId}/rounds`
     );
-
+    console.log("API getProjectRounds response:", response);
     if (!response) return [];
 
     return response.map(dto => projectRoundMapper.toEntity(dto));
