@@ -117,9 +117,9 @@ function createPeriodStore() {
         }
     }
 
-    async function removePeriod(classroomId: string, periodId: string) {
+    async function removePeriod(classroomId: string, roundId: string, periodId: string) {
         try {
-            await deletePeriod(classroomId, periodId);
+            await deletePeriod(classroomId, roundId, periodId);
             periods.update((list) => list.filter((p) => p.id !== periodId));
         } catch (err) {
             console.error("Failed to delete period", err);
