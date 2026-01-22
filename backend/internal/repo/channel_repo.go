@@ -17,7 +17,7 @@ import (
 
 type ChannelRepo interface {
 	Create(ctx context.Context, req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error)
-	CreateClassroomChannel(ctx context.Context, adminIDs []string, students []model.UserInfo) (*model.Channel, error)
+	CreateClassroomChannel(ctx context.Context, adminIDs []string, members []model.UserInfo) (*model.Channel, error)
 	CreateGroupChannel(ctx context.Context, leaderID string, members []model.UserInfo) (*model.Channel, error)
 	GetByID(ctx context.Context, channelID string) (*model.Channel, error)
 	GetByUserID(ctx context.Context, userID string, page int, pageSize int) ([]model.Channel, int64, error)
@@ -78,13 +78,13 @@ func (c *channelRepo) Create(ctx context.Context, req *dto.CreateChannelRequest,
 func (c *channelRepo) CreateClassroomChannel(
 	ctx context.Context,
 	adminIDs []string,
-	students []model.UserInfo,
+	members []model.UserInfo,
 ) (*model.Channel, error) {
 	now := time.Now()
 
 	userIDSet := make(map[primitive.ObjectID]bool)
-	settings := make([]model.ChannelUserSetting, 0, len(students)+len(adminIDs))
-	for _, m := range students {
+	settings := make([]model.ChannelUserSetting, 0, len(members)+len(adminIDs))
+	for _, m := range members {
 		if !userIDSet[m.ID] {
 			userIDSet[m.ID] = true
 			settings = append(settings, model.ChannelUserSetting{
@@ -118,7 +118,7 @@ func (c *channelRepo) CreateClassroomChannel(
 	channel := &model.Channel{
 		ID:           primitive.NewObjectID(),
 		AdminIDs:     adminObjectIDs,
-		Members:      students,
+		Members:      members,
 		UserSettings: settings,
 		Background:   nil,
 		Status:       model.ChannelStatusActive,

@@ -61,7 +61,7 @@ func (mc *MessageController) GetMessageFilter(ctx *gin.Context) {
 		return
 	}
 
-	response, err := mc.messageService.GetMessageFilter(query, authUser.(auth.AuthUser).ID)
+	response, err := mc.messageService.GetMessageFilter(&query, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return

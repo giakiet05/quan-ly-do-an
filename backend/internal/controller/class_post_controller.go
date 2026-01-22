@@ -1,12 +1,13 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
-	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/cloudinary"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
@@ -24,26 +25,12 @@ func NewClassPostController(postService service.ClassPostService) *ClassPostCont
 
 // CreatePost creates a new class post (lecturer only)
 // POST /api/classrooms/:id/posts
-// Content-Type: application/json
+// Content-Type: multipart/form-data
 //
-// Workflow:
-// 1. Upload files first: POST /api/classrooms/posts/upload-attachments
-// 2. Get file URLs from step 1
-// 3. Create post with URLs in attachments array
-//
-// Request body:
-// {
-//   "title": "Post title",
-//   "content": "Post content",
-//   "attachments": [
-//     {
-//       "file_name": "document.pdf",
-//       "file_url": "https://cloudinary.com/...",
-//       "file_size": 1024000,
-//       "mime_type": "application/pdf"
-//     }
-//   ]
-// }
+// Form fields:
+// - title: string (required)
+// - content: string (required)
+// - files: file[] (optional, multiple files)
 
 func (c *ClassPostController) CreatePost(ctx *gin.Context) {
 	classroomID := ctx.Param("id")
@@ -55,19 +42,76 @@ func (c *ClassPostController) CreatePost(ctx *gin.Context) {
 	}
 	user := authUser.(auth.AuthUser)
 
-	var req dto.CreateClassPostRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+	// Parse form data
+	title := ctx.PostForm("title")
+	content := ctx.PostForm("content")
+
+	if title == "" || content == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "Title and content are required", apperror.ErrBadRequest.Code)
 		return
 	}
 
-	post, err := c.postService.CreatePost(req, classroomID, user.ID)
+	// Get uploaded files
+	form, err := ctx.MultipartForm()
+	var attachments []dto.AttachmentUpload
+	uploadedPublicIDs := []string{}
+
+	if err == nil && form != nil {
+		files := form.File["files"]
+
+		// Upload files to Cloudinary
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to open file", "FILE_OPEN_FAILED")
+				return
+			}
+
+			result, err := cloudinary.Upload(file)
+			file.Close()
+
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to upload file", "FILE_UPLOAD_FAILED")
+				return
+			}
+
+			uploadedPublicIDs = append(uploadedPublicIDs, result.PublicID)
+			attachments = append(attachments, dto.AttachmentUpload{
+				FileName: fileHeader.Filename,
+				FileURL:  result.SecureURL,
+				PublicID: result.PublicID,
+				FileSize: fileHeader.Size,
+				MimeType: fileHeader.Header.Get("Content-Type"),
+			})
+		}
+	}
+
+	// Create post request
+	req := dto.CreateClassPostRequest{
+		Title:       title,
+		Content:     content,
+		Attachments: attachments,
+	}
+
+	response, err := c.postService.CreatePost(req, classroomID, user.ID)
 	if err != nil {
+		// Rollback: delete uploaded files
+		for _, pid := range uploadedPublicIDs {
+			_, _ = cloudinary.Delete(pid)
+		}
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
-	dto.SendSuccess(ctx, http.StatusCreated, "Post created successfully", dto.FromClassPost(post))
+	dto.SendSuccess(ctx, http.StatusCreated, "Post created successfully", response)
 }
 
 // GetPosts gets all posts in a classroom
@@ -99,14 +143,14 @@ func (c *ClassPostController) GetPosts(ctx *gin.Context) {
 		query.PageSize = 20
 	}
 
-	posts, total, err := c.postService.GetPostsByClassroom(classroomID, user.ID, query.Page, query.PageSize)
+	responses, total, err := c.postService.GetPostsByClassroom(classroomID, user.ID, query.Page, query.PageSize)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
 	data := gin.H{
-		"posts":     dto.FromClassPosts(posts),
+		"posts":     responses,
 		"total":     total,
 		"page":      query.Page,
 		"page_size": query.PageSize,
@@ -120,18 +164,24 @@ func (c *ClassPostController) GetPosts(ctx *gin.Context) {
 func (c *ClassPostController) GetPost(ctx *gin.Context) {
 	postID := ctx.Param("post_id")
 
-	post, err := c.postService.GetPostByID(postID)
+	response, err := c.postService.GetPostByID(postID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
-	dto.SendSuccess(ctx, http.StatusOK, "Post retrieved successfully", dto.FromClassPost(post))
+	dto.SendSuccess(ctx, http.StatusOK, "Post retrieved successfully", response)
 }
 
 // UpdatePost updates a post
 // PUT /api/classrooms/posts/:post_id
-// Content-Type: application/json
+// Content-Type: multipart/form-data
+//
+// Form fields:
+// - title: string (optional)
+// - content: string (optional)
+// - files: file[] (optional, files to add)
+// - files_to_remove: string (optional, JSON array of URLs to remove)
 func (c *ClassPostController) UpdatePost(ctx *gin.Context) {
 	postID := ctx.Param("post_id")
 
@@ -142,19 +192,85 @@ func (c *ClassPostController) UpdatePost(ctx *gin.Context) {
 	}
 	user := authUser.(auth.AuthUser)
 
+	// Parse form data
 	var req dto.UpdateClassPostRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
+
+	if title := ctx.PostForm("title"); title != "" {
+		req.Title = &title
+	}
+	if content := ctx.PostForm("content"); content != "" {
+		req.Content = &content
 	}
 
-	post, err := c.postService.UpdatePost(req, postID, user.ID)
+	// Parse files_to_remove (JSON array string)
+	if removeStr := ctx.PostForm("files_to_remove"); removeStr != "" {
+		var filesToRemove []string
+		if err := json.Unmarshal([]byte(removeStr), &filesToRemove); err == nil {
+			req.AttachmentsToRemove = filesToRemove
+		}
+	}
+
+	// Get uploaded files
+	form, err := ctx.MultipartForm()
+	uploadedPublicIDs := []string{}
+
+	if err == nil && form != nil {
+		files := form.File["files"]
+
+		// Upload new files to Cloudinary
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to open file", "FILE_OPEN_FAILED")
+				return
+			}
+
+			result, err := cloudinary.Upload(file)
+			file.Close()
+
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to upload file", "FILE_UPLOAD_FAILED")
+				return
+			}
+
+			uploadedPublicIDs = append(uploadedPublicIDs, result.PublicID)
+			req.AttachmentsToAdd = append(req.AttachmentsToAdd, dto.AttachmentUpload{
+				FileName: fileHeader.Filename,
+				FileURL:  result.SecureURL,
+				PublicID: result.PublicID,
+				FileSize: fileHeader.Size,
+				MimeType: fileHeader.Header.Get("Content-Type"),
+			})
+		}
+	}
+
+	response, err := c.postService.UpdatePost(req, postID, user.ID)
 	if err != nil {
+		// Rollback: delete newly uploaded files
+		for _, pid := range uploadedPublicIDs {
+			cloudinary.Delete(pid)
+		}
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
 
-	dto.SendSuccess(ctx, http.StatusOK, "Post updated successfully", dto.FromClassPost(post))
+	// Delete removed files from Cloudinary (best effort)
+	for _, url := range req.AttachmentsToRemove {
+		publicID := extractPublicIDFromURL(url)
+		if publicID != "" {
+			_, _ = cloudinary.Delete(publicID)
+		}
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Post updated successfully", response)
 }
 
 // DeletePost deletes a post (lecturer only)
@@ -207,159 +323,30 @@ func (c *ClassPostController) TogglePinPost(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Post pin status updated", gin.H{"is_pinned": req.IsPinned})
 }
 
-// UploadAttachments uploads files to Cloudinary and returns URLs
-// POST /api/classrooms/posts/upload-attachments
-// This should be called BEFORE creating/updating a post
-func (c *ClassPostController) UploadAttachments(ctx *gin.Context) {
-	_, exists := ctx.Get("authUser")
-	if !exists {
-		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
-		return
+
+// Helper function to extract public_id from Cloudinary URL
+// URL format: https://res.cloudinary.com/xxx/image/upload/v123456/folder/filename.jpg
+// Returns: folder/filename
+func extractPublicIDFromURL(url string) string {
+	// Find "/upload/" in URL
+	parts := strings.Split(url, "/upload/")
+	if len(parts) < 2 {
+		return ""
 	}
 
-	// Get uploaded files
-	form, err := ctx.MultipartForm()
-	if err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, "No files uploaded", "NO_FILES")
-		return
+	// Get path after /upload/v123456/
+	path := parts[1]
+	pathParts := strings.SplitN(path, "/", 2)
+	if len(pathParts) < 2 {
+		return ""
 	}
 
-	files := form.File["files"]
-	if len(files) == 0 {
-		dto.SendError(ctx, http.StatusBadRequest, "No files uploaded", "NO_FILES")
-		return
+	// Remove file extension
+	publicID := pathParts[1]
+	lastDot := strings.LastIndex(publicID, ".")
+	if lastDot > 0 {
+		publicID = publicID[:lastDot]
 	}
 
-	// Upload files to Cloudinary
-	uploadedFiles := make([]gin.H, 0, len(files))
-	for _, fileHeader := range files {
-		file, err := fileHeader.Open()
-		if err != nil {
-			continue
-		}
-
-		// Upload to Cloudinary
-		result, err := cloudinary.Upload(file)
-		file.Close()
-
-		if err != nil {
-			// Skip failed uploads
-			continue
-		}
-
-		uploadedFiles = append(uploadedFiles, gin.H{
-			"file_name": fileHeader.Filename,
-			"file_url":  result.SecureURL,
-			"file_size": fileHeader.Size,
-			"mime_type": fileHeader.Header.Get("Content-Type"),
-			"public_id": result.PublicID,
-		})
-	}
-
-	if len(uploadedFiles) == 0 {
-		dto.SendError(ctx, http.StatusInternalServerError, "All file uploads failed", "UPLOAD_FAILED")
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "Files uploaded successfully", gin.H{
-		"attachments": uploadedFiles,
-	})
-}
-
-// DeleteAttachment deletes a file from Cloudinary by public_id
-// DELETE /api/classrooms/posts/attachments/:public_id
-func (c *ClassPostController) DeleteAttachment(ctx *gin.Context) {
-	_, exists := ctx.Get("authUser")
-	if !exists {
-		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
-		return
-	}
-
-	publicID := ctx.Param("public_id")
-	if publicID == "" {
-		dto.SendError(ctx, http.StatusBadRequest, "Public ID is required", apperror.ErrBadRequest.Code)
-		return
-	}
-
-	// Delete from Cloudinary
-	result, err := cloudinary.Delete(publicID)
-	if err != nil {
-		dto.SendError(ctx, http.StatusInternalServerError, "Failed to delete file", "DELETE_FAILED")
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "File deleted successfully", gin.H{
-		"public_id": publicID,
-		"result":    result.Result,
-	})
-}
-
-// AddAttachment adds an attachment to a post
-// POST /api/classrooms/posts/:post_id/attachments
-func (c *ClassPostController) AddAttachment(ctx *gin.Context) {
-	postID := ctx.Param("post_id")
-
-	authUser, exists := ctx.Get("authUser")
-	if !exists {
-		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
-		return
-	}
-	user := authUser.(auth.AuthUser)
-
-	var req struct {
-		FileName string `json:"file_name" binding:"required"`
-		FileURL  string `json:"file_url" binding:"required"`
-		FileSize int64  `json:"file_size" binding:"required"`
-		MimeType string `json:"mime_type" binding:"required"`
-	}
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
-	}
-
-	attachment := model.Attachment{
-		FileName: req.FileName,
-		FileURL:  req.FileURL,
-		FileSize: req.FileSize,
-		MimeType: req.MimeType,
-	}
-
-	post, err := c.postService.AddAttachment(postID, user.ID, attachment)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "Attachment added successfully", dto.FromClassPost(post))
-}
-
-// RemoveAttachment removes an attachment from a post
-// DELETE /api/classrooms/posts/:post_id/attachments
-func (c *ClassPostController) RemoveAttachment(ctx *gin.Context) {
-	postID := ctx.Param("post_id")
-
-	authUser, exists := ctx.Get("authUser")
-	if !exists {
-		dto.SendError(ctx, http.StatusUnauthorized, "Unauthorized", "UNAUTHORIZED")
-		return
-	}
-	user := authUser.(auth.AuthUser)
-
-	var req struct {
-		FileURL string `json:"file_url" binding:"required"`
-	}
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
-		return
-	}
-
-	post, err := c.postService.RemoveAttachment(postID, user.ID, req.FileURL)
-	if err != nil {
-		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
-		return
-	}
-
-	dto.SendSuccess(ctx, http.StatusOK, "Attachment removed successfully", dto.FromClassPost(post))
+	return publicID
 }

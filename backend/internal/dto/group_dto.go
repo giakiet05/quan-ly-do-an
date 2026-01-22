@@ -61,21 +61,22 @@ type UpdateTaskRequest struct {
 }
 
 type CreateReportRequest struct {
-	ClassroomID    string       `json:"classroom_id"`
-	GroupID        string       `json:"group_id"`
-	ProjectRoundID string       `json:"project_round_id"`
-	ReportPeriodID string       `json:"report_period_id"`
-	Title          string       `json:"title"`
-	Content        string       `json:"content"`
-	Files          []model.File `json:"files"`
+	ClassroomID    string             `json:"classroom_id"`
+	GroupID        string             `json:"group_id"`
+	ProjectRoundID string             `json:"project_round_id"`
+	ReportPeriodID string             `json:"report_period_id"`
+	Title          string             `json:"title"`
+	Content        string             `json:"content"`
+	Attachments    []AttachmentUpload `json:"attachments,omitempty"`
 }
 
 type UpdateReportRequest struct {
-	GroupID  string        `json:"group_id"`
-	ReportID string        `json:"report_id"`
-	Title    *string       `json:"title,omitempty"`
-	Content  *string       `json:"content,omitempty"`
-	Files    *[]model.File `json:"files,omitempty"`
+	GroupID          string             `json:"group_id"`
+	ReportID         string             `json:"report_id"`
+	Title            *string            `json:"title,omitempty"`
+	Content          *string            `json:"content,omitempty"`
+	AttachmentsToAdd []AttachmentUpload `json:"attachments_to_add,omitempty"`
+	FilesToRemove    []string           `json:"files_to_remove,omitempty"` // file URLs to remove
 }
 
 type CreateReportFeedbackRequest struct {
@@ -93,9 +94,9 @@ type UpdateReportFeedbackRequest struct {
 }
 
 type GetGroupsFilterQuery struct {
-	ClassroomID string  `json:"classroom_id"`
-	ProjectID   *string `json:"project_id,omitempty"`
-	MemberID    *string `json:"member_id,omitempty"`
+	ClassroomID string  `form:"classroom_id"`
+	ProjectID   *string `form:"project_id,omitempty"`
+	MemberID    *string `form:"member_id,omitempty"`
 }
 
 type GroupResponse struct {
@@ -113,18 +114,18 @@ type GroupResponse struct {
 
 type TaskResponse struct {
 	ID          string    `json:"id"`
-	Title       string    `son:"title"`
+	Title       string    `json:"title"`
 	AssignToIDs []string  `json:"assign_to_ids"`
 	DueDate     time.Time `json:"due_date"`
 	Status      string    `json:"status"`
 }
 
 type ReportResponse struct {
-	ID             string                 `json:"id"`
-	ReportPeriodID string                 `json:"report_period_id"`
-	Title          string                 `json:"title"`
-	Content        string                 `json:"content"`
-	Files          []model.File           `json:"files"`
+	ID             string             `json:"id"`
+	ReportPeriodID string             `json:"report_period_id"`
+	Title          string             `json:"title"`
+	Content        string             `json:"content"`
+	Attachments    []model.Attachment `json:"attachments,omitempty"`
 	Feedback       ReportFeedbackResponse `json:"feedback"`
 }
 
@@ -166,7 +167,7 @@ func FromGroup(group *model.Group) *GroupResponse {
 			ReportPeriodID: r.ReportPeriodID.Hex(),
 			Title:          r.Title,
 			Content:        r.Content,
-			Files:          r.Files,
+			Attachments:    r.Attachments,
 			Feedback: ReportFeedbackResponse{
 				ID:          r.Feedback.ID.Hex(),
 				Content:     r.Feedback.Content,

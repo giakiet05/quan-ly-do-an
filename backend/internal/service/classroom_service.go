@@ -105,7 +105,16 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 		adminIDs = append(adminIDs, id.Hex())
 	}
 
-	generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, adminIDs, []model.UserInfo{})
+	members := []model.UserInfo{
+		{
+			ID:       lecturer.ID,
+			FullName: lecturer.FullName,
+			Email:    lecturer.Email,
+			Avatar:   lecturer.Avatar,
+		},
+	}
+
+	generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, adminIDs, members)
 	if err != nil {
 		return nil, err
 	}
