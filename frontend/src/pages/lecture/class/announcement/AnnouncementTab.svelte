@@ -39,12 +39,15 @@
     function toggleExpand(id: string) {
         expandedId = expandedId === id ? null : id;
     }
-
+    const handleDelete = (announcementId: string) => async () => {
+        if (confirm("Bạn có chắc chắn muốn xóa thông báo này không?")) {
+            await postStore.removePost(announcementId);
+        }
+    };
     function togglePin(announcementId: string) {
-        const post = $posts.find((p) => p.id === announcementId);
-        if (post) {
-            post.isPinned = !post.isPinned;
-            $posts.sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
+        const announcement = $posts.find((post) => post.id === announcementId);
+        if (announcement) {
+            postStore.togglePinPost(announcementId, !announcement.isPinned);
         }
     }
 </script>
@@ -173,8 +176,7 @@
                                     <Edit class="w-4 h-4" />
                                 </button>
                                 <button
-                                    onclick={() =>
-                                        console.log("Delete", announcement.id)}
+                                    onclick={handleDelete(announcement.id)}
                                     class="p-2.5 text-gray-400 hover:text-red-600 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                                 >
                                     <Trash2 class="w-4 h-4" />

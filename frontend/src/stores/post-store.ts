@@ -6,6 +6,7 @@ import {
     createPost,
     updatePost,
     deletePost,
+    pinPost,
 } from "../services/post-service";
 
 function createPostStore() {
@@ -40,8 +41,17 @@ function createPostStore() {
     );
 
     // ===== actions =====
+    function sortPosts(posts: PostResponse[]) {
+        return posts.sort((a, b) => {
+            if (a.isPinned !== b.isPinned) {
+                return a.isPinned ? -1 : 1; // Pinned posts come first
+            }
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(); // Sort by updated time (descending)
+        });
+    }
+
     function setData(data: PostResponse[]) {
-        posts.set(data);
+        posts.set(sortPosts(data)); // Sort posts when setting data
     }
 
     function setSearch(value: string) {
@@ -86,7 +96,7 @@ function createPostStore() {
                 console.error("Dữ liệu trả về từ Service bị sai cấu trúc:", newPost);
                 throw new Error("Invalid response structure");
             }
-            posts.update((list) => [...list, newPost]);
+            posts.update((list) => sortPosts([...list, newPost])); // Sort after adding a new post
             return newPost;
         } catch (err) {
             console.error("Failed to create post", err);
@@ -98,20 +108,32 @@ function createPostStore() {
         try {
             const updatedPost = await updatePost(postId, data);
             posts.update((list) =>
-                list.map((p) => (p.id === postId ? updatedPost : p))
-            );
+                sortPosts(list.map((p) => (p.id === postId ? updatedPost : p)))
+            ); // Sort after updating a post
         } catch (err) {
             console.error("Failed to update post", err);
             throw err;
         }
     }
 
-    async function removePost(classroomId: string, postId: string) {
+    async function removePost(postId: string) {
         try {
-            await deletePost(classroomId, postId);
-            posts.update((list) => list.filter((p) => p.id !== postId));
+            await deletePost(postId);
+            posts.update((list) => sortPosts(list.filter((p) => p.id !== postId))); // Sort after deleting a post
         } catch (err) {
             console.error("Failed to delete post", err);
+            throw err;
+        }
+    }
+
+    async function togglePinPost(postId: string, isPinned: boolean) {
+        try {
+            await pinPost(postId, { isPinned });
+            posts.update((list) =>
+                sortPosts(list.map((p) => (p.id === postId ? { ...p, isPinned } : p)))
+            ); // Sort after pinning/unpinning a post
+        } catch (err) {
+            console.error("Failed to pin/unpin post", err);
             throw err;
         }
     }
@@ -139,6 +161,7 @@ function createPostStore() {
         addPost,
         updatePostData,
         removePost,
+        togglePinPost,
     };
 }
 

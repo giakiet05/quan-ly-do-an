@@ -1,5 +1,5 @@
 import { apiFetch } from "../utils/api-fetch";
-import type { CreatePostRequest, PaginatedPostResponse, PostResponse } from "../dtos/post-dto";
+import type { CreatePostRequest, PaginatedPostResponse, PostResponse, PinPostRequest } from "../dtos/post-dto";
 import type { ApiResponse } from "../dtos/api-response-dto";
 
 // ==================== POST MANAGEMENT ====================
@@ -81,8 +81,21 @@ export async function updatePost(
 /**
  * Delete a post
  */
-export async function deletePost(classroomId: string, postId: string): Promise<void> {
-    await apiFetch(`/api/posts/classrooms/${classroomId}/${postId}`, {
+export async function deletePost(postId: string): Promise<void> {
+    await apiFetch(`/api/classrooms/posts/${postId}`, {
         method: "DELETE",
+    });
+}
+
+/**
+ * Pin or unpin a post
+ */
+export async function pinPost(postId: string, data: PinPostRequest): Promise<void> {
+    await apiFetch(`/api/classrooms/posts/${postId}/pin`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+        headers: {
+            "Content-Type": "application/json",
+        },
     });
 }

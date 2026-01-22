@@ -37,3 +37,7 @@ export interface PaginatedPostResponse {
     posts: PostResponse[];
     total: number;
 }
+
+export interface PinPostRequest {
+    isPinned: boolean;
+}
