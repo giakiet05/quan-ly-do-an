@@ -25,6 +25,7 @@ type classroomInvitationService struct {
 	invitationRepo repo.ClassroomInvitationRepo
 	classroomRepo  repo.ClassroomRepo
 	userRepo       repo.UserRepo
+	channelRepo    repo.ChannelRepo
 	eventBus       *bus.EventBus
 }
 
@@ -32,12 +33,14 @@ func NewClassroomInvitationService(
 	invitationRepo repo.ClassroomInvitationRepo,
 	classroomRepo repo.ClassroomRepo,
 	userRepo repo.UserRepo,
+	channelRepo repo.ChannelRepo,
 	eventBus *bus.EventBus,
 ) ClassroomInvitationService {
 	return &classroomInvitationService{
 		invitationRepo: invitationRepo,
 		classroomRepo:  classroomRepo,
 		userRepo:       userRepo,
+		channelRepo:    channelRepo,
 		eventBus:       eventBus,
 	}
 }
@@ -167,6 +170,16 @@ func (s *classroomInvitationService) AcceptInvitation(invitationID, userID strin
 
 	// Add user as co-lecturer using user ID only
 	err = s.classroomRepo.AddCoLecturer(ctx, invitation.ClassroomID.Hex(), userID)
+	if err != nil {
+		return err
+	}
+
+	classroom, err := s.classroomRepo.GetByID(ctx, invitation.ClassroomID.Hex())
+	if err != nil {
+		return err
+	}
+
+	err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), userID)
 	if err != nil {
 		return err
 	}

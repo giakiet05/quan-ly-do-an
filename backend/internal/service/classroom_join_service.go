@@ -25,6 +25,7 @@ type ClassroomJoinService interface {
 type classroomJoinService struct {
 	joinRequestRepo repo.ClassroomJoinRequestRepo
 	classroomRepo   repo.ClassroomRepo
+	channelRepo     repo.ChannelRepo
 	userRepo        repo.UserRepo
 }
 
@@ -32,11 +33,13 @@ func NewClassroomJoinService(
 	joinRequestRepo repo.ClassroomJoinRequestRepo,
 	classroomRepo repo.ClassroomRepo,
 	userRepo repo.UserRepo,
+	channelRepo repo.ChannelRepo,
 ) ClassroomJoinService {
 	return &classroomJoinService{
 		joinRequestRepo: joinRequestRepo,
 		classroomRepo:   classroomRepo,
 		userRepo:        userRepo,
+		channelRepo:     channelRepo,
 	}
 }
 
@@ -162,6 +165,11 @@ func (s *classroomJoinService) JoinClassroom(userID string, req dto.JoinClassroo
 	if classroom.AutoApprove {
 		// Add student directly using user ID only
 		err = s.classroomRepo.AddStudent(ctx, classroom.ID.Hex(), userID)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), userID)
 		if err != nil {
 			return nil, err
 		}
@@ -304,6 +312,11 @@ func (s *classroomJoinService) ApproveRequest(requestID, reviewerID string) erro
 
 	// Add student to classroom using user ID only
 	err = s.classroomRepo.AddStudent(ctx, classroom.ID.Hex(), request.UserID.Hex())
+	if err != nil {
+		return err
+	}
+
+	err = s.channelRepo.AddMember(ctx, classroom.GeneralChannelID.Hex(), request.UserID.Hex())
 	if err != nil {
 		return err
 	}
