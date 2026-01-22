@@ -64,6 +64,18 @@ func (c *ClassroomController) GetClassroomByID(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Classroom retrieved", response)
 }
 
+// GET /api/classrooms/channel/:id
+func (c *ClassroomController) GetClassroomByChannelID(ctx *gin.Context) {
+	channelID := ctx.Param("id")
+
+	response, err := c.classroomService.GetClassroomByID(channelID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+	dto.SendSuccess(ctx, http.StatusOK, "Classroom retrieved", response)
+}
+
 // GetMyClassrooms gets classrooms where user is lecturer
 // GET /api/classrooms/my
 func (c *ClassroomController) GetMyClassrooms(ctx *gin.Context) {

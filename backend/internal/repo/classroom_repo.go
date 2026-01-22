@@ -25,6 +25,7 @@ type ClassroomRepo interface {
 	GetByLecturer(ctx context.Context, lecturerID string, page, pageSize int) ([]model.Classroom, int64, error)
 	GetByStudent(ctx context.Context, studentID string, page, pageSize int) ([]model.Classroom, int64, error)
 
+	GetByChannelID(ctx context.Context, channelID string) (*model.Classroom, error)
 	// Student management
 	AddStudent(ctx context.Context, classroomID, studentID string) error
 	RemoveStudent(ctx context.Context, classroomID, studentID string) error
@@ -87,6 +88,21 @@ func (c *classroomRepo) GetByID(ctx context.Context, classroomID string) (*model
 
 	var classroom model.Classroom
 	err = c.collection.FindOne(ctx, bson.M{"_id": classroomObjectID}).Decode(&classroom)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, apperror.ErrClassroomNotFound
+		}
+		return nil, err
+	}
+	return &classroom, nil
+}
+func (c *classroomRepo) GetByChannelID(ctx context.Context, channelID string) (*model.Classroom, error) {
+	channelObjectID, err := primitive.ObjectIDFromHex(channelID)
+	if err != nil {
+		return nil, err
+	}
+	var classroom model.Classroom
+	err = c.collection.FindOne(ctx, bson.M{"general_channel_id": channelObjectID}).Decode(&classroom)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, apperror.ErrClassroomNotFound
