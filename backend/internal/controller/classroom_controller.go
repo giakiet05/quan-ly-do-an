@@ -68,7 +68,7 @@ func (c *ClassroomController) GetClassroomByID(ctx *gin.Context) {
 func (c *ClassroomController) GetClassroomByChannelID(ctx *gin.Context) {
 	channelID := ctx.Param("id")
 
-	response, err := c.classroomService.GetClassroomByID(channelID)
+	response, err := c.classroomService.GetClassroomByChannelID(channelID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
