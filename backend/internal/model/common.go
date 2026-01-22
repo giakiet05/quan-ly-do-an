@@ -20,8 +20,6 @@ type Video struct {
 	UploadedAt time.Time `bson:"uploaded_at" json:"uploaded_at"`
 }
 
-type File struct{}
-
 type UserInfo struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	FullName    string             `bson:"full_name" json:"full_name"`
