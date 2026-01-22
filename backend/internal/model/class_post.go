@@ -9,7 +9,7 @@ import (
 type ClassPost struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	ClassroomID primitive.ObjectID `bson:"classroom_id" json:"classroom_id"`
-	Author      UserInfo           `bson:"author" json:"author"`
+	AuthorID    primitive.ObjectID `bson:"author_id" json:"author_id"`
 	Title       string             `bson:"title" json:"title"`
 	Content     string             `bson:"content" json:"content"`
 	Attachments []Attachment       `bson:"attachments,omitempty" json:"attachments,omitempty"`
@@ -21,6 +21,7 @@ type ClassPost struct {
 type Attachment struct {
 	FileName string `bson:"file_name" json:"file_name"`
 	FileURL  string `bson:"file_url" json:"file_url"`
+	PublicID string `bson:"public_id" json:"public_id"`
 	FileSize int64  `bson:"file_size" json:"file_size"` // bytes
 	MimeType string `bson:"mime_type" json:"mime_type"`
 }

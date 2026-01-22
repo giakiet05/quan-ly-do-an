@@ -24,6 +24,7 @@ type UpdateClassPostRequest struct {
 type AttachmentUpload struct {
 	FileName string `json:"file_name" binding:"required"`
 	FileURL  string `json:"file_url" binding:"required"`
+	PublicID string `json:"public_id" binding:"required"`
 	FileSize int64  `json:"file_size" binding:"required"`
 	MimeType string `json:"mime_type" binding:"required"`
 }
@@ -42,20 +43,20 @@ type ClassPostResponse struct {
 	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
-func FromClassPost(post *model.ClassPost) ClassPostResponse {
+func FromClassPostWithAuthor(post *model.ClassPost, author *model.User) ClassPostResponse {
 	if post == nil {
 		return ClassPostResponse{}
 	}
+
+	var authorInfo UserInfoResponse
+	if author != nil {
+		authorInfo = ToUserInfoResponse(author)
+	}
+
 	return ClassPostResponse{
 		ID:          post.ID.Hex(),
 		ClassroomID: post.ClassroomID.Hex(),
-		Author: UserInfoResponse{
-			UserID:      post.Author.ID.Hex(),
-			FullName:    post.Author.FullName,
-			Email:       post.Author.Email,
-			Avatar:      post.Author.Avatar,
-			StudentCode: post.Author.StudentCode,
-		},
+		Author:      authorInfo,
 		Title:       post.Title,
 		Content:     post.Content,
 		Attachments: post.Attachments,
@@ -65,10 +66,11 @@ func FromClassPost(post *model.ClassPost) ClassPostResponse {
 	}
 }
 
-func FromClassPosts(posts []model.ClassPost) []ClassPostResponse {
+func FromClassPostsWithAuthors(posts []model.ClassPost, authorsMap map[string]*model.User) []ClassPostResponse {
 	responses := make([]ClassPostResponse, 0, len(posts))
 	for _, post := range posts {
-		responses = append(responses, FromClassPost(&post))
+		author := authorsMap[post.AuthorID.Hex()]
+		responses = append(responses, FromClassPostWithAuthor(&post, author))
 	}
 	return responses
 }

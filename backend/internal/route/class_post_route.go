@@ -15,18 +15,10 @@ func RegisterClassPostRoutes(router *gin.RouterGroup, controller *controller.Cla
 	posts := router.Group("/classrooms/posts")
 	posts.Use(middleware.RequireAuth())
 	{
-		// File operations
-		posts.POST("/upload-attachments", controller.UploadAttachments)
-		posts.DELETE("/attachments/:public_id", controller.DeleteAttachment)
-		
 		// Post CRUD
 		posts.GET("/:post_id", controller.GetPost)
 		posts.PUT("/:post_id", controller.UpdatePost)
 		posts.DELETE("/:post_id", controller.DeletePost)
 		posts.PATCH("/:post_id/pin", controller.TogglePinPost)
-		
-		// Attachment management
-		posts.POST("/:post_id/attachments", controller.AddAttachment)
-		posts.DELETE("/:post_id/attachments", controller.RemoveAttachment)
 	}
 }
