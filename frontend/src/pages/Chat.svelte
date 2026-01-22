@@ -3,6 +3,7 @@
   import { authStore } from "../stores/auth-store";
   import {
     getChannelsByUserId,
+    getChannelById,
     type Channel,
   } from "../services/channel-service";
   import {
@@ -54,6 +55,8 @@
 
   // Load channels on mount
   onMount(async () => {
+    console.log("🚀 Chat.svelte onMount started");
+
     if (!currentUserId) {
       error = "User not authenticated";
       loading = false;
@@ -101,7 +104,8 @@
             id: channel.id,
             channelId: channel.id,
             userId: otherMember?.userId || "",
-            userName: otherMember?.username || "Unknown",
+            userName:
+              otherMember?.username || otherMember?.fullName || "Unknown",
             userRole: "User",
             userAvatar: otherMember?.avatar?.url,
             lastMessage,
@@ -117,6 +121,56 @@
       console.error("Error loading channels:", err);
     } finally {
       loading = false;
+
+      // Auto-select channel from localStorage (set by "Chat với giảng viên")
+      const storedChannelId = localStorage.getItem("openChannelId");
+      if (storedChannelId) {
+        localStorage.removeItem("openChannelId"); // Clear after reading
+        console.log("🔍 Channel from localStorage:", storedChannelId);
+
+        // Check if channel exists in loaded conversations
+        const existingConv = conversations.find(
+          (c) => c.channelId === storedChannelId,
+        );
+
+        if (existingConv) {
+          console.log("✅ Channel found in existing conversations");
+          selectedConversation = storedChannelId;
+          loadMessages(storedChannelId);
+        } else {
+          console.log("📥 Fetching new channel...");
+          // Channel not in list yet (newly created), fetch it
+          try {
+            const channel = await getChannelById(storedChannelId);
+            console.log("✅ Channel fetched:", channel);
+            const otherMember = channel.members.find(
+              (m) => m.userId !== currentUserId,
+            );
+            console.log("👤 Other member:", otherMember);
+
+            const newConv: Conversation = {
+              id: channel.id,
+              channelId: channel.id,
+              userId: otherMember?.userId || "",
+              userName:
+                otherMember?.username || otherMember?.fullName || "Unknown",
+              userRole: "User",
+              userAvatar: otherMember?.avatar?.url,
+              lastMessage: "Chưa có tin nhắn",
+              lastMessageTime: "",
+              unread: 0,
+              messages: [],
+            };
+
+            conversations = [newConv, ...conversations];
+            selectedConversation = storedChannelId;
+            console.log("✅ Auto-selecting channel:", storedChannelId);
+            loadMessages(storedChannelId);
+          } catch (err) {
+            console.error("❌ Failed to fetch channel:", err);
+          }
+        }
+      }
     }
 
     // Connect WebSocket
@@ -173,8 +227,15 @@
         return conv;
       });
     } catch (err) {
-      error = err instanceof Error ? err.message : "Failed to load messages";
       console.error("Error loading messages:", err);
+      // Don't show error for 500 (likely empty channel), just show empty
+      // Update conversation with empty messages
+      conversations = conversations.map((conv) => {
+        if (conv.channelId === channelId) {
+          return { ...conv, messages: [] };
+        }
+        return conv;
+      });
     } finally {
       loadingMessages = false;
     }

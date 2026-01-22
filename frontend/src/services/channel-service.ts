@@ -37,12 +37,14 @@ export interface GetChannelsResponse {
 
 export interface CreateChannelRequest {
   members: {
-    userId: string;
-    username: string;
+    id: string;
+    full_name: string;
+    email: string;
     avatar?: {
       url: string;
       public_id: string;
-    };
+    } | null;
+    student_code?: string;
   }[];
 }
 
@@ -109,6 +111,7 @@ export async function getChannelBetweenUsers(
 export async function createChannel(
   members: CreateChannelRequest["members"]
 ): Promise<Channel> {
+  console.log("📤 createChannel request body:", JSON.stringify({ members }, null, 2));
   const response = await apiFetch<Channel>("/api/channels", {
     method: "POST",
     headers: {

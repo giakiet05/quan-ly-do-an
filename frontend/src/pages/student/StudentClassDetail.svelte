@@ -164,6 +164,11 @@
       } else {
         // Fetch real data from API
         classroom = await getClassroom(params.id);
+        console.log("📚 [StudentClassDetail] Fetched classroom:", classroom);
+        console.log(
+          "📋 [StudentClassDetail] Project rounds:",
+          classroom.projectRounds,
+        );
         classPosts = await getClassPosts(params.id);
       }
 
@@ -285,6 +290,8 @@
   async function handleChatWithLecturer() {
     if (!classroom?.lecturer) return;
 
+    console.log("🔍 Lecturer object:", classroom.lecturer);
+
     // Skip API call for mock data
     if (
       params.id.startsWith("mock-") ||
@@ -297,16 +304,45 @@
     }
 
     try {
-      // Create or get existing DM channel with lecturer
-      const channel = await createChannel([classroom.lecturer.userId]);
+      // Get current user info
+      const currentUser = $authStore.user;
+      if (!currentUser) {
+        console.error("No current user found");
+        return;
+      }
 
-      lecturerChannelId = channel.id;
-      activeTab = "chat";
+      console.log("📤 Current user:", JSON.stringify(currentUser, null, 2));
+
+      // Create or get existing DM channel with lecturer (requires 2 members)
+      const members = [
+        {
+          id: currentUser.id,
+          full_name: currentUser.fullName || currentUser.fullname || "User",
+          email: currentUser.email,
+        },
+        {
+          id: classroom.lecturer.userId,
+          full_name: classroom.lecturer.fullName,
+          email: classroom.lecturer.email,
+        },
+      ];
+
+      console.log(
+        "📤 Creating channel with members:",
+        JSON.stringify(members, null, 2),
+      );
+      const channel = await createChannel(members);
+      console.log("✅ Channel created:", channel);
+
+      // Store channel ID in localStorage to pass to Chat page
+      localStorage.setItem("openChannelId", channel.id);
+
+      // Navigate to Messages page
+      push("/chats");
     } catch (err) {
       console.error("Error creating channel with lecturer:", err);
-      // Fallback to general channel
-      lecturerChannelId = classroom?.generalChannelId || null;
-      activeTab = "chat";
+      // If error, still try to navigate to Messages
+      push("/chats");
     }
   }
 

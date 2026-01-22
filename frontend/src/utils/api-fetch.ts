@@ -1,7 +1,7 @@
 import type { ApiResponse } from "../dtos/api-response-dto";
 import { convertKeysToCamel, convertKeysToSnake } from "./case-converter";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8082";
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
