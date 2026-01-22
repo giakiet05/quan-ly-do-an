@@ -1,14 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy, tick } from "svelte";
-    import {
-        Send,
-        Paperclip,
-        Smile,
-        Hash,
-        Check,
-        CheckCheck,
-        Loader2,
-    } from "lucide-svelte";
+    import { Send, Paperclip, Smile, Hash, Loader2 } from "lucide-svelte";
     import { authStore } from "../../../stores/auth-store";
     import { wsService } from "../../../services/websocket-service";
     import { getMessages } from "../../../services/message-service";
@@ -16,14 +8,16 @@
 
     // --- Props ---
     let { generalChannelId } = $props<{ generalChannelId: string }>();
+
     // --- States (Svelte 5 Runes) ---
     let messageText = $state("");
     let loading = $state(true);
     let wsConnected = $state(false);
-    let channelInfo = $state<any>(null); // Lưu thông tin channel (tên, thành viên)
-    let messages = $state<any[]>([]); // Lưu tin nhắn từ API
-
+    let channelInfo = $state<any>(null);
+    let messages = $state<any[]>([]);
     let scrollContainer = $state<HTMLDivElement | undefined>(undefined);
+
+    // Lấy ID người dùng hiện tại từ store
     const currentUserId = $derived($authStore.user?.id || "");
 
     // --- Logic cuộn xuống cuối ---
@@ -37,38 +31,48 @@
         }
     }
 
+    // --- Handlers cho WebSocket ---
+    const handleIncomingMessage = (payload: any) => {
+        const msg = payload.message;
+        if (msg && String(msg.channel_id) === String(generalChannelId)) {
+            if (!messages.find((m) => String(m.id) === String(msg.id))) {
+                messages = [...messages, msg];
+                scrollToBottom();
+            }
+        }
+    };
+
+    const handleMessageAck = (payload: any) => {
+        const msg = payload.message;
+        if (msg && String(msg.channel_id) === String(generalChannelId)) {
+            if (!messages.find((m) => String(m.id) === String(msg.id))) {
+                messages = [...messages, msg];
+                scrollToBottom();
+            }
+        }
+    };
+
     // --- API & WebSocket ---
     onMount(async () => {
         if (!generalChannelId) return;
 
         try {
             loading = true;
-
-            // 1. Lấy thông tin Channel (để hiện tên group, số thành viên)
             channelInfo = await getChannelById(generalChannelId);
-            console.log("Thông tin channel:", channelInfo);
-            // 2. Lấy danh sách tin nhắn cũ
+
             const res = await getMessages({
                 channel_id: generalChannelId,
                 page: 1,
                 page_size: 50,
             });
-            messages = res.messages.reverse(); // Đảo ngược để tin nhắn mới nhất nằm dưới
+            messages = res.messages.reverse();
 
-            // 3. Kết nối WebSocket
-            const token = localStorage.getItem("accessToken");
+            const token = localStorage.getItem("access_token");
             if (token) {
                 await wsService.connect(token);
                 wsConnected = true;
-
-                // Lắng nghe tin nhắn mới
-                wsService.on("send_message", (payload: any) => {
-                    const msg = payload; // Tùy cấu trúc BE trả về trực tiếp hay qua .message
-                    if (msg.channel_id === generalChannelId) {
-                        messages = [...messages, msg];
-                        scrollToBottom();
-                    }
-                });
+                wsService.on("send_message", handleIncomingMessage);
+                wsService.on("ack_message", handleMessageAck);
             }
 
             await scrollToBottom();
@@ -79,19 +83,24 @@
         }
     });
 
+    onDestroy(() => {
+        wsService.off("send_message", handleIncomingMessage);
+        wsService.off("ack_message", handleMessageAck);
+    });
+
     function handleSendMessage() {
         if (!messageText.trim() || !wsConnected) return;
 
-        // Gửi qua WebSocket
-        wsService.send("new_message", {
+        const success = wsService.send("send_message", {
             channel_id: generalChannelId,
             content: messageText,
+            type: "text",
+            temp_message_id: Date.now().toString(),
         });
 
-        messageText = "";
-        // Lưu ý: Thông thường BE sẽ emit lại tin nhắn của chính mình,
-        // handleSendMessage không cần push vào messages để tránh trùng lặp nếu BE có emit.
-        // Nếu BE không emit cho chính người gửi, bạn mới dùng Optimistic Update ở đây.
+        if (success) {
+            messageText = "";
+        }
     }
 
     function handleKeyPress(e: KeyboardEvent) {
@@ -110,7 +119,7 @@
             class="flex-1 flex flex-col items-center justify-center bg-gray-50"
         >
             <Loader2 class="w-8 h-8 text-blue-600 animate-spin mb-2" />
-            <p class="text-sm text-gray-500">Đang kết nối phòng chat...</p>
+            <p class="text-sm text-gray-500">Đang tải tin nhắn...</p>
         </div>
     {:else}
         <header
@@ -130,8 +139,7 @@
                         <span class="flex h-2 w-2 rounded-full bg-green-500"
                         ></span>
                         <p class="text-[11px] text-gray-500 font-medium">
-                            {channelInfo?.members?.length || 0} thành viên đang tham
-                            gia
+                            {channelInfo?.members?.length || 0} thành viên
                         </p>
                     </div>
                 </div>
@@ -143,8 +151,13 @@
             class="flex-1 overflow-y-auto p-6 space-y-4 bg-[#f8f9fa]"
         >
             {#each messages as msg (msg.id || msg._id)}
-                {@const isOwn = msg.sender_id === currentUserId}
-                <div class="flex {isOwn ? 'justify-end' : 'justify-start'}">
+                {@const isOwn = String(msg.senderId) === String(currentUserId)}
+
+                <div
+                    class="flex {isOwn
+                        ? 'justify-end'
+                        : 'justify-start'} w-full"
+                >
                     <div
                         class="flex flex-col {isOwn
                             ? 'items-end'
@@ -154,7 +167,9 @@
                             <span
                                 class="text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider"
                             >
-                                {msg.sender_username || msg.sender_name}
+                                {msg.senderUsername ||
+                                    msg.senderName ||
+                                    "Người dùng"}
                             </span>
                         {/if}
 
@@ -208,3 +223,19 @@
         </footer>
     {/if}
 </div>
+
+<style>
+    div::-webkit-scrollbar {
+        width: 8px;
+    }
+    div::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    div::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    div::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+</style>
