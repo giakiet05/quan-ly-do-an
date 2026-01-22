@@ -34,7 +34,7 @@
     // --- Handlers cho WebSocket ---
     const handleIncomingMessage = (payload: any) => {
         const msg = payload.message;
-        if (msg && String(msg.channel_id) === String(generalChannelId)) {
+        if (msg && String(msg.channelId) === String(generalChannelId)) {
             if (!messages.find((m) => String(m.id) === String(msg.id))) {
                 messages = [...messages, msg];
                 scrollToBottom();
@@ -111,9 +111,7 @@
     }
 </script>
 
-<div
-    class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[600px] max-w-5xl mx-auto"
->
+<div class="bg-white rounded-lg shadow-sm p-6 flex flex-col h-[700px]">
     {#if loading}
         <div
             class="flex-1 flex flex-col items-center justify-center bg-gray-50"
@@ -151,7 +149,8 @@
             class="flex-1 overflow-y-auto p-6 space-y-4 bg-[#f8f9fa]"
         >
             {#each messages as msg (msg.id || msg._id)}
-                {@const isOwn = String(msg.senderId) === String(currentUserId)}
+                {@const msgSenderId = msg.senderId || msg.sender_id}
+                {@const isOwn = String(msgSenderId) === String(currentUserId)}
 
                 <div
                     class="flex {isOwn
@@ -168,7 +167,9 @@
                                 class="text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider"
                             >
                                 {msg.senderUsername ||
+                                    msg.sender_username ||
                                     msg.senderName ||
+                                    msg.sender_name ||
                                     "Người dùng"}
                             </span>
                         {/if}
@@ -184,7 +185,7 @@
 
                         <span class="text-[9px] text-gray-400 mt-1 uppercase">
                             {new Date(
-                                msg.created_at || Date.now(),
+                                msg.createdAt || msg.created_at || Date.now(),
                             ).toLocaleTimeString("vi-VN", {
                                 hour: "2-digit",
                                 minute: "2-digit",
