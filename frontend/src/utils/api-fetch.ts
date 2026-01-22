@@ -152,21 +152,21 @@ export async function apiFetch<T = any>(
 
   // Handle non-OK responses
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    let errorCode = "INTERNAL_ERROR";
+    let message = `HTTP ${response.status}: ${response.statusText}`;
 
     try {
-      const errorData: ApiResponse<any> = await response.json();
-      if (errorData.message) {
-        errorMessage = errorData.message;
-      }
-      if (errorData.error_code) {
-        errorMessage += ` (${errorData.error_code})`;
-      }
+      const errorData = await response.json();
+      errorCode = errorData.code || errorData.error_code || "INTERNAL_ERROR";
+      message = errorData.message || message;
     } catch {
-      // Could not parse error as JSON
     }
 
-    throw new Error(errorMessage);
+    throw {
+      code: errorCode,
+      message: message,
+      status: response.status
+    };
   }
 
   // Parse and return response

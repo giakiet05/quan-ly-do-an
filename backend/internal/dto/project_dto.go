@@ -12,8 +12,8 @@ type CreateProjectRoundRequest struct {
 	StartDate        string `json:"start_date" binding:"required,datetime=2006-01-02"`
 	EndDate          string `json:"end_date" binding:"required,datetime=2006-01-02"`
 	Description      string `json:"description"`
-	DefaultMinMember int    `bson:"default_min_member" binding:"required"`
-	DefaultMaxMember int    `bson:"default_max_member" binding:"required"`
+	DefaultMinMember int    `json:"default_min_member" binding:"required"`
+	DefaultMaxMember int    `json:"default_max_member" binding:"required"`
 }
 
 type CreateProjectRoundsRequest struct {
@@ -144,14 +144,16 @@ func FromProjectRound(round *model.ProjectRound) ProjectRoundResponse {
 	}
 
 	return ProjectRoundResponse{
-		ID:            round.ID.Hex(),
-		Name:          round.Name,
-		StartDate:     round.StartDate,
-		EndDate:       round.EndDate,
-		Description:   round.Description,
-		ReportPeriods: reportPeriods,
-		CreatedAt:     round.CreatedAt,
-		IsDeleted:     round.IsDeleted,
+		ID:               round.ID.Hex(),
+		Name:             round.Name,
+		StartDate:        round.StartDate,
+		EndDate:          round.EndDate,
+		Description:      round.Description,
+		ReportPeriods:    reportPeriods,
+		DefaultMaxMember: round.DefaultMaxMember,
+		DefaultMinMember: round.DefaultMinMember,
+		CreatedAt:        round.CreatedAt,
+		IsDeleted:        round.IsDeleted,
 	}
 }
 

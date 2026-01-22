@@ -57,24 +57,25 @@ type UpdateWhitelistStudentCodeRequest struct {
 // ===== RESPONSE DTOs =====
 
 type ClassroomResponse struct {
-	ID                     string               `json:"id"`
-	Name                   string               `json:"name"`
-	Description            string               `json:"description"`
-	Avatar                 string               `json:"avatar"`
-	Semester               string               `json:"semester"`
-	Year                   int                  `json:"year"`
-	Status                 string               `json:"status"`
-	Lecturer               UserInfoResponse     `json:"lecturer"`
-	CoLecturers            []UserInfoResponse   `json:"co_lecturers"`
-	Students               []UserInfoResponse   `json:"students"`
-	InvitationCode         string               `json:"invitation_code"`
-	MaxStudents            int                  `json:"max_students"`
-	AutoApprove            bool                 `json:"auto_approve"`
+	ID                     string                   `json:"id"`
+	Name                   string                   `json:"name"`
+	Description            string                   `json:"description"`
+	Avatar                 string                   `json:"avatar"`
+	Semester               string                   `json:"semester"`
+	Year                   int                      `json:"year"`
+	Status                 string                   `json:"status"`
+	Lecturer               UserInfoResponse         `json:"lecturer"`
+	CoLecturers            []UserInfoResponse       `json:"co_lecturers"`
+	Students               []UserInfoResponse       `json:"students"`
+	GeneralChannelID       string                   `json:"general_channel_id,omitempty"`
+	InvitationCode         string                   `json:"invitation_code"`
+	MaxStudents            int                      `json:"max_students"`
+	AutoApprove            bool                     `json:"auto_approve"`
 	WhitelistStudentCode   []WhitelistEntryResponse `json:"whitelist_student_code,omitempty"`
-	AllowedEmailDomains    []string             `json:"allowed_email_domains,omitempty"`
-	EnableWhitelist        bool                 `json:"enable_whitelist"`
-	EnableEmailRestriction bool                 `json:"enable_email_restriction"`
-	CreatedAt              time.Time            `json:"created_at"`
+	AllowedEmailDomains    []string                 `json:"allowed_email_domains,omitempty"`
+	EnableWhitelist        bool                     `json:"enable_whitelist"`
+	EnableEmailRestriction bool                     `json:"enable_email_restriction"`
+	CreatedAt              time.Time                `json:"created_at"`
 }
 
 type RegenerateCodeResponse struct {
@@ -138,6 +139,7 @@ func FromClassroomWithUsers(classroom *model.Classroom, lecturer *model.User, co
 		Lecturer:               lecturerInfo,
 		CoLecturers:            coLecturersInfo,
 		Students:               studentsInfo,
+		GeneralChannelID:       classroom.GeneralChannelID.Hex(),
 		InvitationCode:         classroom.InvitationCode,
 		MaxStudents:            classroom.MaxStudents,
 		AutoApprove:            classroom.AutoApprove,

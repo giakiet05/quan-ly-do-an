@@ -3,7 +3,6 @@
     import type { ClassData } from "../../../../types/class";
     import type { ProjectRound } from "../../../../types/project-round";
 
-    // 1. Định nghĩa Props
     let {
         onClose,
         onSubmit,
@@ -18,7 +17,6 @@
         initialData?: ProjectRound | null;
     }>();
 
-    // 2. Helper function để định dạng date input (YYYY-MM-DD)
     const formatToDateInput = (dateStr: string | undefined | null | Date) => {
         if (!dateStr) return "";
         const dateString =
@@ -28,21 +26,42 @@
         return dateString.split("T")[0];
     };
 
-    // 3. Khởi tạo formData trực tiếp từ initialData prop
-    // Svelte 5 sẽ dùng giá trị này khi component được mount
+    // 1. Thêm minStudents và maxStudents vào formData
     let formData = $state({
         name: initialData?.name ?? "",
         description: initialData?.description ?? "",
         startDate: formatToDateInput(initialData?.startDate),
         endDate: formatToDateInput(initialData?.endDate),
+        minStudents: initialData?.minStudents ?? 1, // Mặc định là 1
+        maxStudents: initialData?.maxStudents ?? 3, // Mặc định là 3
         status: initialData?.status ?? "upcoming",
     });
 
     let errors = $state<Record<string, string>>({});
 
-    // 4. Xử lý logic Submit
     function handleSubmit(e: Event) {
         e.preventDefault();
+
+        // --- BẮT ĐẦU KHÚC KIỂM TRA CHƯA THAY ĐỔI ---
+        if (isEdit && initialData) {
+            const isUnchanged =
+                formData.name.trim() === initialData.name &&
+                formData.description.trim() ===
+                    (initialData.description || "") &&
+                formData.startDate ===
+                    formatToDateInput(initialData.startDate) &&
+                formData.endDate === formatToDateInput(initialData.endDate) &&
+                Number(formData.minStudents) === initialData.minStudents &&
+                Number(formData.maxStudents) === initialData.maxStudents;
+
+            if (isUnchanged) {
+                console.log("Dữ liệu không đổi, đóng modal.");
+                onClose();
+                return;
+            }
+        }
+        // --- KẾT THÚC KHÚC KIỂM TRA ---
+
         const newErrors: Record<string, string> = {};
 
         if (!formData.name.trim())
@@ -60,15 +79,22 @@
             newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
         }
 
+        if (formData.minStudents < 1) {
+            newErrors.minStudents = "Tối thiểu phải có 1 sinh viên";
+        }
+        if (formData.maxStudents < formData.minStudents) {
+            newErrors.maxStudents =
+                "Số lượng tối đa không được nhỏ hơn tối thiểu";
+        }
+
         if (Object.keys(newErrors).length > 0) {
             errors = newErrors;
             return;
         }
 
-        // Trả về dữ liệu kèm ID nếu là đang edit
         onSubmit({
             ...formData,
-            id: initialData?.id, // Giữ lại ID để API biết là update
+            id: initialData?.id,
         });
     }
 
@@ -80,9 +106,11 @@
 <div
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
 >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+    <div
+        class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+    >
         <div
-            class="flex justify-between items-center p-6 border-b border-gray-200"
+            class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10"
         >
             <h2 class="text-xl font-semibold">
                 {isEdit ? "Chỉnh sửa hạng mục" : "Tạo hạng mục đề tài mới"}
@@ -115,24 +143,62 @@
                     class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none {errors.name
                         ? 'border-red-500'
                         : 'border-gray-300'}"
-                    placeholder="Ví dụ: Hạng mục 1 - Đề tài Web Application"
                 />
                 {#if errors.name}
                     <p class="text-red-500 text-sm mt-1">{errors.name}</p>
                 {/if}
             </div>
 
-            <div>
-                <label class="block text-sm font-medium mb-2" for="description"
-                    >Mô tả</label
-                >
-                <textarea
-                    id="description"
-                    bind:value={formData.description}
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    rows={3}
-                    placeholder="Mô tả ngắn về hạng mục này"
-                ></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label
+                        class="block text-sm font-medium mb-2"
+                        for="minStudents"
+                    >
+                        Sinh viên tối thiểu/nhóm <span class="text-red-500"
+                            >*</span
+                        >
+                    </label>
+                    <input
+                        id="minStudents"
+                        type="number"
+                        min="1"
+                        bind:value={formData.minStudents}
+                        oninput={() => clearError("minStudents")}
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none {errors.minStudents
+                            ? 'border-red-500'
+                            : 'border-gray-300'}"
+                    />
+                    {#if errors.minStudents}
+                        <p class="text-red-500 text-sm mt-1">
+                            {errors.minStudents}
+                        </p>
+                    {/if}
+                </div>
+                <div>
+                    <label
+                        class="block text-sm font-medium mb-2"
+                        for="maxStudents"
+                    >
+                        Sinh viên tối đa/nhóm <span class="text-red-500">*</span
+                        >
+                    </label>
+                    <input
+                        id="maxStudents"
+                        type="number"
+                        min="1"
+                        bind:value={formData.maxStudents}
+                        oninput={() => clearError("maxStudents")}
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none {errors.maxStudents
+                            ? 'border-red-500'
+                            : 'border-gray-300'}"
+                    />
+                    {#if errors.maxStudents}
+                        <p class="text-red-500 text-sm mt-1">
+                            {errors.maxStudents}
+                        </p>
+                    {/if}
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -158,7 +224,6 @@
                         </p>
                     {/if}
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium mb-2" for="endDate">
                         Ngày kết thúc <span class="text-red-500">*</span>
@@ -178,6 +243,18 @@
                         </p>
                     {/if}
                 </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-2" for="description"
+                    >Mô tả</label
+                >
+                <textarea
+                    id="description"
+                    bind:value={formData.description}
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    rows={2}
+                ></textarea>
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">

@@ -139,7 +139,6 @@
 <div class="content-area">
     <div class="tabs">
         <button
-            hidden={!classDetail}
             type="button"
             class:active={activeTab === "list"}
             onclick={() => setActiveTab("list")}

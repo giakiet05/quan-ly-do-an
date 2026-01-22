@@ -90,9 +90,10 @@ export async function updatePeriod(
  */
 export async function deletePeriod(
     classroomId: string,
+    roundId: string,
     periodId: string
 ): Promise<void> {
-    await apiFetch(`/api/periods/classrooms/${classroomId}/${periodId}`, {
+    await apiFetch(`/api/projects/classrooms/${classroomId}/rounds/${roundId}/report-periods/${periodId}`, {
         method: "DELETE",
     });
 }

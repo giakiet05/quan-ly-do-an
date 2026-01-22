@@ -19,6 +19,8 @@
     import { classStore } from "../../../stores/class-store";
     import type { ClassItem } from "../../../types/class";
     import type { UpdateProjectRoundRequest } from "../../../dtos/project-dto";
+    import type { ClassroomResponse } from "../../../dtos";
+    import { getClassroom } from "../../../services/classroom-service";
 
     const classroomId = $derived($params?.id);
     const classesStore = classStore.classes;
@@ -34,8 +36,24 @@
             }
         }
     });
-    const students = $derived(classData?.students ?? []);
 
+    let classDetail = $state<ClassroomResponse | null>(null);
+    $effect(() => {
+        if (classroomId) {
+            getClassroom(classroomId)
+                .then((data) => {
+                    classDetail = data;
+                })
+                .catch((err) => {
+                    console.error("Lỗi khi lấy chi tiết lớp học:", err);
+                });
+        }
+    });
+
+    const students = $derived(classDetail?.students ?? []);
+    $effect(() => {
+        console.log("Students list updated:", classDetail);
+    });
     // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
@@ -55,6 +73,7 @@
     // 4. Handlers
     async function handleCreateRound(data: any) {
         try {
+            console.log("Creating round with data:", data);
             await projectRoundStore.addRound({
                 ...data,
                 classroomId: classroomId,
@@ -68,19 +87,21 @@
     async function handleUpdateRound(data: any) {
         if (!editingCategory) return;
         try {
-            const payload: UpdateProjectRoundRequest = {
-                projectRoundId: editingCategory.id,
-                classroomId: classroomId,
-                name: data.name,
-                description: data.description,
-                startDate: data.startDate,
-                endDate: data.endDate,
+            // Chụp ảnh data từ modal gửi về (đã bao gồm các thay đổi từ UI)
+            // Chúng ta truyền cả 'data' (chứa thông tin mới)
+            // và 'editingCategory.id' để Mapper biết đang update record nào
+            const updateData = {
+                ...data,
+                id: editingCategory.id, // Đảm bảo luôn có ID chuẩn từ entity cũ
             };
-            await projectRoundStore.editRound(payload);
+
+            await projectRoundStore.editRound(updateData, classroomId);
+
             editingCategory = null;
+            alert("✅ Cập nhật hạng mục thành công!");
         } catch (error) {
             console.error("❌ Error updating category:", error);
-            alert("Có lỗi khi cập nhật!");
+            alert("Có lỗi khi cập nhật: " + (error as Error).message);
         }
     }
 </script>
@@ -209,7 +230,7 @@
                 </div>
             {:else if activeTab === "students"}
                 <div class="bg-white rounded-lg shadow-sm">
-                    <StudentTab {students} />
+                    <StudentTab {classroomId} {students} />
                 </div>
             {:else if activeTab === "announcements"}
                 <div class="bg-white rounded-lg shadow-sm">

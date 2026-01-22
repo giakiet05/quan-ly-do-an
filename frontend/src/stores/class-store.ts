@@ -1,7 +1,7 @@
 // src/stores/class.store.ts
 import { writable, derived } from "svelte/store";
 import type { ClassItem, CreateClassRequest } from "../types/class";
-import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile, getClassroom } from "../services/classroom-service";
+import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile, getClassroom, removeStudentFromClassroom } from "../services/classroom-service";
 import { mapClassroomToClassItem, mapUIRequestToDTO } from "../mappers/classroom-mapper";
 import type { ClassroomResponse } from "../dtos/classroom-dto";
 
@@ -11,6 +11,7 @@ function createClassStore() {
     const searchTerm = writable("");
     const currentPage = writable(1);
     const itemsPerPage = writable(5);
+    const classDetail = writable<ClassroomResponse | null>(null);
 
     // ===== derived =====
     const filteredClasses = derived(
@@ -56,6 +57,10 @@ function createClassStore() {
         currentPage.set(1);
     }
 
+    function setClassDetail(data: ClassroomResponse | null) {
+        classDetail.set(data);
+    }
+
     async function addClass(uiData: CreateClassRequest, file?: File) {
         try {
             const dtoPayload = mapUIRequestToDTO(uiData);
@@ -63,7 +68,6 @@ function createClassStore() {
             if (file) {
                 await uploadWhitelistStudentCodeFile(newClassRaw.id, file);
             }
-            console.log("New class created:", newClassRaw);
             const newClassMapped = mapClassroomToClassItem(newClassRaw);
             classes.update((list) => [newClassMapped, ...list]);
 
@@ -82,7 +86,6 @@ function createClassStore() {
             }
             const response = await updateClassroom(id, dtoPayload);
 
-            console.log("API update response:", response);
 
             await fetchMyClasses();
         } catch (err) {
@@ -123,12 +126,34 @@ function createClassStore() {
         }
     }
 
+    async function fetchClassDetail(classId: string) {
+        try {
+            const classDetails = await getClassroom(classId);
+            setClassDetail(classDetails);
+        } catch (err) {
+            console.error("Failed to fetch class details", err);
+            setClassDetail(null);
+            throw err;
+        }
+    }
+
+    async function removeStudent(classroomId: string, studentId: string) {
+        try {
+            await removeStudentFromClassroom(classroomId, studentId);
+            console.log(`Student ${studentId} removed from classroom ${classroomId}`);
+        } catch (err) {
+            console.error("Failed to remove student from classroom", err);
+            throw err;
+        }
+    }
+
     return {
         // state
         classes,
         searchTerm,
         currentPage,
         itemsPerPage,
+        classDetail,
 
         // derived
         filteredClasses,
@@ -145,6 +170,9 @@ function createClassStore() {
         removeClass,
         fetchMyClasses,
         fetchClassById,
+        setClassDetail,
+        fetchClassDetail,
+        removeStudent,
     };
 }
 

@@ -495,7 +495,7 @@ func (c *classroomRepo) IsLecturerOrCoLecturer(ctx context.Context, classroomID,
 		"_id": classroomObjectID,
 		"$or": []bson.M{
 			{"lecturer_id": userObjectID},
-			{"co_lecturer_ids": userObjectID},
+			{"co_lecturer_ids._id": userObjectID},
 		},
 	}
 

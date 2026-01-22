@@ -1,12 +1,21 @@
 <script lang="ts">
-  import { Search, Users, Mail, Phone, GraduationCap } from "@lucide/svelte";
+  import {
+    Search,
+    Users,
+    Mail,
+    Phone,
+    GraduationCap,
+    Trash2,
+  } from "@lucide/svelte";
   import type { StudentInClass } from "../../../../types/student";
+  import { classStore } from "../../../../stores/class-store";
+  import type { UserInfo } from "../../../../dtos";
 
   // Nhận props từ ClassDetail
-  let { students } = $props<{
-    students: StudentInClass[];
+  let { students, classroomId } = $props<{
+    students: UserInfo[];
+    classroomId: string;
   }>();
-  console.log("Students in StudentTab:", students);
   // State quản lý tìm kiếm
   let searchTerm = $state("");
 
@@ -30,6 +39,23 @@
     }
     return name.substring(0, 2).toUpperCase();
   };
+
+  // Xử lý xóa sinh viên
+  async function removeStudent(studentId: string) {
+    if (confirm("Bạn có chắc chắn muốn xóa sinh viên này khỏi lớp?")) {
+      try {
+        await classStore.removeStudent(classroomId, studentId);
+        // Cập nhật lại danh sách sinh viên sau khi xóa
+        students = students.filter(
+          (student: UserInfo) => student.userId !== studentId,
+        );
+        alert("Xóa sinh viên thành công!");
+      } catch (error) {
+        console.error("Lỗi khi xóa sinh viên:", error);
+        alert("Không thể xóa sinh viên. Vui lòng thử lại.");
+      }
+    }
+  }
 </script>
 
 <div class="bg-white rounded-lg shadow-sm p-6">
@@ -97,10 +123,14 @@
               class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
               >Trạng thái</th
             >
+            <th
+              class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+              >Hành động</th
+            >
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          {#each filteredStudents as student, index (student.id)}
+          {#each filteredStudents as student, index (student.userId)}
             <tr class="hover:bg-blue-50/30 transition-colors group">
               <td class="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
               <td class="px-6 py-4">
@@ -145,6 +175,15 @@
                   <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                   Đang học
                 </span>
+              </td>
+              <td class="px-6 py-4">
+                <button
+                  class="text-red-600 hover:text-red-800 transition-colors flex items-center gap-1"
+                  onclick={() => removeStudent(student.userId)}
+                >
+                  <Trash2 class="w-4 h-4" />
+                  Xóa
+                </button>
               </td>
             </tr>
           {/each}

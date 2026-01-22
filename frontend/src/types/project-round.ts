@@ -24,5 +24,7 @@ export interface ProjectRound {
     projectCount: number;
     registeredCount: number;
     progress: number;
+    minStudents: number; // Số sinh viên tối thiểu trong nhóm
+    maxStudents: number; // Số sinh viên tối đa trong nhóm
     reportPeriods: ReportPeriod[]; // <--- Sử dụng interface đã export ở trên
 }

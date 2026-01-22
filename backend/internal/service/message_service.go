@@ -85,7 +85,6 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 	tempMessageID, _ := payload["temp_message_id"].(string)
 	channelID, _ := payload["channel_id"].(string)
 	senderID, _ := payload["sender_id"].(string)
-	senderUsername, _ := payload["sender_username"].(string)
 	content, _ := payload["content"].(string)
 
 	var msgType model.MessageType
@@ -93,7 +92,7 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 		msgType = model.MessageType(t)
 	}
 
-	if tempMessageID == "" || channelID == "" || senderID == "" || senderUsername == "" || content == "" {
+	if tempMessageID == "" || channelID == "" || senderID == "" || content == "" {
 		m.publishMessageError(senderID, channelID, tempMessageID, apperror.ErrBadRequest)
 		return
 	}
@@ -134,15 +133,14 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 	}
 
 	message := &model.Message{
-		ChannelID:      channelObjectID,
-		SenderID:       &senderObjectID,
-		SenderUsername: senderUsername,
-		Type:           msgType,
-		Content:        content,
-		ReadBy:         []primitive.ObjectID{},
-		IsSend:         false,
-		IsDeleted:      false,
-		CreatedAt:      time.Now(),
+		ChannelID: channelObjectID,
+		SenderID:  &senderObjectID,
+		Type:      msgType,
+		Content:   content,
+		ReadBy:    []primitive.ObjectID{},
+		IsSend:    false,
+		IsDeleted: false,
+		CreatedAt: time.Now(),
 	}
 
 	message, err = m.messageRepository.Create(ctx, message)
@@ -153,7 +151,7 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 
 	broadcastEvent := bus.BroadcastEvent{
 		RecipientIDs: recipientIDs,
-		EventType:    bus.BroadcastEventReportOpened,
+		EventType:    bus.BroadcastEventMessageCreated,
 		TempID:       tempMessageID,
 		Data:         dto.FromMessage(message),
 	}
