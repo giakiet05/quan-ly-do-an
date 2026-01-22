@@ -12,8 +12,8 @@ type CreateProjectRoundRequest struct {
 	StartDate        string `json:"start_date" binding:"required,datetime=2006-01-02"`
 	EndDate          string `json:"end_date" binding:"required,datetime=2006-01-02"`
 	Description      string `json:"description"`
-	DefaultMinMember int    `bson:"default_min_member" binding:"required"`
-	DefaultMaxMember int    `bson:"default_max_member" binding:"required"`
+	DefaultMinMember int    `json:"default_min_member" binding:"required"`
+	DefaultMaxMember int    `json:"default_max_member" binding:"required"`
 }
 
 type CreateProjectRoundsRequest struct {
