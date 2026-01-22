@@ -374,14 +374,16 @@ func (c *channelRepo) AddMember(ctx context.Context, channelID string, user *mod
 		return err
 	}
 
+	member := model.UserInfo{
+		ID:       user.ID,
+		FullName: user.FullName,
+		Email:    user.Email,
+		Avatar:   user.Avatar,
+	}
+
 	update := bson.M{
 		"$addToSet": bson.M{
-			"members": bson.M{
-				"user_id":   user.ID,
-				"full_name": user.FullName,
-				"avatar":    user.Avatar,
-				"joined_at": time.Now(),
-			},
+			"members": member,
 			"settings": bson.M{
 				"user_id":          user.ID,
 				"notification":     true,
