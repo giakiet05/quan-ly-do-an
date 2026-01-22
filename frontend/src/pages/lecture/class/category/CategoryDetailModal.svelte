@@ -41,6 +41,27 @@
 
     function handleSubmit(e: Event) {
         e.preventDefault();
+
+        // --- BẮT ĐẦU KHÚC KIỂM TRA CHƯA THAY ĐỔI ---
+        if (isEdit && initialData) {
+            const isUnchanged =
+                formData.name.trim() === initialData.name &&
+                formData.description.trim() ===
+                    (initialData.description || "") &&
+                formData.startDate ===
+                    formatToDateInput(initialData.startDate) &&
+                formData.endDate === formatToDateInput(initialData.endDate) &&
+                Number(formData.minStudents) === initialData.minStudents &&
+                Number(formData.maxStudents) === initialData.maxStudents;
+
+            if (isUnchanged) {
+                console.log("Dữ liệu không đổi, đóng modal.");
+                onClose();
+                return;
+            }
+        }
+        // --- KẾT THÚC KHÚC KIỂM TRA ---
+
         const newErrors: Record<string, string> = {};
 
         if (!formData.name.trim())
@@ -58,7 +79,6 @@
             newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
         }
 
-        // 2. Logic kiểm tra lỗi cho số lượng sinh viên
         if (formData.minStudents < 1) {
             newErrors.minStudents = "Tối thiểu phải có 1 sinh viên";
         }

@@ -4,6 +4,7 @@
   import AuthModel from "../../layouts/AuthLayout.svelte";
   import { authService } from "../../services/auth-service";
   import { setAuth } from "../../stores/auth-store";
+  import { getErrorMessage } from "../../constants/app-error";
 
   let Email = "";
   let password = "";
@@ -42,15 +43,22 @@
       setAuth(res.user, res.accessToken, res.refreshToken);
       push("/home");
     } catch (err: any) {
-      console.error("Lỗi đăng nhập:", err);
+      console.error("Lỗi đăng nhập chi tiết:", err);
 
-      if (err?.message) {
-        error = err.message;
-      } else if (err?.error?.message) {
-        error = err.error.message;
+      // 1. Ưu tiên lấy Code để dịch sang tiếng Việt
+      const errorCode = err?.code || err?.error?.code;
+
+      if (errorCode) {
+        // Nếu tìm thấy mã code (ví dụ INVALID_CREDENTIALS) -> Dịch ra tiếng Việt
+        error = getErrorMessage(errorCode);
       } else if (typeof err === "string") {
+        // Nếu lỗi quăng ra là một chuỗi thuần túy
         error = err;
+      } else if (err?.message || err?.error?.message) {
+        // Nếu không có code dịch, mới dùng tới message tiếng Anh của hệ thống
+        error = err?.message || err?.error?.message;
       } else {
+        // Trường hợp cuối cùng không xác định được lỗi
         error = "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
       }
     } finally {

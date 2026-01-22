@@ -7,6 +7,7 @@
     sendEmailVerification,
     completeRegistration,
   } from "../../services/auth-service";
+  import { getErrorMessage } from "../../constants/app-error";
 
   // --- STATE ---
   let fullname = "";
@@ -76,12 +77,16 @@
     }
 
     loading = true;
-
     try {
       await sendEmailVerification({ email });
       step = "verify";
     } catch (e: any) {
-      error = e?.message || "Không thể gửi mã xác thực";
+      console.error("Lỗi gửi verification:", e);
+      // Dịch lỗi dựa trên code từ server (VD: EMAIL_EXISTS)
+      const errorCode = e?.code || e?.error?.code;
+      error = errorCode
+        ? getErrorMessage(errorCode)
+        : e?.message || "Không thể gửi mã xác thực";
     } finally {
       loading = false;
     }

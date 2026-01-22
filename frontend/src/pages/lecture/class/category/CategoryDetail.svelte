@@ -22,7 +22,7 @@
     // 2. Tạo một state để chứa dữ liệu sau khi fetch xong
     let projectRound = $state<ProjectRound | null>(null);
     let isLoading = $state(true);
-
+    let initialSnapshot = $state<string>("");
     // 3. Sử dụng $effect để tự động fetch lại khi classroomId hoặc projectRoundId thay đổi
     $effect(() => {
         if (classroomId && projectRoundId) {
@@ -43,14 +43,24 @@
 
     // state cho class
     let classDetail = $state<ClassroomResponse | null>(null);
+    // 3. Sử dụng $effect để tự động fetch lại khi classroomId hoặc projectRoundId thay đổi
     $effect(() => {
-        if (classroomId) {
-            getClassroom(classroomId)
+        if (classroomId && projectRoundId) {
+            isLoading = true;
+            projectRoundStore
+                .getRoundById(classroomId, projectRoundId)
                 .then((data) => {
-                    classDetail = data;
+                    projectRound = data;
+
+                    // --- BẠN THIẾU DÒNG NÀY ---
+                    // Chụp lại bản gốc ngay khi dữ liệu vừa về
+                    initialSnapshot = JSON.stringify($state.snapshot(data));
                 })
                 .catch((err) => {
-                    console.error("Lỗi khi lấy chi tiết lớp học:", err);
+                    console.error("Lỗi khi lấy dữ liệu:", err);
+                })
+                .finally(() => {
+                    isLoading = false;
                 });
         }
     });
@@ -69,17 +79,29 @@
     async function handleUpdate() {
         if (!projectRound) return;
 
-        try {
-            // Svelte 5: Chụp ảnh dữ liệu hiện tại (loại bỏ Proxy)
-            const snapshot = $state.snapshot(projectRound);
+        // 1. Chụp ảnh dữ liệu hiện tại
+        const currentSnapshotData = $state.snapshot(projectRound);
+        const currentSnapshotStr = JSON.stringify(currentSnapshotData);
+        // 2. So sánh với bản gốc lúc mới Load trang
+        if (currentSnapshotStr === initialSnapshot) {
+            alert("Không có thay đổi nào để cập nhật.");
+            activeTab = "projects";
+            return;
+        }
 
-            // Gọi store và truyền snapshot vào
-            await projectRoundStore.editRound(snapshot, classroomId);
+        try {
+            // 3. Nếu có thay đổi mới gọi Store
+            await projectRoundStore.editRound(currentSnapshotData, classroomId);
+
+            // Cập nhật lại bản gốc mới để nếu nhấn Lưu lần nữa mà không sửa thì lại chặn
+            initialSnapshot = currentSnapshotStr;
 
             alert("✅ Cập nhật hạng mục thành công!");
             activeTab = "projects";
         } catch (err) {
             console.error("Lỗi cập nhật:", err);
+            // Bạn có thể check thêm: nếu lỗi trả về là ROUND_NOT_FOUND
+            // thì báo người dùng có thể dữ liệu đã bị xóa bởi người khác
         }
     }
 
