@@ -117,7 +117,7 @@ func (h *Hub) handleIncoming(raw []byte, userID string) {
 	}
 
 	switch incomingMsg.Type {
-	case dto.NewMessage:
+	case dto.NewMessage, dto.SendMessage: // Support both types for compatibility
 		var payload dto.NewMessagePayload
 		if err := util.DecodeJson(incomingMsg.Payload, &payload); err != nil {
 			log.Printf("WebSocket invalid new message payload from user %s: %v", userID, err)
@@ -180,11 +180,13 @@ func (h *Hub) handleBroadcast(recipientIDs []string, eventType string, tempMessa
 		}
 		h.sendToUser(messageData.SenderID, dto.ACKMessage, ackResponse)
 
-		// Send message to recipients
+		// Send message to ALL recipients (including sender for multi-device sync)
 		response := dto.SendMessagePayload{
 			Message: messageData,
 		}
-		h.broadcastToUsers(recipientIDs, dto.SendMessage, response)
+		for _, recipientID := range recipientIDs {
+			h.sendToUser(recipientID, dto.SendMessage, response)
+		}
 	case string(bus.BroadcastEventTypingStart), string(bus.BroadcastEventTypingStop):
 		// Handle typing message
 		h.broadcastToUsers(recipientIDs, dto.TypingIndicator, data)

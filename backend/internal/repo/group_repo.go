@@ -69,22 +69,44 @@ func (g *groupRepo) GetByID(ctx context.Context, groupID string) (*model.Group, 
 	return &group, nil
 }
 
-func (g *groupRepo) GetFilter(ctx context.Context, classroomID string, projectID *string, memberID *string) ([]model.Group, error) {
+func (g *groupRepo) GetFilter(
+	ctx context.Context,
+	classroomID string,
+	projectID *string,
+	memberID *string,
+) ([]model.Group, error) {
+
 	filter := bson.M{}
-	filter["classroom_id"] = classroomID
+
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return nil, err
+	}
+	filter["classroom_id"] = classroomOID
 
 	if projectID != nil {
-		filter["project_id"] = *projectID
+		projectOID, err := primitive.ObjectIDFromHex(*projectID)
+		if err != nil {
+			return nil, err
+		}
+		filter["project_id"] = projectOID
 	}
 
 	if memberID != nil {
-		filter["member_id"] = *memberID
+		memberOID, err := primitive.ObjectIDFromHex(*memberID)
+		if err != nil {
+			return nil, err
+		}
+		// adjust field name based on schema
+		filter["members.id"] = memberOID
 	}
 
 	cursor, err := g.groupCollection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
+
 	var results []model.Group
 	if err := cursor.All(ctx, &results); err != nil {
 		return nil, err

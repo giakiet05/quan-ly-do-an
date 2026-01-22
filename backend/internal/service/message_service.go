@@ -120,13 +120,32 @@ func (m *messageService) handleNewMessage(event bus.Event) {
 
 	isMember := false
 	var recipientIDs []string
+
+	// Add all members except sender to recipients
 	for _, member := range channel.Members {
 		if member.ID == senderObjectID {
 			isMember = true
-		} else {
+		}
+		if member.ID != senderObjectID {
 			recipientIDs = append(recipientIDs, member.ID.Hex())
 		}
 	}
+
+	// Also add all admins to recipients (if not already included)
+	adminIDsSet := make(map[string]bool)
+	for _, recipientID := range recipientIDs {
+		adminIDsSet[recipientID] = true
+	}
+	for _, adminID := range channel.AdminIDs {
+		adminIDHex := adminID.Hex()
+		if !adminIDsSet[adminIDHex] && adminIDHex != senderID {
+			recipientIDs = append(recipientIDs, adminIDHex)
+		}
+		if adminID == senderObjectID {
+			isMember = true
+		}
+	}
+
 	if !isMember {
 		m.publishMessageError(senderID, channelID, tempMessageID, apperror.ErrForbidden)
 		return

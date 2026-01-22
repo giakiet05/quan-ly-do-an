@@ -41,7 +41,7 @@ export async function getMessages(
   query: GetMessagesFilterQuery
 ): Promise<GetMessagesResponse> {
   const params = new URLSearchParams();
-  
+
   params.append("channel_id", query.channel_id);
   if (query.sender_id) params.append("sender_id", query.sender_id);
   if (query.search_content) params.append("search_content", query.search_content);
@@ -50,7 +50,7 @@ export async function getMessages(
   if (query.is_media !== undefined) params.append("is_media", String(query.is_media));
   params.append("page", String(query.page || 1));
   params.append("page_size", String(query.page_size || 50));
-
+  console.log("Fetching messages with params:", params.toString());
   const response = await apiFetch<GetMessagesResponse>(
     `/api/messages/filter?${params.toString()}`,
     {

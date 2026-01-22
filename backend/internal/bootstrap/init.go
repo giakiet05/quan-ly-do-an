@@ -94,9 +94,9 @@ func initServices(
 		NotificationService:        service.NewNotificationService(repos.NotificationRepo, repos.UserRepo, repos.ClassroomRepo, repos.GroupRepo, eventBus, redisClient),
 		ChannelService:             service.NewChannelService(repos.ChannelRepo, repos.MessageRepo, eventBus),
 		MessageService:             service.NewMessageService(repos.MessageRepo, repos.ChannelRepo, eventBus, redisClient),
-		ClassroomJoinService:       service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
+		ClassroomJoinService:       service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
 		ClassroomService:           service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
-		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
+		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo, eventBus),
 		ClassPostService:           service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
 		ProjectService:             service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo, repos.GroupRepo, eventBus, cron),
 	}

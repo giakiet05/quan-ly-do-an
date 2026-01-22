@@ -52,7 +52,14 @@
     });
 
     const students = $derived(classDetail?.students ?? []);
+<<<<<<< HEAD
 
+=======
+    const generalChannelId = $derived(classDetail?.generalChannelId ?? "");
+    $effect(() => {
+        console.log("Students list updated:", classDetail);
+    });
+>>>>>>> origin
     // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
@@ -240,7 +247,7 @@
                 </div>
             {:else if activeTab === "chat"}
                 <div class="w-full h-full min-h-[650px]">
-                    <ChatTab {classroomId} />
+                    <ChatTab {generalChannelId} />
                 </div>
             {/if}
         </div>

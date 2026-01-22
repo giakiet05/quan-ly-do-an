@@ -35,9 +35,18 @@
     messagesEndRef?.scrollIntoView({ behavior: "smooth" });
   }
 
-  onMount(async () => {
+  async function loadMessages() {
     try {
       loading = true;
+      console.log("📥 Loading messages for channel:", channelId);
+
+      // Check if channelId is valid
+      if (!channelId || channelId === "") {
+        console.warn("⚠️ No channel ID provided for ChatTab");
+        messages = [];
+        loading = false;
+        return;
+      }
 
       // TEMPORARY: Use mock data if channelId is mock
       if (channelId.startsWith("channel") && !channelId.includes("-")) {
@@ -74,12 +83,22 @@
         id: msg.id,
         userId: msg.sender_id,
         userName: msg.sender_username,
-        userRole: currentUserRole, // Determine from context
+        userRole: currentUserRole,
         content: msg.content,
         timestamp: new Date(msg.created_at).toLocaleString("vi-VN"),
         attachments: [],
       }));
+      console.log("✅ Messages loaded:", messages.length);
+    } catch (err) {
+      console.error("❌ Error loading messages:", err);
+    } finally {
+      loading = false;
+      scrollToBottom();
+    }
+  }
 
+  onMount(async () => {
+    try {
       // Connect to WebSocket
       const token = localStorage.getItem("accessToken");
       if (token) {
@@ -91,10 +110,15 @@
         wsService.on("ack_message", handleMessageAck);
       }
     } catch (err) {
-      console.error("Error loading chat:", err);
-    } finally {
-      loading = false;
-      scrollToBottom();
+      console.error("Error connecting WebSocket:", err);
+    }
+  });
+
+  // Reload messages when channelId changes
+  $effect(() => {
+    if (channelId) {
+      console.log("🔄 Channel changed, reloading messages:", channelId);
+      loadMessages();
     }
   });
 
@@ -104,6 +128,10 @@
   });
 
   function handleIncomingMessage(data: any) {
+    // Only add message if it belongs to current channel
+    if (data.channel_id !== channelId) {
+      return;
+    }
     const newMsg: Message = {
       id: data.message_id,
       userId: data.sender_id,
@@ -115,6 +143,7 @@
       attachments: [],
     };
     messages = [...messages, newMsg];
+    scrollToBottom();
   }
 
   function handleMessageAck(data: any) {

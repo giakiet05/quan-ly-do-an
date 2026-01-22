@@ -1,6 +1,6 @@
 // WebSocket service for real-time messaging
 
-const WS_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('http', 'ws') || 'ws://localhost:8080';
+const WS_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace('http', 'ws') || 'ws://localhost:8082';
 
 export type WebSocketMessageType =
   | 'new_message'

@@ -105,7 +105,16 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 		adminIDs = append(adminIDs, id.Hex())
 	}
 
-	generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, adminIDs, []model.UserInfo{})
+	members := []model.UserInfo{
+		{
+			ID:       lecturer.ID,
+			FullName: lecturer.FullName,
+			Email:    lecturer.Email,
+			Avatar:   lecturer.Avatar,
+		},
+	}
+
+	generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, adminIDs, members)
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +340,11 @@ func (s *classroomService) RemoveStudentFromClassroom(classroomID, userID, stude
 		return err
 	}
 
+	err = s.channelRepo.RemoveMember(ctx, classroom.GeneralChannelID.Hex(), userID)
+	if err != nil {
+		return err
+	}
+
 	// Reset whitelist entry if student has student_code and whitelist is enabled
 	if classroom.EnableWhitelist && student.StudentCode != nil && *student.StudentCode != "" {
 		// Reset the whitelist entry (set joined_by and joined_at to null)
@@ -354,8 +368,23 @@ func (s *classroomService) RemoveCoLecturerFromClassroom(classroomID, lecturerID
 		return apperror.ErrForbidden
 	}
 
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return err
+	}
+
 	// Remove co-lecturer
-	return s.classroomRepo.RemoveCoLecturer(ctx, classroomID, coLecturerID)
+	err = s.classroomRepo.RemoveCoLecturer(ctx, classroomID, coLecturerID)
+	if err != nil {
+		return err
+	}
+
+	err = s.channelRepo.RemoveMember(ctx, classroom.GeneralChannelID.Hex(), coLecturerID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // LeaveClassroom allows a student or co-lecturer to leave the classroom

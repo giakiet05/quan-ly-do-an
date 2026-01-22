@@ -51,12 +51,13 @@
       route: "/notifications",
       icon: "/bell.svg",
     },
-    {
-      id: "chats",
-      label: "Tin nhắn",
-      route: "/chats",
-      icon: "/message-circle.svg",
-    },
+    // ❌ HIDDEN FOR TEST - TẠM ẨN ĐỂ KIỂM TRA FRONTEND CẬP NHẬT ❌
+    // {
+    //   id: "chats",
+    //   label: "Tin nhắn",
+    //   route: "/chats",
+    //   icon: "/message-circle.svg",
+    // },
   ];
 
   const studentMenuItems: MenuItem[] = [
@@ -84,12 +85,13 @@
       route: "/notifications",
       icon: "/bell.svg",
     },
-    {
-      id: "chats",
-      label: "Tin nhắn",
-      route: "/chats",
-      icon: "/message-circle.svg",
-    },
+    // ❌ HIDDEN FOR TEST - TẠM ẨN ĐỂ KIỂM TRA FRONTEND CẬP NHẬT ❌
+    // {
+    //   id: "chats",
+    //   label: "Tin nhắn",
+    //   route: "/chats",
+    //   icon: "/message-circle.svg",
+    // },
   ];
 
   // Helper check active route
@@ -104,7 +106,7 @@
   // --- LOGIC PHẢN XẠ (REACTIVE) ---
   const currentUser = $derived($authStore.user);
   const userName = $derived(
-    currentUser?.fullname || "Nhấn vào đây để refresh...",
+    currentUser?.fullname || "Refresh tài khoản tại đây..",
   );
   const userAvatar = $derived(currentUser?.avatar);
 
@@ -197,7 +199,7 @@
           <img src={userAvatar} alt="User" />
         {:else}
           <div class="avatar-placeholder">
-            <img src="/user.svg" alt="user" width="22" height="22" />
+            <img src="/user.svg" />
           </div>
         {/if}
       </div>

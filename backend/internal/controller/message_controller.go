@@ -49,7 +49,7 @@ func (mc *MessageController) GetMessageByID(ctx *gin.Context) {
 }
 
 func (mc *MessageController) GetMessageFilter(ctx *gin.Context) {
-	var query dto.GetMessageFilterQuery
+	query := dto.GetMessageFilterQuery{} // Initialize struct before binding
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return

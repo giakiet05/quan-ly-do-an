@@ -116,6 +116,7 @@ export interface ClassroomResponse {
   enableWhitelist?: boolean;
   enableEmailRestriction?: boolean;
   createdAt: string;
+  GeneralChannelID: string;
 }
 
 export interface RegenerateCodeResponse {

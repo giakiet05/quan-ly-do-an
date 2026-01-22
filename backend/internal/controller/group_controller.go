@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/auth"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/cloudinary"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -364,20 +366,89 @@ func (g *GroupController) DeleteTask(ctx *gin.Context) {
 // Report Operations
 
 func (g *GroupController) CreateReport(ctx *gin.Context) {
-	var req *dto.CreateReportRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+	// Parse form data
+	classroomID := ctx.PostForm("classroom_id")
+	groupID := ctx.PostForm("group_id")
+	projectRoundID := ctx.PostForm("project_round_id")
+	reportPeriodID := ctx.PostForm("report_period_id")
+	title := ctx.PostForm("title")
+	content := ctx.PostForm("content")
+
+	if classroomID == "" || groupID == "" || projectRoundID == "" || reportPeriodID == "" || title == "" || content == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "All fields are required", apperror.ErrBadRequest.Code)
 		return
+	}
+
+	// Get uploaded files
+	form, err := ctx.MultipartForm()
+	var attachments []dto.AttachmentUpload
+	uploadedPublicIDs := []string{}
+
+	if err == nil && form != nil {
+		files := form.File["files"]
+
+		// Upload files to Cloudinary
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to open file", "FILE_OPEN_FAILED")
+				return
+			}
+
+			result, err := cloudinary.Upload(file)
+			file.Close()
+
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to upload file", "FILE_UPLOAD_FAILED")
+				return
+			}
+
+			uploadedPublicIDs = append(uploadedPublicIDs, result.PublicID)
+			attachments = append(attachments, dto.AttachmentUpload{
+				FileName: fileHeader.Filename,
+				FileURL:  result.SecureURL,
+				PublicID: result.PublicID,
+				FileSize: fileHeader.Size,
+				MimeType: fileHeader.Header.Get("Content-Type"),
+			})
+		}
+	}
+
+	// Create report request
+	req := &dto.CreateReportRequest{
+		ClassroomID:    classroomID,
+		GroupID:        groupID,
+		ProjectRoundID: projectRoundID,
+		ReportPeriodID: reportPeriodID,
+		Title:          title,
+		Content:        content,
+		Attachments:    attachments,
 	}
 
 	authUser, exists := ctx.Get("authUser")
 	if !exists {
+		// Rollback: delete uploaded files
+		for _, pid := range uploadedPublicIDs {
+			_, _ = cloudinary.Delete(pid)
+		}
 		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
 		return
 	}
 
 	report, err := g.groupService.CreateReport(req, authUser.(auth.AuthUser).ID)
 	if err != nil {
+		// Rollback: delete uploaded files
+		for _, pid := range uploadedPublicIDs {
+			_, _ = cloudinary.Delete(pid)
+		}
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}
@@ -386,20 +457,101 @@ func (g *GroupController) CreateReport(ctx *gin.Context) {
 }
 
 func (g *GroupController) UpdateReport(ctx *gin.Context) {
-	var req *dto.UpdateReportRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
+	// Parse form data
+	groupID := ctx.PostForm("group_id")
+	reportID := ctx.PostForm("report_id")
+	title := ctx.PostForm("title")
+	content := ctx.PostForm("content")
+	filesToRemoveStr := ctx.PostForm("files_to_remove")
+
+	if groupID == "" || reportID == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "Group ID and Report ID are required", apperror.ErrBadRequest.Code)
 		return
+	}
+
+	// Parse files to remove
+	var filesToRemove []string
+	if filesToRemoveStr != "" {
+		if err := json.Unmarshal([]byte(filesToRemoveStr), &filesToRemove); err != nil {
+			dto.SendError(ctx, http.StatusBadRequest, "Invalid files_to_remove format", apperror.ErrBadRequest.Code)
+			return
+		}
+	}
+
+	// Get uploaded files
+	form, err := ctx.MultipartForm()
+	var attachmentsToAdd []dto.AttachmentUpload
+	uploadedPublicIDs := []string{}
+
+	if err == nil && form != nil {
+		files := form.File["files"]
+
+		// Upload files to Cloudinary
+		for _, fileHeader := range files {
+			file, err := fileHeader.Open()
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to open file", "FILE_OPEN_FAILED")
+				return
+			}
+
+			result, err := cloudinary.Upload(file)
+			file.Close()
+
+			if err != nil {
+				// Rollback: delete uploaded files
+				for _, pid := range uploadedPublicIDs {
+					_, _ = cloudinary.Delete(pid)
+				}
+				dto.SendError(ctx, http.StatusInternalServerError, "Failed to upload file", "FILE_UPLOAD_FAILED")
+				return
+			}
+
+			uploadedPublicIDs = append(uploadedPublicIDs, result.PublicID)
+			attachmentsToAdd = append(attachmentsToAdd, dto.AttachmentUpload{
+				FileName: fileHeader.Filename,
+				FileURL:  result.SecureURL,
+				PublicID: result.PublicID,
+				FileSize: fileHeader.Size,
+				MimeType: fileHeader.Header.Get("Content-Type"),
+			})
+		}
+	}
+
+	// Build request
+	req := &dto.UpdateReportRequest{
+		GroupID:          groupID,
+		ReportID:         reportID,
+		AttachmentsToAdd: attachmentsToAdd,
+		FilesToRemove:    filesToRemove,
+	}
+
+	if title != "" {
+		req.Title = &title
+	}
+	if content != "" {
+		req.Content = &content
 	}
 
 	authUser, exists := ctx.Get("authUser")
 	if !exists {
+		// Rollback: delete uploaded files
+		for _, pid := range uploadedPublicIDs {
+			_, _ = cloudinary.Delete(pid)
+		}
 		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
 		return
 	}
 
 	report, err := g.groupService.UpdateReport(req, authUser.(auth.AuthUser).ID)
 	if err != nil {
+		// Rollback: delete uploaded files
+		for _, pid := range uploadedPublicIDs {
+			_, _ = cloudinary.Delete(pid)
+		}
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}

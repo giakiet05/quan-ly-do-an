@@ -104,8 +104,12 @@ func (c *ChannelController) GetChannelByBothUserID(ctx *gin.Context) {
 		return
 	}
 
+	ctx.Writer.Header().Set("X-Debug-User1", user1ID)
+	ctx.Writer.Header().Set("X-Debug-User2", user2ID)
+
 	channel, unreadCount, err := c.channelService.GetChannelByBothUserID(user1ID, user2ID, authUser.(auth.AuthUser).ID)
 	if err != nil {
+		ctx.Writer.Header().Set("X-Debug-Error", err.Error())
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
 	}

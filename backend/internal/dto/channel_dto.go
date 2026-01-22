@@ -28,6 +28,7 @@ type UpdateChannelRequest struct {
 
 type ChannelResponse struct {
 	ID                 string                   `json:"id"`
+	AdminIDs           []string                 `json:"admin_ids,omitempty"`
 	Members            []UserInfoResponse       `json:"members"`
 	Settings           []ChannelSettingResponse `json:"settings"`
 	Background         *string                  `json:"background"`
@@ -60,6 +61,11 @@ func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
 		}
 	}
 
+	adminIDs := make([]string, len(channel.AdminIDs))
+	for i, id := range channel.AdminIDs {
+		adminIDs[i] = id.Hex()
+	}
+
 	settings := make([]ChannelSettingResponse, len(channel.UserSettings))
 	for i, s := range channel.UserSettings {
 		settings[i] = ChannelSettingResponse{
@@ -71,6 +77,7 @@ func FromChannel(channel *model.Channel, unreadCount *int64) ChannelResponse {
 
 	return ChannelResponse{
 		ID:                 channel.ID.Hex(),
+		AdminIDs:           adminIDs,
 		Members:            members,
 		Settings:           settings,
 		Background:         channel.Background,

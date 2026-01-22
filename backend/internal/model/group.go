@@ -31,18 +31,18 @@ type Task struct {
 }
 
 type Report struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty"`
+	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	ReportPeriodID primitive.ObjectID `bson:"report_period_id" json:"report_period_id"`
 	Title          string             `bson:"title" json:"title"`
 	Content        string             `bson:"content" json:"content"`
-	Files          []File             `bson:"files" json:"files"`
+	Attachments    []Attachment       `bson:"attachments,omitempty" json:"attachments,omitempty"`
 	Feedback       ReportFeedback     `bson:"feedback" json:"feedback"`
 	CreatedAt      time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt      time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
 type ReportFeedback struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Content     string             `bson:"content" json:"content"`
 	Grade       string             `bson:"grade" json:"grade"`
 	LecturerID  primitive.ObjectID `bson:"lecturer_id" json:"lecturer_id"`

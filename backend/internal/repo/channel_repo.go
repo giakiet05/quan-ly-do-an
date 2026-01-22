@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
@@ -16,7 +17,7 @@ import (
 
 type ChannelRepo interface {
 	Create(ctx context.Context, req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error)
-	CreateClassroomChannel(ctx context.Context, adminIDs []string, students []model.UserInfo) (*model.Channel, error)
+	CreateClassroomChannel(ctx context.Context, adminIDs []string, members []model.UserInfo) (*model.Channel, error)
 	CreateGroupChannel(ctx context.Context, leaderID string, members []model.UserInfo) (*model.Channel, error)
 	GetByID(ctx context.Context, channelID string) (*model.Channel, error)
 	GetByUserID(ctx context.Context, userID string, page int, pageSize int) ([]model.Channel, int64, error)
@@ -77,13 +78,13 @@ func (c *channelRepo) Create(ctx context.Context, req *dto.CreateChannelRequest,
 func (c *channelRepo) CreateClassroomChannel(
 	ctx context.Context,
 	adminIDs []string,
-	students []model.UserInfo,
+	members []model.UserInfo,
 ) (*model.Channel, error) {
 	now := time.Now()
 
 	userIDSet := make(map[primitive.ObjectID]bool)
-	settings := make([]model.ChannelUserSetting, 0, len(students)+len(adminIDs))
-	for _, m := range students {
+	settings := make([]model.ChannelUserSetting, 0, len(members)+len(adminIDs))
+	for _, m := range members {
 		if !userIDSet[m.ID] {
 			userIDSet[m.ID] = true
 			settings = append(settings, model.ChannelUserSetting{
@@ -117,7 +118,7 @@ func (c *channelRepo) CreateClassroomChannel(
 	channel := &model.Channel{
 		ID:           primitive.NewObjectID(),
 		AdminIDs:     adminObjectIDs,
-		Members:      students,
+		Members:      members,
 		UserSettings: settings,
 		Background:   nil,
 		Status:       model.ChannelStatusActive,
@@ -220,15 +221,12 @@ func (c *channelRepo) GetByUserID(ctx context.Context, userID string, page int, 
 
 	skip := (page - 1) * pageSize
 	filter := bson.M{
-		"members.user_id": userObjectID,
-		"settings": bson.M{
-			"$elemMatch": bson.M{
-				"user_id":    userObjectID,
-				"is_deleted": false,
-			},
+		"$or": []bson.M{
+			{"members.user_id": userObjectID},
+			{"admin_ids": userObjectID},
 		},
 	}
-	opt := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize))
+	opt := options.Find().SetSkip(int64(skip)).SetLimit(int64(pageSize)).SetSort(bson.M{"updated_at": -1})
 
 	cursor, err := c.channelCollection.Find(ctx, filter, opt)
 	if err != nil {
@@ -250,34 +248,43 @@ func (c *channelRepo) GetByUserID(ctx context.Context, userID string, page int, 
 }
 
 func (c *channelRepo) GetByBothUserID(ctx context.Context, user1ID string, user2ID string) (*model.Channel, error) {
+	log.Printf("🔍 GetByBothUserID called: user1=%s, user2=%s", user1ID, user2ID)
+
 	user1ObjectID, err := primitive.ObjectIDFromHex(user1ID)
 	if err != nil {
+		log.Printf("❌ GetByBothUserID: Invalid user1ID: %v", err)
 		return nil, err
 	}
 
 	user2ObjectID, err := primitive.ObjectIDFromHex(user2ID)
 	if err != nil {
+		log.Printf("❌ GetByBothUserID: Invalid user2ID: %v", err)
 		return nil, err
 	}
 
+	// Find DM channel (exactly 2 members, both users are members)
 	filter := bson.M{
-		"members.user_id": bson.M{
-			"$all": bson.A{user1ObjectID, user2ObjectID},
+		"$and": []bson.M{
+			{"members.user_id": user1ObjectID},
+			{"members.user_id": user2ObjectID},
 		},
-		"settings": bson.M{
-			"$elemMatch": bson.M{
-				"user_id":    user1ObjectID,
-				"is_deleted": false,
-			},
-		},
+		"members": bson.M{"$size": 2}, // Ensure it's a DM channel (exactly 2 members)
 	}
+
+	log.Printf("🔎 GetByBothUserID filter: %+v", filter)
 
 	var channel model.Channel
 	err = c.channelCollection.FindOne(ctx, filter).Decode(&channel)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("📭 GetByBothUserID: No channel found (ErrChannelNotFound)")
+			return nil, apperror.ErrChannelNotFound
+		}
+		log.Printf("❌ GetByBothUserID: Database error: %v", err)
 		return nil, err
 	}
 
+	log.Printf("✅ GetByBothUserID: Found channel %s", channel.ID.Hex())
 	return &channel, nil
 }
 
@@ -434,6 +441,14 @@ func (c *channelRepo) IsMember(ctx context.Context, channelID string, userID str
 		return false, err
 	}
 
+	// Check if user is admin
+	for _, adminID := range channel.AdminIDs {
+		if adminID == userObjectID {
+			return true, nil
+		}
+	}
+
+	// Check if user is member
 	for _, m := range channel.Members {
 		if m.ID == userObjectID {
 			return true, nil

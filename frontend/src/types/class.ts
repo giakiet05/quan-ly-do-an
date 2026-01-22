@@ -30,6 +30,7 @@ export interface ClassItem {
     whitelistStudentCode?: WhitelistEntry[];
 
     createdAt: string;
+    generalChannelId: string;
 }
 
 // Giúp code cũ không bị lỗi nếu mày đang dùng tên ClassData

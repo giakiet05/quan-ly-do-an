@@ -189,10 +189,11 @@ export async function removeStudentFromClassroom(
 export async function previewClassroom(
   invitationCode: string
 ): Promise<ClassroomPreviewResponse> {
-  const response = await apiFetch<ApiResponse<ClassroomPreviewResponse>>(
+  const response = await apiFetch<ClassroomPreviewResponse>(
     `/api/classrooms/preview?code=${invitationCode}`
   );
-  return response.data!;
+  console.log('📦 Preview API response:', response);
+  return response;
 }
 
 /**
@@ -201,14 +202,15 @@ export async function previewClassroom(
 export async function joinClassroom(
   data: JoinClassroomRequest
 ): Promise<JoinClassroomResponse> {
-  const response = await apiFetch<ApiResponse<JoinClassroomResponse>>(
+  const response = await apiFetch<JoinClassroomResponse>(
     "/api/classrooms/join",
     {
       method: "POST",
       body: JSON.stringify(data),
     }
   );
-  return response.data!;
+  console.log('📦 Join API response:', response);
+  return response;
 }
 
 /**
