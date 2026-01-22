@@ -53,13 +53,11 @@ type UpdateProjectRequest struct {
 }
 
 type CreateReportPeriodRequest struct {
-	ClassroomID    string   `json:"classroom_id" binding:"required"`
-	ProjectRoundID string   `json:"project_round_id" binding:"required"`
-	Title          string   `json:"title" binding:"required"`
-	Description    string   `json:"description"`
-	FileType       []string `json:"file_type" binding:"required,dive,required"`
-	StartDate      string   `json:"start_date" binding:"required,datetime=2006-01-02"`
-	EndDate        string   `json:"end_date" binding:"required,datetime=2006-01-02"`
+	Title       string   `json:"title" binding:"required"`
+	Description string   `json:"description"`
+	FileType    []string `json:"file_type" binding:"required,dive,required"`
+	StartDate   string   `json:"start_date" binding:"required,datetime=2006-01-02"`
+	EndDate     string   `json:"end_date" binding:"required,datetime=2006-01-02"`
 }
 
 type CreateReportPeriodsRequest struct {

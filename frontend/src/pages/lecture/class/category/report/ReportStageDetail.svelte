@@ -12,6 +12,8 @@
     } from "lucide-svelte";
     import type { ReportStage } from "../../../../../types/report";
     import GradeReportModal from "./GradeReportModal.svelte";
+    import type { PeriodResponse } from "../../../../../dtos/period-dto";
+    import { periodStore } from "../../../../../stores/period-store";
 
     // Định nghĩa Interface địa phương
     interface GroupReport {
@@ -27,10 +29,11 @@
     }
 
     // 1. Nhận Props
-    let { stage, onBack } = $props<{
-        stage: ReportStage;
+    let { period, onBack } = $props<{
+        period: PeriodResponse;
         onBack: () => void;
     }>();
+    // period store
 
     // 2. Local State
     let searchTerm = $state("");
@@ -155,6 +158,18 @@
         );
         gradingReport = null;
     };
+
+    const handleDeletePeriod = async () => {
+        if (confirm("Bạn có chắc chắn muốn xóa giai đoạn này không?")) {
+            try {
+                await periodStore.removePeriod(period.classroomId, period.id);
+                onBack();
+            } catch (error) {
+                console.error("Failed to delete period:", error);
+                alert("Xóa giai đoạn thất bại. Vui lòng thử lại.");
+            }
+        }
+    };
 </script>
 
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -170,20 +185,21 @@
         <div class="flex justify-between items-start">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">
-                    {stage.title}
+                    {period.title}
                 </h2>
-                <p class="text-gray-600 mb-4">{stage.description}</p>
+                <p class="text-gray-600 mb-4">{period.description}</p>
                 <div class="flex items-center gap-6 text-sm text-gray-500">
                     <span class="flex items-center gap-2">
-                        Từ {new Date(stage.startDate).toLocaleDateString(
+                        Từ {new Date(period.startDate).toLocaleDateString(
                             "vi-VN",
-                        )} - Đến {new Date(stage.endDate).toLocaleDateString(
+                        )} - Đến {new Date(period.endDate).toLocaleDateString(
                             "vi-VN",
                         )}
                     </span>
                 </div>
             </div>
             <button
+                onclick={handleDeletePeriod}
                 class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
             >
                 Xóa giai đoạn

@@ -21,8 +21,8 @@ export async function getProjectRounds(classroomId: string): Promise<ProjectRoun
 /**
  * Lấy chi tiết một vòng dự án
  */
-export async function getProjectRoundById(roundId: string): Promise<ProjectRound | null> {
-    const response = await apiFetch<ProjectRoundResponse>(`/api/projects/classrooms/:classroom_id/rounds/${roundId}`);
+export async function getProjectRoundById(classroomId: string, roundId: string): Promise<ProjectRound | null> {
+    const response = await apiFetch<ProjectRoundResponse>(`/api/projects/classrooms/${classroomId}/rounds/${roundId}`);
     if (!response) return null;
     return projectRoundMapper.toEntity(response);
 }

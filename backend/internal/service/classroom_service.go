@@ -83,7 +83,7 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 		Avatar:                 req.Avatar,
 		Semester:               req.Semester,
 		Year:                   req.Year,
-		Status:                 model.ClassroomActive, // Default to active
+		Status:                 model.ClassroomActive,
 		LecturerID:             lecturer.ID,
 		CoLecturerIDs:          []primitive.ObjectID{},
 		StudentIDs:             []primitive.ObjectID{},
@@ -95,13 +95,16 @@ func (s *classroomService) CreateClassroom(req dto.CreateClassroomRequest, lectu
 		EnableWhitelist:        req.EnableWhitelist,
 		EnableEmailRestriction: req.EnableEmailRestriction,
 		WhitelistStudentCode:   []model.WhitelistEntry{},
-		CanStudentDeleteGroup:  false, // Default
+		CanStudentDeleteGroup:  false,
 		CreatedAt:              time.Now(),
 	}
 
-	// Create general channel for classroom (TODO: implement later if needed)
-	// For now, set to a placeholder ObjectID or handle separately
-	classroom.GeneralChannelID = primitive.NewObjectID()
+	// TODO: Create general channel for classroom
+	//generalChannel, err := s.channelRepo.CreateClassroomChannel(ctx, classroom)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//classroom.GeneralChannelID = generalChannel.ID
 
 	// Save to database
 	createdClassroom, err := s.classroomRepo.Create(ctx, classroom)

@@ -390,7 +390,6 @@ func (c *classroomRepo) IsMember(ctx context.Context, classroomID, userID string
 		"_id": classroomObjectID,
 		"$or": []bson.M{
 			{"lecturer._id": userObjectID},
-			{"co_lecturers._id": userObjectID},
 			{"students._id": userObjectID},
 		},
 	}
@@ -626,7 +625,7 @@ func (c *classroomRepo) ResetWhitelistEntry(ctx context.Context, classroomID, st
 
 	_, err = c.collection.UpdateOne(ctx,
 		bson.M{
-			"_id": classroomOID,
+			"_id":                                 classroomOID,
 			"whitelist_student_code.student_code": studentCode,
 		},
 		bson.M{"$set": bson.M{

@@ -266,8 +266,8 @@
     <EditClassModal
         classData={editingClass}
         onClose={() => (showEditModal = false)}
-        onSubmit={(updatedClass) => {
-            // updateClass(updatedClass);
+        onSubmit={(updatedClass, file) => {
+            updateClass(editingClass?.id || "", updatedClass, file);
             showEditModal = false;
             editingClass = null;
         }}

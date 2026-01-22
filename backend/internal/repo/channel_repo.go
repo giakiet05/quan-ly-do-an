@@ -16,6 +16,8 @@ import (
 
 type ChannelRepo interface {
 	Create(ctx context.Context, req *dto.CreateChannelRequest, requesterID string) (*model.Channel, error)
+	CreateClassroomChannel(ctx context.Context, adminIDs []string, students []model.UserInfo) (*model.Channel, error)
+	CreateGroupChannel(ctx context.Context, leaderID string, members []model.UserInfo) (*model.Channel, error)
 	GetByID(ctx context.Context, channelID string) (*model.Channel, error)
 	GetByUserID(ctx context.Context, userID string, page int, pageSize int) ([]model.Channel, int64, error)
 	GetByBothUserID(ctx context.Context, user1ID string, user2ID string) (*model.Channel, error)
@@ -23,6 +25,8 @@ type ChannelRepo interface {
 	UpdateUserAvatar(ctx context.Context, userID string, newAvatar string) error
 	Delete(ctx context.Context, channelID string, userID string) error
 	IsMember(ctx context.Context, channelID string, userID string) (bool, error)
+	AddMember(ctx context.Context, channelID string, userID string) error
+	RemoveMember(ctx context.Context, channelID string, userID string) error
 }
 
 type channelRepo struct {
@@ -56,6 +60,127 @@ func (c *channelRepo) Create(ctx context.Context, req *dto.CreateChannelRequest,
 		Status:       model.ChannelStatusActive,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
+	}
+
+	result, err := c.channelCollection.InsertOne(ctx, channel)
+	if err != nil {
+		return nil, err
+	}
+
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		channel.ID = oid
+	}
+
+	return channel, nil
+}
+
+func (c *channelRepo) CreateClassroomChannel(
+	ctx context.Context,
+	adminIDs []string,
+	students []model.UserInfo,
+) (*model.Channel, error) {
+	now := time.Now()
+
+	settings := make([]model.ChannelUserSetting, 0, len(students))
+	for _, m := range students {
+		settings = append(settings, model.ChannelUserSetting{
+			UserID:          m.ID,
+			Notification:    true,
+			TypingIndicator: true,
+			IsDeleted:       false,
+		})
+	}
+
+	adminObjectIDs := make([]primitive.ObjectID, 0, len(adminIDs))
+	for _, id := range adminIDs {
+		oid, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return nil, err
+		}
+		adminObjectIDs = append(adminObjectIDs, oid)
+		settings = append(settings, model.ChannelUserSetting{
+			UserID:          oid,
+			Notification:    true,
+			TypingIndicator: true,
+			IsDeleted:       false,
+		})
+	}
+
+	channel := &model.Channel{
+		ID:           primitive.NewObjectID(),
+		AdminIDs:     adminObjectIDs,
+		Members:      students,
+		UserSettings: settings,
+		Background:   nil,
+		Status:       model.ChannelStatusActive,
+
+		Setting: model.ChannelSetting{
+			AllowMemberMessage: true,
+			AllowMedia:         true,
+			AllowAttachments:   true,
+			AllowPinMessages:   false,
+			AllowMentions:      true,
+		},
+
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	result, err := c.channelCollection.InsertOne(ctx, channel)
+	if err != nil {
+		return nil, err
+	}
+
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		channel.ID = oid
+	}
+
+	return channel, nil
+}
+
+func (c *channelRepo) CreateGroupChannel(ctx context.Context, leaderID string, members []model.UserInfo) (*model.Channel, error) {
+	now := time.Now()
+
+	settings := make([]model.ChannelUserSetting, 0, len(members))
+	for _, m := range members {
+		settings = append(settings, model.ChannelUserSetting{
+			UserID:          m.ID,
+			Notification:    true,
+			TypingIndicator: true,
+			IsDeleted:       false,
+		})
+	}
+
+	leaderObjectID, err := primitive.ObjectIDFromHex(leaderID)
+	if err != nil {
+		return nil, err
+	}
+	adminIDs := []primitive.ObjectID{leaderObjectID}
+	settings = append(settings, model.ChannelUserSetting{
+		UserID:          leaderObjectID,
+		Notification:    true,
+		TypingIndicator: true,
+		IsDeleted:       false,
+	})
+
+	channel := &model.Channel{
+		ID:           primitive.NewObjectID(),
+		AdminIDs:     adminIDs,
+		Members:      members,
+		UserSettings: settings,
+		Background:   nil,
+		Status:       model.ChannelStatusActive,
+
+		Setting: model.ChannelSetting{
+			AllowMemberMessage: true,
+			AllowMedia:         true,
+			AllowAttachments:   true,
+			AllowPinMessages:   false,
+			AllowMentions:      true,
+		},
+
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	result, err := c.channelCollection.InsertOne(ctx, channel)
@@ -231,6 +356,68 @@ func (c *channelRepo) Delete(ctx context.Context, channelID string, userID strin
 	opts := options.Update().SetArrayFilters(arrayFilters)
 
 	_, err = c.channelCollection.UpdateOne(ctx, bson.M{"_id": channelObjectID}, update, opts)
+	return err
+}
+
+func (c *channelRepo) AddMember(ctx context.Context, channelID string, userID string) error {
+	channelObjectID, err := primitive.ObjectIDFromHex(channelID)
+	if err != nil {
+		return err
+	}
+
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+
+	update := bson.M{
+		"$addToSet": bson.M{
+			"members": bson.M{
+				"user_id":   userObjectID,
+				"joined_at": time.Now(),
+			},
+			"settings": bson.M{
+				"user_id":          userObjectID,
+				"notification":     true,
+				"typing_indicator": true,
+				"is_deleted":       false,
+			},
+		},
+		"$set": bson.M{
+			"updated_at": time.Now(),
+		},
+	}
+
+	_, err = c.channelCollection.UpdateOne(ctx, bson.M{"_id": channelObjectID}, update)
+	return err
+}
+
+func (c *channelRepo) RemoveMember(ctx context.Context, channelID string, userID string) error {
+	channelObjectID, err := primitive.ObjectIDFromHex(channelID)
+	if err != nil {
+		return err
+	}
+
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+
+	update := bson.M{
+		"$pull": bson.M{
+			"members": bson.M{
+				"user_id": userObjectID,
+			},
+			"settings": bson.M{
+				"user_id": userObjectID,
+			},
+		},
+		"$set": bson.M{
+			"updated_at": time.Now(),
+		},
+	}
+
+	_, err = c.channelCollection.UpdateOne(ctx, bson.M{"_id": channelObjectID}, update)
 	return err
 }
 
