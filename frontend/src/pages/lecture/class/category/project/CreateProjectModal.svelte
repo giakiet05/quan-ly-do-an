@@ -17,27 +17,12 @@
         description: editingProject?.description || "",
         minMember: editingProject?.minMember || 1, // Map to "minMember"
         maxMember: editingProject?.maxMember || 3, // Map to "maxMember"
-        tags: [...(editingProject?.tags || [])],
         status: editingProject?.status || "available",
     });
 
-    let tagInput = $state("");
     let errors = $state<Record<string, string>>({});
 
-    // 3. Logic xử lý Tags
-    const handleAddTag = () => {
-        const tag = tagInput.trim();
-        if (tag && !formData.tags.includes(tag)) {
-            formData.tags.push(tag); // Svelte 5 tự động nhận biết thay đổi khi push
-            tagInput = "";
-        }
-    };
-
-    const handleRemoveTag = (tagToRemove: string) => {
-        formData.tags = formData.tags.filter((t) => t !== tagToRemove);
-    };
-
-    // 4. Logic xử lý Submit
+    // 3. Logic xử lý Submit
     const handleSubmit = (e: Event) => {
         e.preventDefault();
         const newErrors: Record<string, string> = {};
@@ -194,47 +179,6 @@
                             {errors.maxMember}
                         </p>
                     {/if}
-                </div>
-            </div>
-
-            <div>
-                <label class="mb-2 block text-sm font-medium" for="tags"
-                    >Tags/Từ khóa</label
-                >
-                <div class="mb-2 flex gap-2">
-                    <input
-                        id="tags"
-                        type="text"
-                        bind:value={tagInput}
-                        onkeydown={(e) =>
-                            e.key === "Enter" &&
-                            (e.preventDefault(), handleAddTag())}
-                        class="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Nhập tag và nhấn Enter"
-                    />
-                    <button
-                        type="button"
-                        onclick={handleAddTag}
-                        class="rounded-lg bg-gray-100 px-4 py-2 transition-colors hover:bg-gray-200"
-                    >
-                        <Plus class="h-5 w-5" />
-                    </button>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    {#each formData.tags as tag (tag)}
-                        <span
-                            class="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700"
-                        >
-                            {tag}
-                            <button
-                                type="button"
-                                onclick={() => handleRemoveTag(tag)}
-                                class="rounded-full p-0.5 hover:bg-blue-100"
-                            >
-                                <X class="h-3 w-3" />
-                            </button>
-                        </span>
-                    {/each}
                 </div>
             </div>
 
