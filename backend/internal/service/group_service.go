@@ -42,6 +42,7 @@ type GroupService interface {
 	DeleteReportFeedback(groupID string, reportID string, requesterID string) error
 
 	AddMemberToGroup(groupID string, userID string) error
+	RemoveMemberFromGroup(groupID string, userID string, requesterID string) error
 }
 
 type groupService struct {
@@ -112,7 +113,6 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		return nil, err
 	}
 
-	// Tìm ProjectRound theo ID
 	var roundFound *model.ProjectRound
 	for i, round := range classroom.ProjectRounds {
 		if round.ID.Hex() == req.ProjectRoundID && !round.IsDeleted {
@@ -1457,6 +1457,44 @@ func (g *groupService) AddMemberToGroup(groupID string, userID string) error {
 	}
 
 	err = g.channelRepo.AddMember(ctx, group.GroupChannelID.Hex(), userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *groupService) RemoveMemberFromGroup(groupID string, userID string, requesterID string) error {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Only group leader can remove members
+	ok, err := g.groupRepo.IsLeader(ctx, groupID, requesterID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		if requesterID != userID {
+			return apperror.ErrForbidden
+		}
+	} else {
+		// Prevent leader from removing themselves
+		if requesterID == userID {
+			return apperror.ErrBadRequest
+		}
+	}
+
+	group, err := g.groupRepo.GetByID(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	err = g.groupRepo.RemoveMember(ctx, groupID, userID)
+	if err != nil {
+		return err
+	}
+
+	err = g.channelRepo.RemoveMember(ctx, group.GroupChannelID.Hex(), userID)
 	if err != nil {
 		return err
 	}

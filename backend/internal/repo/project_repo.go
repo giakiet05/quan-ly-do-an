@@ -252,7 +252,7 @@ func (p *projectRepo) ReplaceProjectRound(ctx context.Context, round *model.Proj
 		return err
 	}
 	if res.ModifiedCount == 0 {
-		return apperror.ErrRoundNotFound
+		return apperror.ErrNoFieldsToUpdate
 	}
 	return nil
 }
