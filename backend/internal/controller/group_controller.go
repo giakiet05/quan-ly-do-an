@@ -67,7 +67,7 @@ func (g *GroupController) GetGroupByID(ctx *gin.Context) {
 }
 
 func (g *GroupController) GetGroupsFilter(ctx *gin.Context) {
-	var query *dto.GetGroupsFilterQuery
+	var query dto.GetGroupsFilterQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
@@ -79,7 +79,7 @@ func (g *GroupController) GetGroupsFilter(ctx *gin.Context) {
 		return
 	}
 
-	groups, err := g.groupService.GetGroupsFilter(query, authUser.(auth.AuthUser).ID)
+	groups, err := g.groupService.GetGroupsFilter(&query, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
