@@ -52,14 +52,10 @@
     });
 
     const students = $derived(classDetail?.students ?? []);
-<<<<<<< HEAD
-
-=======
     const generalChannelId = $derived(classDetail?.generalChannelId ?? "");
     $effect(() => {
         console.log("Students list updated:", classDetail);
     });
->>>>>>> origin
     // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
