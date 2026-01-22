@@ -1,0 +1,253 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table User {
+  ID ObjectID [pk]
+  Email string 
+  AuthProvider string
+  Avatar Image
+  StudentCode string
+  Fullname string
+  CreatedAt  string
+  DeteteAt Time 
+}
+
+Table EmailVerification {
+  ID ObjectID [pk]
+  Email string
+  OTP string
+  OTPExpireAt Time
+  IsVerified bool
+  Nonce string
+  CreatedAt Time
+}
+
+Table PasswordReset {
+  ID ObjectID [pk]
+  Email string
+  OTP string
+  OTPExpiresAt Time
+  IsVerified bool
+  Nonce string
+  CreatedAt Time
+}
+
+Table UserInfo {
+  ID ObjectID [pk]
+  FullName string
+  Avatar Image
+  StudentCode string
+}
+
+Table Classroom {
+  ID ObjectID [pk]
+  Name string
+  Description string
+  Avatar string
+  Semester string
+  Year string
+  Status string
+  GeneralChannelID ObjectID
+  Lecturer UserInfo
+  CoLecturers UserInfo[]
+  Students UserInfo[]
+  ProjectRounds ProjectRound[]
+  InvitationCode string
+  WhitelistStudentCode WhitelistEntry[]
+  AllowedEmailDomains string[]
+  EnableWhitelist bool
+  EnableEmailRestriction bool
+  MaxStudents int
+  AutoApprove bool
+  CanStudentDeleteGroup bool
+}
+
+Table Project {
+  ID ObjectID [pk]
+  ClassroomID ObjectID
+  ProjectRoundID ObjectID
+  Title string
+  Amount int
+  Description string
+  MinMember int
+  MaxMember int
+  Status string
+  CreatedAt Time
+}
+
+Table ProjectRound {
+  ID ObjectID [pk]
+  Name string
+  StartDate Time
+  EndDate Time
+  Description string
+  ReportPeriods ReportPeriod[]
+  CreatedAt Time
+  IsDeleted bool
+}
+
+Table ReportPeriod {
+  ID ObjectID [pk]
+  Title string
+  Description string
+  FileType string[]
+  StartDate Time
+  EndDate Time
+}
+
+Table Group {
+  ID ObjectID [pk]
+  ClassroomID ObjectID
+  ProjectID ObjectID
+  GroupChannelID ObjectID
+  LeaderID ObjectID
+  Members UserInfo[]
+  Tasks Task[]
+  TaskStatuses string[]
+  Reports Report[]
+  Setting GroupSetting
+  MinMember int
+  MaxMember int
+  JoinRequests JoinGroupRequest[]
+  JoinInvitation JoinGroupInvitation[]
+}
+
+Table JoinGroupRequest {
+  ID ObjectID [pk]
+  UserID ObjectID
+  Status string
+  Message string
+  RequestedAt Time
+  UpdatedAt Time
+}
+
+Table JoinGroupInvitation {
+  ID ObjectID [pk]
+  GroupID ObjectID
+  RecipientID ObjectID
+  Status string
+  SendAt string
+  ResponsedAt Time
+}
+
+Table Task {
+  ID ObjectID [pk]
+  Title string
+  Details string
+  AssignToIDs ObjectID[]
+  DueDate Time
+  Status string
+}
+
+Table Report {
+  ID ObjectID [pk]
+  ReportPeriodID ObjectID
+  Title string
+  Content string
+  Files File[]
+  Feedback ReportFeedback
+  CreatedAt Time
+  UpdatedAt Time
+}
+
+Table ReportFeedback {
+  ID ObjectID [pk]
+  Content string
+  Grade string
+  LecturerID ObjectID
+  CommentAt Time
+  UpdatedAt Time
+}
+
+Table Channel {
+  ID ObjectID [pk]
+  AdminIDs ObjectID[]
+  Members UserInfo[]
+  Background string
+  Status string
+  Setting ChannelSetting
+  UserSettings ChannelUserSetting[]
+  CreatedAt Time
+  UpdatedAt Time
+}
+
+Table ChannelUserSetting {
+  UserID ObjectID
+  Notification bool
+  TypingIndicator bool
+  IsDeleted bool
+}
+
+Table ChannelSetting {
+  AllowMemberMessage bool
+  AllowMedia bool
+  AllowAttachments bool
+  AllowPinMessages bool
+  AllowMentions bool
+}
+
+Table Message {
+  ID ObjectID [pk]
+  ChannelID ObjectID
+  SenderID ObjectID
+  SenderUsername string
+  Type string
+  Content string
+  ReadBy ObjectID[]
+  IsSend bool
+  CreatedAt Time
+  IsDeleted bool
+  DeletedAt Time
+}
+
+Table Notification {
+  ID ObjectID [pk]
+  RecipientID ObjectID
+  ActorID ObjectID
+  Type string
+  Message string
+  Link string
+  IsRead bool
+  Metadata map
+  CreatedAt Time
+}
+// --- Relationships (Refs) ---
+
+// Liên kết Classroom với Channel chung
+Ref: Classroom.GeneralChannelID > Channel.ID
+
+// Liên kết Project với Classroom và ProjectRound
+Ref: Project.ClassroomID > Classroom.ID
+Ref: Project.ProjectRoundID > ProjectRound.ID
+
+// Liên kết Group với Classroom và Project
+Ref: Group.ClassroomID > Classroom.ID
+Ref: Group.ProjectID > Project.ID
+Ref: Group.GroupChannelID > Channel.ID
+Ref: Group.LeaderID > User.ID
+
+// Liên kết Join Requests và Invitations của Group
+Ref: JoinGroupRequest.UserID > User.ID
+Ref: JoinGroupInvitation.GroupID > Group.ID
+Ref: JoinGroupInvitation.RecipientID > User.ID
+
+// Liên kết Report với Period
+Ref: Report.ReportPeriodID > ReportPeriod.ID
+Ref: ReportFeedback.LecturerID > User.ID
+
+// Liên kết hệ thống tin nhắn
+Ref: Message.ChannelID > Channel.ID
+Ref: Message.SenderID > User.ID
+
+// Liên kết thông báo
+Ref: Notification.RecipientID > User.ID
+Ref: Notification.ActorID > User.ID
+
+// Chú thích: UserInfo là một cấu trúc nhúng (Embedded) 
+// nên không cần Ref trực tiếp nếu bạn coi nó là 1 phần của Document cha. 
+
+Ref: "Task"."AssignToIDs" < "User"."ID"
+
+Ref: "Channel"."AdminIDs" < "User"."ID"
+
+Ref: "UserInfo"."ID" < "User"."ID"
