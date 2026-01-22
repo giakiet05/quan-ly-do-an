@@ -69,21 +69,21 @@
     async function handleUpdateRound(data: any) {
         if (!editingCategory) return;
         try {
-            const payload: UpdateProjectRoundRequest = {
-                projectRoundId: editingCategory.id,
-                classroomId: classroomId,
-                name: data.name,
-                description: data.description,
-                startDate: data.startDate,
-                endDate: data.endDate,
-                defaultMinMember: data.minStudents,
-                defaultMaxMember: data.maxStudents,
+            // Chụp ảnh data từ modal gửi về (đã bao gồm các thay đổi từ UI)
+            // Chúng ta truyền cả 'data' (chứa thông tin mới)
+            // và 'editingCategory.id' để Mapper biết đang update record nào
+            const updateData = {
+                ...data,
+                id: editingCategory.id, // Đảm bảo luôn có ID chuẩn từ entity cũ
             };
-            await projectRoundStore.editRound(payload);
+
+            await projectRoundStore.editRound(updateData, classroomId);
+
             editingCategory = null;
+            alert("✅ Cập nhật hạng mục thành công!");
         } catch (error) {
             console.error("❌ Error updating category:", error);
-            alert("Có lỗi khi cập nhật!");
+            alert("Có lỗi khi cập nhật: " + (error as Error).message);
         }
     }
 </script>

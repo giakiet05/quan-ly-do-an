@@ -1,4 +1,4 @@
-import type { ProjectRoundResponse } from "../dtos/project-dto";
+import type { ProjectRoundResponse, UpdateProjectRoundRequest } from "../dtos/project-dto";
 import type { ProjectRound, ReportPeriod } from "../types/project-round";
 
 export const projectRoundMapper = {
@@ -49,16 +49,16 @@ export const projectRoundMapper = {
             reportPeriods: mappedPeriods
         };
     },
-    toUpdateDto(data: any): any {
+    toUpdateDto(entity: ProjectRound, classroomId: string): UpdateProjectRoundRequest {
         return {
-            projectRoundId: data.projectRoundId,
-            classroomId: data.classroomId,
-            name: data.name,
-            description: data.description,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            defaultMinMember: Number(data.minStudents), // Đổi tên trường ở đây
-            defaultMaxMember: Number(data.maxStudents), // Đổi tên trường ở đây
+            projectRoundId: entity.id, // Lấy từ id của Entity
+            classroomId: classroomId,
+            name: entity.name,
+            description: entity.description,
+            startDate: entity.startDate instanceof Date ? entity.startDate.toISOString().split('T')[0] : entity.startDate,
+            endDate: entity.endDate instanceof Date ? entity.endDate.toISOString().split('T')[0] : entity.endDate,
+            defaultMinMember: Number(entity.minStudents),
+            defaultMaxMember: Number(entity.maxStudents),
         };
     },
     toCreateDto(data: any): any {
@@ -68,8 +68,8 @@ export const projectRoundMapper = {
             description: data.description,
             startDate: data.startDate,
             endDate: data.endDate,
-            defaultMinMember: Number(data.minStudents), // Đổi tên trường ở đây
-            defaultMaxMember: Number(data.maxStudents), // Đổi tên trường ở đây
+            defaultMinMember: data.minStudents,
+            defaultMaxMember: data.maxStudents, // Đổi tên trường ở đây
         };
     },
 };

@@ -40,6 +40,7 @@
                 });
         }
     });
+
     // state cho class
     let classDetail = $state<ClassroomResponse | null>(null);
     $effect(() => {
@@ -62,55 +63,64 @@
         { id: "reports", label: "Báo cáo" },
         { id: "settings", label: "Cài đặt" },
     ];
+
+    // ... các phần code khác giữ nguyên ...
+
     async function handleUpdate() {
         if (!projectRound) return;
 
         try {
-            // Khớp với hàm editRound(data: UpdateProjectRoundRequest) trong store
-            await projectRoundStore.editRound({
-                projectRoundId: projectRoundId,
-                classroomId: classroomId,
-                name: projectRound.name,
-                description: projectRound.description || "",
-                startDate:
-                    projectRound.startDate instanceof Date
-                        ? projectRound.startDate.toISOString()
-                        : projectRound.startDate,
-                endDate:
-                    projectRound.endDate instanceof Date
-                        ? projectRound.endDate.toISOString()
-                        : projectRound.endDate,
-                defaultMinMember: projectRound.minStudents,
-                defaultMaxMember: projectRound.maxStudents,
-            });
-            alert("Cập nhật hạng mục thành công!");
+            // Svelte 5: Chụp ảnh dữ liệu hiện tại (loại bỏ Proxy)
+            const snapshot = $state.snapshot(projectRound);
+
+            // Gọi store và truyền snapshot vào
+            await projectRoundStore.editRound(snapshot, classroomId);
+
+            alert("✅ Cập nhật hạng mục thành công!");
+            activeTab = "projects";
         } catch (err) {
             console.error("Lỗi cập nhật:", err);
         }
     }
 
     async function handleDelete() {
-        if (!confirm("Bạn có chắc chắn muốn xóa hạng mục này?")) return;
+        if (!confirm(`Bạn có chắc muốn xóa hạng mục "${projectRound?.name}"?`))
+            return;
 
         try {
-            // Khớp với hàm removeRound(roundId, classroom_id) trong store
             await projectRoundStore.removeRound(projectRoundId, classroomId);
-            alert("Đã xóa hạng mục thành công.");
-            push(`/my-class/${classroomId}`); // Điều hướng về trang lớp học
+
+            alert("🗑️ Đã xóa hạng mục thành công.");
+            push(`/lecture/my-classes/${classroomId}`); // Điều hướng về trang lớp học
         } catch (err) {
             console.error("Lỗi khi xóa:", err);
+            alert("❌ Xóa thất bại. Vui lòng thử lại!");
         }
     }
+
+    // Hàm này để xử lý input type="date" vì nó trả về string, cần convert sang Date để state đồng bộ
+    const onDateChange = (field: "startDate" | "endDate", val: string) => {
+        if (projectRound) {
+            // @ts-ignore
+            projectRound[field] = new Date(val);
+        }
+    };
+
     // Helper format ngày
-    const formatDate = (date: Date | string | undefined) => {
+    const formatDate = (date: any) => {
         if (!date) return "";
         const d = typeof date === "string" ? new Date(date) : date;
-        return d.toLocaleDateString("vi-VN");
+        return d instanceof Date && !isNaN(d.getTime())
+            ? d.toLocaleDateString("vi-VN")
+            : "";
     };
+
     const toInputDate = (date: any) => {
         if (!date) return "";
         const d = typeof date === "string" ? new Date(date) : date;
-        return d.toISOString().split("T")[0];
+        return d instanceof Date && !isNaN(d.getTime())
+            ? d.toISOString().split("T")[0]
+            : "";
     };
 </script>
 
@@ -129,8 +139,8 @@
             <p class="mb-2 text-gray-600">{projectRound?.description}</p>
             <p class="text-sm text-gray-500">
                 Lớp: {classDetail?.name} - {classDetail?.semester} | Thời gian: {formatDate(
-                    projectRound?.startDate.toDateString() || "",
-                )} - {formatDate(projectRound?.endDate.toDateString() || "")}
+                    projectRound?.startDate,
+                )} - {formatDate(projectRound?.endDate)}
             </p>
         </div>
     </div>
@@ -173,7 +183,7 @@
                         >
                         <input
                             type="text"
-                            value={projectRound?.name}
+                            bind:value={projectRound!.name}
                             class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -212,7 +222,12 @@
                             >
                             <input
                                 type="date"
-                                value={projectRound?.startDate}
+                                value={toInputDate(projectRound?.startDate)}
+                                onchange={(e) =>
+                                    onDateChange(
+                                        "startDate",
+                                        e.currentTarget.value,
+                                    )}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -222,7 +237,12 @@
                             >
                             <input
                                 type="date"
-                                value={projectRound?.endDate}
+                                value={toInputDate(projectRound?.endDate)}
+                                onchange={(e) =>
+                                    onDateChange(
+                                        "endDate",
+                                        e.currentTarget.value,
+                                    )}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -264,7 +284,7 @@
                             >
                             <input
                                 type="number"
-                                value={1}
+                                bind:value={projectRound!.minStudents}
                                 min={1}
                                 max={10}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -276,7 +296,7 @@
                             >
                             <input
                                 type="number"
-                                value={3}
+                                bind:value={projectRound!.maxStudents}
                                 min={1}
                                 max={10}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -346,7 +366,7 @@
                     onclick={handleDelete}
                     class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
                 >
-                    Xóa hạng mục
+                    Xóa hạng mục
                 </button>
             </div>
         </div>

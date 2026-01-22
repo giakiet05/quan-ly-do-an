@@ -31,7 +31,6 @@ export async function getProjectRoundById(classroomId: string, roundId: string):
  * Tạo mới vòng dự án
  */
 export async function createProjectRound(data: any): Promise<ProjectRound> {
-    // 1. Chuyển đổi dữ liệu trước khi gửi
     const mappedData = projectRoundMapper.toCreateDto(data);
 
     console.log("CreateProjectRound request mapped data:", mappedData);
@@ -47,15 +46,14 @@ export async function createProjectRound(data: any): Promise<ProjectRound> {
 /**
  * Cập nhật vòng dự án
  */
-export async function updateProjectRound(data: any): Promise<ProjectRound> {
-    // 1. Chuyển đổi dữ liệu trước khi gửi
-    const mappedData = projectRoundMapper.toUpdateDto(data);
-
+export async function updateProjectRound(entity: ProjectRound, classroomId: string): Promise<ProjectRound> {
+    // Map dữ liệu ở đây
+    const mappedData = projectRoundMapper.toUpdateDto(entity, classroomId);
     console.log("UpdateProjectRound request mapped data:", mappedData);
 
     const response = await apiFetch<ProjectRoundResponse>(`/api/projects/rounds`, {
         method: "PUT",
-        body: JSON.stringify(mappedData) // Gửi data đã được map
+        body: JSON.stringify(mappedData)
     });
 
     return projectRoundMapper.toEntity(response);

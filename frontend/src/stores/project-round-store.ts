@@ -46,11 +46,11 @@ export const projectRoundStore = {
             throw e;
         }
     },
-    async editRound(data: UpdateProjectRoundRequest) {
+    async editRound(projectRound: ProjectRound, classroomId: string) {
         try {
-            const updated = await updateProjectRound(data);
+            const updated = await updateProjectRound(projectRound, classroomId);
             // Fetch lại từ server để đảm bảo dữ liệu từ DB
-            const rounds = await getProjectRounds(data.classroomId);
+            const rounds = await getProjectRounds(classroomId);
             roundsStore.set(rounds);
         } catch (e) {
             errorStore.set("Lỗi khi cập nhật hạng mục");
