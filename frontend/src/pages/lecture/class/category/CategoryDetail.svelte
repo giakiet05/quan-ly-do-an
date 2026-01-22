@@ -166,7 +166,7 @@
 </div>
 
 {#if activeTab === "projects"}
-    <ProjectTab {classroomId} {projectRoundId} />
+    <ProjectTab {classroomId} {projectRoundId} {projectRound} />
 {:else if activeTab === "reports"}
     <ReportsTab {classroomId} {projectRoundId} />
 {:else if activeTab === "settings"}

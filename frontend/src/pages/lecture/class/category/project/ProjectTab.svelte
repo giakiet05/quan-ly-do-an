@@ -18,11 +18,13 @@
         CreateProjectRequest,
         UpdateProjectRequest,
     } from "../../../../../dtos/project-dto";
+    import type { ProjectRound } from "../../../../../types/project-round";
 
     // Props
-    let { classroomId, projectRoundId } = $props<{
+    let { classroomId, projectRoundId, projectRound } = $props<{
         classroomId: string;
         projectRoundId: string;
+        projectRound: ProjectRound | null;
     }>();
 
     // State
@@ -264,6 +266,7 @@
 {#if showCreateModal}
     <CreateProjectModal
         {projectRoundId}
+        {projectRound}
         onClose={() => (showCreateModal = false)}
         onSubmit={handleCreateProject}
     />
@@ -271,6 +274,7 @@
 
 {#if editingProject}
     <CreateProjectModal
+        {projectRound}
         {projectRoundId}
         {editingProject}
         onClose={() => (editingProject = null)}
