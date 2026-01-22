@@ -1035,7 +1035,7 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	}
 
 	now := time.Now()
-	
+
 	// Convert attachments
 	attachments := make([]model.Attachment, 0, len(req.Attachments))
 	for _, att := range req.Attachments {
@@ -1520,7 +1520,7 @@ func (g *groupService) AddMemberToGroup(groupID string, userID string) error {
 		return err
 	}
 
-	err = g.channelRepo.AddMember(ctx, group.GroupChannelID.Hex(), userID)
+	err = g.channelRepo.AddMember(ctx, group.GroupChannelID.Hex(), user)
 	if err != nil {
 		return err
 	}
