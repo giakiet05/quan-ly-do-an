@@ -48,7 +48,8 @@ export function mapClassroomToClassItem(cls: ClassroomResponse): ClassItem {
         })),
 
         studentCount: cls.students?.length ?? 0,
-        createdAt: cls.createdAt || new Date().toISOString()
+        createdAt: cls.createdAt || new Date().toISOString(),
+        generalChannelId: cls.GeneralChannelID || ""
     };
 }
 
