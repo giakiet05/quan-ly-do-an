@@ -1,21 +1,47 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import { push } from "svelte-spa-router";
+    import { push, querystring } from "svelte-spa-router";
     import Button from "../../components/Button.svelte";
 
-    let errorMessage = "Đã xảy ra lỗi trong quá trình xác thực.";
+    // Khai báo các loại lỗi thân thiện với người dùng
+    const errorMap: Record<string, { title: string; hint: string }> = {
+        missing_auth_code: {
+            title: "Thiếu mã xác thực",
+            hint: "Không nhận được phản hồi từ Google. Vui lòng thử lại.",
+        },
+        mismatch_state: {
+            title: "Lỗi bảo mật (State)",
+            hint: "Phiên làm việc đã hết hạn hoặc yêu cầu bị giả mạo. Hãy đăng nhập lại.",
+        },
+        google_api_error: {
+            title: "Lỗi kết nối Google",
+            hint: "Hệ thống không thể lấy thông tin từ Google.",
+        },
+        unauthorized_domain: {
+            title: "Tài khoản không hợp lệ",
+            hint: "Vui lòng sử dụng email sinh viên (@gm.uit.edu.vn).",
+        },
+    };
 
-    onMount(() => {
-        // Lấy message từ Hash (sau dấu ?)
-        const hash = window.location.hash;
-        const queryString = hash.includes("?") ? hash.split("?")[1] : "";
-        const params = new URLSearchParams(queryString);
-        const msg = params.get("message");
+    let errorTitle = "Lỗi xác thực";
+    let displayMessage = "Đã xảy ra lỗi không xác định.";
 
-        if (msg) {
-            errorMessage = decodeURIComponent(msg).replace(/\+/g, " ");
+    // Reactive: Tự động chạy lại mỗi khi query trên URL thay đổi
+    $: if ($querystring) {
+        const params = new URLSearchParams($querystring);
+        const code = params.get("message"); // Đây là mã lỗi từ Backend gửi về (ví dụ: missing_auth_code)
+
+        if (code) {
+            // Nếu mã lỗi nằm trong danh sách định nghĩa sẵn
+            if (errorMap[code]) {
+                errorTitle = errorMap[code].title;
+                displayMessage = errorMap[code].hint;
+            } else {
+                // Nếu là message tự do từ Backend gửi xuống (đã encode)
+                errorTitle = "Thông báo lỗi";
+                displayMessage = decodeURIComponent(code).replace(/\+/g, " ");
+            }
         }
-    });
+    }
 </script>
 
 <div class="auth-header">
@@ -35,13 +61,13 @@
             />
         </svg>
     </div>
-    <h2 class="title" style="color: #991b1b;">Lỗi đăng nhập</h2>
+    <h2 class="title" style="color: #991b1b;">{errorTitle}</h2>
     <p class="subtitle">Hệ thống không thể hoàn tất xác thực</p>
 </div>
 
 <div class="error-container">
     <div class="error-alert">
-        {errorMessage}
+        {displayMessage}
     </div>
 
     <Button
@@ -54,6 +80,7 @@
 </div>
 
 <style>
+    /* Giữ nguyên style của bạn */
     .auth-header {
         text-align: center;
         margin-bottom: 24px;
@@ -72,7 +99,6 @@
         color: #6b7280;
         margin-bottom: 24px;
     }
-
     .error-alert {
         background-color: #fee2e2;
         color: #991b1b;
