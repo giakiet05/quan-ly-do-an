@@ -37,4 +37,7 @@ const (
 	NotificationTypeReportSubmitted NotificationType = "report_submitted"
 	NotificationTypeReportDeadline  NotificationType = "report_deadline"
 	NotificationTypeReportOpened    NotificationType = "report_opened"
+
+	NotificationTypeClassPostCreated NotificationType = "class_post_created"
+	NotificationTypeClassPostUpdated NotificationType = "class_post_updated"
 )
