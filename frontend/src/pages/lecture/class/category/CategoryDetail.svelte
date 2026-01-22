@@ -12,6 +12,7 @@
     import type { ProjectRound } from "../../../../types/project-round";
     import { getClassroom } from "../../../../services/classroom-service";
     import type { ClassroomResponse } from "../../../../dtos";
+    import { push } from "svelte-spa-router";
 
     // Lấy params từ URL
     let { params } = $props();
@@ -61,10 +62,56 @@
         { id: "reports", label: "Báo cáo" },
         { id: "settings", label: "Cài đặt" },
     ];
+    async function handleUpdate() {
+        if (!projectRound) return;
 
+        try {
+            // Khớp với hàm editRound(data: UpdateProjectRoundRequest) trong store
+            await projectRoundStore.editRound({
+                projectRoundId: projectRoundId,
+                classroomId: classroomId,
+                name: projectRound.name,
+                description: projectRound.description || "",
+                startDate:
+                    projectRound.startDate instanceof Date
+                        ? projectRound.startDate.toISOString()
+                        : projectRound.startDate,
+                endDate:
+                    projectRound.endDate instanceof Date
+                        ? projectRound.endDate.toISOString()
+                        : projectRound.endDate,
+                defaultMinMember: projectRound.minStudents,
+                defaultMaxMember: projectRound.maxStudents,
+            });
+            alert("Cập nhật hạng mục thành công!");
+        } catch (err) {
+            console.error("Lỗi cập nhật:", err);
+        }
+    }
+
+    async function handleDelete() {
+        if (!confirm("Bạn có chắc chắn muốn xóa hạng mục này?")) return;
+
+        try {
+            // Khớp với hàm removeRound(roundId, classroom_id) trong store
+            await projectRoundStore.removeRound(projectRoundId, classroomId);
+            alert("Đã xóa hạng mục thành công.");
+            push(`/my-class/${classroomId}`); // Điều hướng về trang lớp học
+        } catch (err) {
+            console.error("Lỗi khi xóa:", err);
+        }
+    }
     // Helper format ngày
-    const formatDate = (date: string) =>
-        new Date(date).toLocaleDateString("vi-VN");
+    const formatDate = (date: Date | string | undefined) => {
+        if (!date) return "";
+        const d = typeof date === "string" ? new Date(date) : date;
+        return d.toLocaleDateString("vi-VN");
+    };
+    const toInputDate = (date: any) => {
+        if (!date) return "";
+        const d = typeof date === "string" ? new Date(date) : date;
+        return d.toISOString().split("T")[0];
+    };
 </script>
 
 <div class="mb-6 rounded-lg bg-white p-6 shadow-sm">
@@ -281,16 +328,22 @@
 
             <div class="flex justify-end gap-3">
                 <button
+                    type="button"
+                    onclick={() => (activeTab = "projects")}
                     class="rounded-lg border border-gray-300 px-6 py-2 transition-colors hover:bg-gray-50"
                 >
                     Hủy
                 </button>
                 <button
+                    type="button"
+                    onclick={handleUpdate}
                     class="rounded-lg bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
                 >
                     Lưu thay đổi
                 </button>
                 <button
+                    type="button"
+                    onclick={handleDelete}
                     class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
                 >
                     Xóa hạng mục

@@ -34,6 +34,8 @@ export const projectRoundMapper = {
             createdAt: new Date(dto.createdAt),
             isDeleted: dto.isDeleted,
             status: status,
+            maxStudents: dto.defaultMaxMember,
+            minStudents: dto.defaultMinMember,
 
             // 1. Thêm statusText để UI dùng trực tiếp (thay thế logic trong category.ts)
             statusText: status === 'ended' ? "đã kết thúc" : (status === 'upcoming' ? "sắp diễn ra" : "đang diễn ra"),
@@ -46,7 +48,30 @@ export const projectRoundMapper = {
             progress: calculateProgress(start, end),
             reportPeriods: mappedPeriods
         };
-    }
+    },
+    toUpdateDto(data: any): any {
+        return {
+            projectRoundId: data.projectRoundId,
+            classroomId: data.classroomId,
+            name: data.name,
+            description: data.description,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            defaultMinMember: Number(data.minStudents), // Đổi tên trường ở đây
+            defaultMaxMember: Number(data.maxStudents), // Đổi tên trường ở đây
+        };
+    },
+    toCreateDto(data: any): any {
+        return {
+            classroomId: data.classroomId,
+            name: data.name,
+            description: data.description,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            defaultMinMember: Number(data.minStudents), // Đổi tên trường ở đây
+            defaultMaxMember: Number(data.maxStudents), // Đổi tên trường ở đây
+        };
+    },
 };
 
 function calculateProgress(start: Date, end: Date): number {
@@ -55,3 +80,4 @@ function calculateProgress(start: Date, end: Date): number {
     const elapsed = new Date().getTime() - start.getTime();
     return Math.min(Math.max(Math.round((elapsed / total) * 100), 0), 100);
 }
+

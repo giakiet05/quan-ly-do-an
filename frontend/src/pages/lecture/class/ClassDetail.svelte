@@ -55,6 +55,7 @@
     // 4. Handlers
     async function handleCreateRound(data: any) {
         try {
+            console.log("Creating round with data:", data);
             await projectRoundStore.addRound({
                 ...data,
                 classroomId: classroomId,
@@ -75,6 +76,8 @@
                 description: data.description,
                 startDate: data.startDate,
                 endDate: data.endDate,
+                defaultMinMember: data.minStudents,
+                defaultMaxMember: data.maxStudents,
             };
             await projectRoundStore.editRound(payload);
             editingCategory = null;

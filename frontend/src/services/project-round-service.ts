@@ -30,11 +30,15 @@ export async function getProjectRoundById(classroomId: string, roundId: string):
 /**
  * Tạo mới vòng dự án
  */
-export async function createProjectRound(data: CreateProjectRoundRequest): Promise<ProjectRound> {
-    console.log("CreateProjectRound request data:", data);
+export async function createProjectRound(data: any): Promise<ProjectRound> {
+    // 1. Chuyển đổi dữ liệu trước khi gửi
+    const mappedData = projectRoundMapper.toCreateDto(data);
+
+    console.log("CreateProjectRound request mapped data:", mappedData);
+
     const response = await apiFetch<ProjectRoundResponse>("/api/projects/rounds", {
         method: "POST",
-        body: JSON.stringify(data)
+        body: JSON.stringify(mappedData) // Gửi data đã được map
     });
 
     return projectRoundMapper.toEntity(response);
@@ -43,17 +47,17 @@ export async function createProjectRound(data: CreateProjectRoundRequest): Promi
 /**
  * Cập nhật vòng dự án
  */
-export async function updateProjectRound(
-    data: UpdateProjectRoundRequest
-): Promise<ProjectRound> {
-    console.log("UpdateProjectRound request data:", data);
+export async function updateProjectRound(data: any): Promise<ProjectRound> {
+    // 1. Chuyển đổi dữ liệu trước khi gửi
+    const mappedData = projectRoundMapper.toUpdateDto(data);
+
+    console.log("UpdateProjectRound request mapped data:", mappedData);
 
     const response = await apiFetch<ProjectRoundResponse>(`/api/projects/rounds`, {
         method: "PUT",
-        body: JSON.stringify(data)
+        body: JSON.stringify(mappedData) // Gửi data đã được map
     });
 
-    console.log("Updated Project Round Response:", response);
     return projectRoundMapper.toEntity(response);
 }
 
