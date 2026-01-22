@@ -29,9 +29,11 @@
     }
 
     // 1. Nhận Props
-    let { period, onBack } = $props<{
+    let { period, onBack, classroomId, projectRoundId } = $props<{
         period: PeriodResponse;
         onBack: () => void;
+        classroomId: string;
+        projectRoundId: string;
     }>();
     // period store
 
@@ -162,7 +164,11 @@
     const handleDeletePeriod = async () => {
         if (confirm("Bạn có chắc chắn muốn xóa giai đoạn này không?")) {
             try {
-                await periodStore.removePeriod(period.classroomId, period.id);
+                await periodStore.removePeriod(
+                    classroomId,
+                    projectRoundId,
+                    period.id,
+                );
                 onBack();
             } catch (error) {
                 console.error("Failed to delete period:", error);

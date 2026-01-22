@@ -151,7 +151,7 @@ func (s *notificationService) handleMessageCreated(
 			RecipientID: recipientOID,
 			ActorID:     senderOID,
 			Type:        model.NotificationTypeNewMessage,
-			Message:     fmt.Sprintf("Tin nhắn mới từ %s", messageData.SenderUsername),
+			Message:     fmt.Sprintf("Tin nhắn mới từ %s", messageData.ChannelID),
 			Link:        fmt.Sprintf("/channels/%s", messageData.ChannelID),
 			IsRead:      false,
 			CreatedAt:   time.Now(),

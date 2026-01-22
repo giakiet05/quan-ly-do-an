@@ -59,6 +59,8 @@
 
 {#if selectedPeriod}
     <ReportStageDetail
+        {classroomId}
+        {projectRoundId}
         period={selectedPeriod}
         onBack={() => (selectedPeriod = null)}
     />

@@ -46,15 +46,29 @@
 
     const handleCreateProject = async (newProject: CreateProjectRequest) => {
         try {
-            const createdProject = await addProject({
-                ...newProject,
-                classroomId,
-                projectRoundId,
-            });
-            console.log("Created project:", createdProject); // Debug log
-            showCreateModal = false; // Đóng modal sau khi tạo thành công
+            if (newProject.amount > 1) {
+                await addProjects({
+                    projects: Array(newProject.amount).fill({
+                        ...newProject,
+                        amount: undefined, // Remove the amount property for individual projects
+                    }),
+                    classroomId,
+                    projectRoundId,
+                });
+                console.log(
+                    `Created ${newProject.amount} projects successfully.`,
+                );
+            } else {
+                const createdProject = await addProject({
+                    ...newProject,
+                    classroomId,
+                    projectRoundId,
+                });
+                console.log("Created project:", createdProject);
+            }
+            showCreateModal = false; // Close modal after successful creation
         } catch (error) {
-            console.error("Lỗi khi thêm đề tài:", error);
+            console.error("Error while adding project(s):", error);
             alert("Không thể thêm đề tài. Vui lòng thử lại.");
         }
     };
