@@ -6,6 +6,7 @@
     notificationStore,
   } from "../stores/notification-store";
   import { onMount } from "svelte"; // Thêm import này
+  import { GraduationCap } from "lucide-svelte";
 
   type MenuItem = {
     id: string;
@@ -136,10 +137,15 @@
 
 <aside class="sidebar" class:collapsed>
   <div class="sidebar-header">
-    <div class="logo-wrapper">
-      {#if !collapsed}
-        <span class="logo">MY APP</span>
-      {/if}
+    <div class="logo-wrapper" class:centered={collapsed}>
+      <div class="logo-container">
+        <div class="brand-icon">
+          <GraduationCap size={28} strokeWidth={2.5} />
+        </div>
+        {#if !collapsed}
+          <span class="logo">DoAnHUB</span>
+        {/if}
+      </div>
     </div>
     <button onclick={onToggle} class="toggle-btn" aria-label="Toggle Sidebar">
       <span class="icon">
@@ -242,11 +248,6 @@
   .collapsed .sidebar-header {
     justify-content: center;
     padding: 0;
-  }
-  .logo {
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: #1e293b;
   }
   .toggle-btn {
     background: rgba(0, 0, 0, 0.05);
@@ -401,5 +402,52 @@
   .role {
     font-size: 0.75rem;
     color: #64748b;
+  }
+  .logo-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s;
+  }
+
+  .logo-wrapper.centered {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Khoảng cách giữa icon và chữ */
+  }
+  .brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563eb; /* Màu xanh chủ đạo */
+    background: #eff6ff; /* Nền xanh nhạt tạo khối */
+    padding: 6px;
+    border-radius: 10px;
+    box-shadow:
+      0 4px 6px -1px rgba(37, 99, 235, 0.1),
+      0 2px 4px -1px rgba(37, 99, 235, 0.06);
+  }
+
+  .logo {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    /* Hiệu ứng Gradient cho chữ */
+    background: linear-gradient(135deg, #1e293b 30%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    white-space: nowrap;
+  }
+
+  /* Hiệu ứng khi Hover vào Logo */
+  .logo-container:hover .brand-icon {
+    transform: rotate(-10deg) scale(1.1);
+    transition: transform 0.2s ease;
   }
 </style>

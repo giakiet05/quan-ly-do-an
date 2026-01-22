@@ -25,7 +25,6 @@ export const projectRoundStore = {
         isLoadingStore.set(true);
         try {
             const data = await getProjectRounds(classroomId);
-            console.log("Fetched project rounds:", data);
             roundsStore.set(data);
         } catch (e) {
             errorStore.set("Không thể tải danh sách vòng dự án");
