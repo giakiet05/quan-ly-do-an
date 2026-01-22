@@ -144,14 +144,16 @@ func FromProjectRound(round *model.ProjectRound) ProjectRoundResponse {
 	}
 
 	return ProjectRoundResponse{
-		ID:            round.ID.Hex(),
-		Name:          round.Name,
-		StartDate:     round.StartDate,
-		EndDate:       round.EndDate,
-		Description:   round.Description,
-		ReportPeriods: reportPeriods,
-		CreatedAt:     round.CreatedAt,
-		IsDeleted:     round.IsDeleted,
+		ID:               round.ID.Hex(),
+		Name:             round.Name,
+		StartDate:        round.StartDate,
+		EndDate:          round.EndDate,
+		Description:      round.Description,
+		ReportPeriods:    reportPeriods,
+		DefaultMaxMember: round.DefaultMaxMember,
+		DefaultMinMember: round.DefaultMinMember,
+		CreatedAt:        round.CreatedAt,
+		IsDeleted:        round.IsDeleted,
 	}
 }
 
