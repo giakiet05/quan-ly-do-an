@@ -67,7 +67,7 @@ func StatusFromError(err error) int {
 	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
 		return http.StatusForbidden
 	// 404 Not Found
-	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound, ErrPostNotFound):
+	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound, ErrPostNotFound, ErrChannelNotFound):
 		return http.StatusNotFound
 	// 409 Conflict
 	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed, ErrStudentCodeAlreadyUsed, ErrJoinRequestAlreadyProcessed):
@@ -119,6 +119,7 @@ var (
 	// Project-related
 	ErrReportAlreadyExists      = AppError{Code: "REPORT_ALREADY_EXISTS", Message: "Report already exists for this period"}
 	ErrReportPeriodNotFound     = AppError{Code: "REPORT_PERIOD_NOT_FOUND", Message: "Report period not found"}
+	ErrProjectRoundNotFound     = AppError{Code: "PROJECT_ROUND_NOT_FOUND", Message: "Project round not found"}
 	ErrProjectGroupLimitReached = AppError{Code: "PROJECT_GROUP_LIMIT_REACHED", Message: "Project group member limit reached"}
 
 	// Class Membership-related

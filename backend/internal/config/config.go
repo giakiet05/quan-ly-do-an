@@ -87,7 +87,7 @@ func LoadConfig() {
 	Cfg.MongoURI = getEnv("MONGO_URI", "mongodb://localhost:27017")
 	Cfg.DBName = getEnv("DB_NAME", "lkforum")
 	Cfg.FrontendURL = getEnv("FRONTEND_URL", "http://localhost:5173")
-	Cfg.AllowedOrigins = getEnvSlice("ALLOWED_ORIGINS", []string{"http://localhost:5173"})
+	Cfg.AllowedOrigins = getEnvSlice("ALLOWED_ORIGINS", []string{"http://localhost:5173", "http://localhost:5174"})
 
 	// JWT
 	Cfg.JWTSecret = getEnv("JWT_SECRET", "your-secret-key")

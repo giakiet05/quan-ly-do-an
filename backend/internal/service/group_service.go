@@ -7,6 +7,7 @@ import (
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/cloudinary"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 	"github.com/robfig/cron/v3"
@@ -1034,11 +1035,25 @@ func (g *groupService) CreateReport(req *dto.CreateReportRequest, requesterID st
 	}
 
 	now := time.Now()
+	
+	// Convert attachments
+	attachments := make([]model.Attachment, 0, len(req.Attachments))
+	for _, att := range req.Attachments {
+		attachments = append(attachments, model.Attachment{
+			FileName: att.FileName,
+			FileURL:  att.FileURL,
+			PublicID: att.PublicID,
+			FileSize: att.FileSize,
+			MimeType: att.MimeType,
+		})
+	}
+
 	report := model.Report{
+		ID:             primitive.NewObjectID(),
 		ReportPeriodID: reportPeriodOID,
 		Title:          req.Title,
 		Content:        req.Content,
-		Files:          req.Files,
+		Attachments:    attachments,
 		Feedback:       model.ReportFeedback{},
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -1101,9 +1116,11 @@ func (g *groupService) UpdateReport(req *dto.UpdateReportRequest, requesterID st
 	}
 
 	reportIndex := -1
+	var existingReport model.Report
 	for i, report := range group.Reports {
 		if report.ID == reportOID {
 			reportIndex = i
+			existingReport = report
 			break
 		}
 	}
@@ -1137,10 +1154,45 @@ func (g *groupService) UpdateReport(req *dto.UpdateReportRequest, requesterID st
 		setFields["reports.$.content"] = *req.Content
 	}
 
-	// Update files if provided
-	if req.Files != nil {
-		setFields["reports.$.files"] = req.Files
+	// Handle attachments
+	updatedAttachments := existingReport.Attachments
+
+	// Remove attachments
+	if len(req.FilesToRemove) > 0 {
+		newAttachments := make([]model.Attachment, 0)
+		for _, att := range updatedAttachments {
+			shouldRemove := false
+			for _, urlToRemove := range req.FilesToRemove {
+				if att.FileURL == urlToRemove {
+					shouldRemove = true
+					// Delete from Cloudinary
+					if att.PublicID != "" {
+						_, _ = cloudinary.Delete(att.PublicID)
+					}
+					break
+				}
+			}
+			if !shouldRemove {
+				newAttachments = append(newAttachments, att)
+			}
+		}
+		updatedAttachments = newAttachments
 	}
+
+	// Add new attachments
+	if len(req.AttachmentsToAdd) > 0 {
+		for _, att := range req.AttachmentsToAdd {
+			updatedAttachments = append(updatedAttachments, model.Attachment{
+				FileName: att.FileName,
+				FileURL:  att.FileURL,
+				PublicID: att.PublicID,
+				FileSize: att.FileSize,
+				MimeType: att.MimeType,
+			})
+		}
+	}
+
+	setFields["reports.$.attachments"] = updatedAttachments
 
 	update := repo.UpdateDocument{
 		"$set": setFields,
@@ -1190,15 +1242,15 @@ func (g *groupService) DeleteReport(groupID string, reportID string, requesterID
 		return apperror.ErrBadRequest
 	}
 
-	found := false
+	var reportToDelete *model.Report
 	for _, report := range group.Reports {
 		if report.ID == reportOID {
-			found = true
+			reportToDelete = &report
 			break
 		}
 	}
 
-	if !found {
+	if reportToDelete == nil {
 		return apperror.ErrNotFound
 	}
 
@@ -1220,7 +1272,19 @@ func (g *groupService) DeleteReport(groupID string, reportID string, requesterID
 		},
 	}
 
-	return g.groupRepo.Update(ctx, filter, update)
+	err = g.groupRepo.Update(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	// Delete attachments from Cloudinary (best effort, ignore errors)
+	for _, att := range reportToDelete.Attachments {
+		if att.PublicID != "" {
+			_, _ = cloudinary.Delete(att.PublicID)
+		}
+	}
+
+	return nil
 }
 
 func (g *groupService) CreateReportFeedback(req *dto.CreateReportFeedbackRequest, requesterID string) (*model.ReportFeedback, error) {

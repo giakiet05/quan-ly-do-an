@@ -12,6 +12,10 @@ func RegisterProjectRoutes(rg *gin.RouterGroup, c *controller.ProjectController)
 	// Protected routes (require authentication)
 	projects.Use(middleware.RequireAuth())
 	{
+		// ===== Excel operations =====
+		projects.GET("/template", c.DownloadProjectTemplate)
+		projects.POST("/classrooms/:classroom_id/rounds/:round_id/upload-excel", c.UploadProjectsExcel)
+
 		// ===== Report Period operations =====
 		projects.POST("/classrooms/:classroom_id/rounds/:round_id/report-periods", c.CreateReportPeriod)
 		projects.POST("/classrooms/:classroom_id/report-periods/bulk", c.CreateReportPeriods)
