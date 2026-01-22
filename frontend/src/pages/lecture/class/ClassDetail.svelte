@@ -10,7 +10,7 @@
     import StudentTab from "./student/StudentTab.svelte";
     import AnnouncementTab from "./announcement/AnnouncementTab.svelte";
     import CreateAnnouncementModal from "./announcement/CreateAnnouncementModal.svelte";
-    import ChatTab from "./ChatTab.svelte";
+    import ChatTab from "../../../components/ChatTab.svelte";
 
     // Stores & Type
     import { projectRoundStore } from "../../../stores/project-round-store";
