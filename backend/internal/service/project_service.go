@@ -25,6 +25,7 @@ type ProjectService interface {
 
 	CreateProject(req *dto.CreateProjectRequest, requesterID string) (*model.Project, error)
 	CreateProjects(req *dto.CreateProjectsRequest, requesterID string) ([]model.Project, error)
+	CreateProjectsFromExcel(classroomID, roundID, requesterID string, projectsData []util.ProjectExcelData) ([]model.Project, error)
 	GetProjectByID(classroomID string, projectID string) (*model.Project, error)
 	GetProjectsByRoundID(classroomID, roundID string) ([]model.Project, error)
 	UpdateProject(req *dto.UpdateProjectRequest, requesterID string) (*model.Project, error)
@@ -485,6 +486,64 @@ func (p *projectService) CreateProjects(req *dto.CreateProjectsRequest, requeste
 	if err != nil {
 		return nil, err
 	}
+	return projects, nil
+}
+
+func (p *projectService) CreateProjectsFromExcel(classroomID, roundID, requesterID string, projectsData []util.ProjectExcelData) ([]model.Project, error) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Check if requester is lecturer or co-lecturer
+	isLecturer, err := p.classroomRepo.IsLecturerOrCoLecturer(ctx, classroomID, requesterID)
+	if err != nil {
+		return nil, err
+	}
+	if !isLecturer {
+		return nil, apperror.ErrForbidden
+	}
+
+	// Validate ObjectIDs
+	classroomOID, err := primitive.ObjectIDFromHex(classroomID)
+	if err != nil {
+		return nil, apperror.ErrInvalidID
+	}
+
+	roundOID, err := primitive.ObjectIDFromHex(roundID)
+	if err != nil {
+		return nil, apperror.ErrInvalidID
+	}
+
+	// Verify project round exists
+	round, err := p.projectRepo.GetProjectRoundByID(ctx, classroomID, roundID)
+	if err != nil {
+		return nil, err
+	}
+	if round == nil {
+		return nil, apperror.ErrProjectRoundNotFound
+	}
+
+	// Convert Excel data to Project models
+	projects := make([]model.Project, 0, len(projectsData))
+	for _, data := range projectsData {
+		projects = append(projects, model.Project{
+			ID:             primitive.NewObjectID(),
+			ClassroomID:    classroomOID,
+			ProjectRoundID: roundOID,
+			Title:          data.Title,
+			Amount:         data.Amount,
+			Description:    data.Description,
+			MinMember:      data.MinMember,
+			MaxMember:      data.MaxMember,
+			Status:         model.ProjectStatusPending,
+		})
+	}
+
+	// Create projects in database
+	err = p.projectRepo.CreateProjects(ctx, projects)
+	if err != nil {
+		return nil, err
+	}
+
 	return projects, nil
 }
 

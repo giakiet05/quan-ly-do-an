@@ -119,6 +119,7 @@ var (
 	// Project-related
 	ErrReportAlreadyExists      = AppError{Code: "REPORT_ALREADY_EXISTS", Message: "Report already exists for this period"}
 	ErrReportPeriodNotFound     = AppError{Code: "REPORT_PERIOD_NOT_FOUND", Message: "Report period not found"}
+	ErrProjectRoundNotFound     = AppError{Code: "PROJECT_ROUND_NOT_FOUND", Message: "Project round not found"}
 	ErrProjectGroupLimitReached = AppError{Code: "PROJECT_GROUP_LIMIT_REACHED", Message: "Project group member limit reached"}
 
 	// Class Membership-related
