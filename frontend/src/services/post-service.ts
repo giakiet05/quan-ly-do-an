@@ -1,5 +1,5 @@
 import { apiFetch } from "../utils/api-fetch";
-import type { CreatePostRequest, PaginatedPostResponse, PostResponse, PinPostRequest } from "../dtos/post-dto";
+import type { CreatePostRequest, PaginatedPostResponse, PostResponse, PinPostRequest, UpdatePostRequest } from "../dtos/post-dto";
 import type { ApiResponse } from "../dtos/api-response-dto";
 
 // ==================== POST MANAGEMENT ====================
@@ -55,7 +55,7 @@ export async function createPost(
  */
 export async function updatePost(
     postId: string,
-    data: Partial<CreatePostRequest>
+    data: UpdatePostRequest
 ): Promise<PostResponse> {
     const formData = new FormData();
     if (data.title) formData.append("title", data.title);
@@ -67,9 +67,12 @@ export async function updatePost(
             formData.append("files", data.files);
         }
     }
+    if (data.filesToRemove) {
+        data.filesToRemove.forEach((fileUrl) => formData.append("filesToRemove", fileUrl));
+    }
 
     const response = await apiFetch<PostResponse>(
-        `/api/posts/${postId}`,
+        `/api/classrooms/posts/${postId}`,
         {
             method: "PUT",
             body: formData,

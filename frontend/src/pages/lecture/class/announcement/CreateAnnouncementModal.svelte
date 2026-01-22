@@ -1,30 +1,36 @@
 <script lang="ts">
     import { X, Paperclip, Trash2, Upload } from "lucide-svelte";
+    import type { Announcement } from "../../../../types/announcement";
     import type {
-        Announcement,
-        AttachedFile,
-    } from "../../../../types/announcement";
+        CreatePostRequest,
+        PostResponse,
+        UpdatePostRequest,
+    } from "../../../../dtos/post-dto";
 
-    // Định nghĩa Props bằng $props()
     let {
         onClose,
         onSubmit,
         editingAnnouncement = null,
     } = $props<{
         onClose: () => void;
-        onSubmit: (announcement: any) => void;
-        editingAnnouncement?: Announcement | null;
+        onSubmit: (post: UpdatePostRequest | CreatePostRequest) => void;
+        editingAnnouncement?: PostResponse | null;
     }>();
 
     // Khởi tạo state của form
     let formData = $state({
         title: editingAnnouncement?.title || "",
         content: editingAnnouncement?.content || "",
-        files: editingAnnouncement?.files || ([] as AttachedFile[]),
+        // Lưu trữ trực tiếp đối tượng File của trình duyệt
+        files: [] as File[],
+        existingFiles:
+            editingAnnouncement?.attachments ||
+            ([] as typeof editingAnnouncement.attachments),
+        filesToRemove: [] as string[], // Track files to remove
     });
 
     let errors = $state<Record<string, string>>({});
-    let fileInput: HTMLInputElement; // Thay thế cho useRef
+    let fileInput: HTMLInputElement;
 
     // Helper: Định dạng kích thước file
     const formatFileSize = (bytes: number): string => {
@@ -40,26 +46,33 @@
     // Xử lý chọn file
     function handleFileSelect(e: Event) {
         const target = e.target as HTMLInputElement;
-        const files = target.files;
-        if (!files || files.length === 0) return;
+        if (!target.files) return;
 
-        const newFiles: AttachedFile[] = Array.from(files).map((file) => ({
-            id: `${Date.now()}-${Math.random()}`,
-            name: file.name,
-            size: file.size,
-            url: URL.createObjectURL(file),
-        }));
+        // Thêm các file mới vào mảng hiện tại
+        const selectedFiles = Array.from(target.files);
+        formData.files = [...formData.files, ...selectedFiles];
 
-        // Cập nhật mảng trực tiếp nhờ proxy của Svelte 5
-        formData.files = [...formData.files, ...newFiles];
-        target.value = ""; // Reset input
+        target.value = ""; // Reset input để có thể chọn lại cùng 1 file nếu muốn
     }
 
-    // Xử lý xóa file
-    function handleRemoveFile(fileId: string) {
-        formData.files = formData.files.filter(
-            (f: AttachedFile) => f.id !== fileId,
+    // Xử lý xóa file (dựa vào tên và size hoặc index)
+    function handleRemoveFile(index: number) {
+        formData.files = formData.files.filter((_, i) => i !== index);
+    }
+
+    function handleRemoveExistingFile(fileUrl: string) {
+        formData.existingFiles = formData.existingFiles.filter(
+            (file: any) => file.fileUrl !== fileUrl,
         );
+        formData.filesToRemove.push(fileUrl);
+
+        // Hide the file from the UI
+        const fileElement = document.querySelector(
+            `[data-file-id="${fileUrl}"]`,
+        );
+        if (fileElement) {
+            fileElement.classList.add("hidden");
+        }
     }
 
     // Xử lý nộp form
@@ -77,7 +90,14 @@
             return;
         }
 
-        onSubmit({ ...formData });
+        // Gửi trực tiếp formData vì cấu trúc đã khớp với CreatePostRequest
+        onSubmit({
+            title: formData.title,
+            content: formData.content,
+            files: formData.files, // Đây đã là mảng File[]
+            filesToRemove: formData.filesToRemove, // Include files to remove
+        });
+        console.log(formData);
     }
 
     function clearError(field: string) {
@@ -144,17 +164,12 @@
                 {#if errors.content}
                     <p class="text-red-500 text-sm mt-1">{errors.content}</p>
                 {/if}
-                <p class="text-sm text-gray-500 mt-1">
-                    Bạn có thể nhập văn bản nhiều dòng. Xuống dòng sẽ được giữ
-                    nguyên khi hiển thị.
-                </p>
             </div>
 
             <div>
                 <label class="block text-sm mb-2" for="file-upload"
                     >File đính kèm</label
                 >
-
                 <input
                     bind:this={fileInput}
                     type="file"
@@ -174,16 +189,12 @@
                     <span>Chọn file để đính kèm</span>
                 </button>
 
-                <p class="text-sm text-gray-500 mt-2">
-                    Hỗ trợ: PDF, Word, Excel, PowerPoint, Text, ZIP, RAR
-                </p>
-
                 {#if formData.files.length > 0}
                     <div class="mt-4 space-y-2">
                         <div class="text-sm font-medium">
                             File đã chọn ({formData.files.length}):
                         </div>
-                        {#each formData.files as file (file.id)}
+                        {#each formData.files as file, i}
                             <div
                                 class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
                             >
@@ -200,7 +211,7 @@
                                 </div>
                                 <button
                                     type="button"
-                                    onclick={() => handleRemoveFile(file.id)}
+                                    onclick={() => handleRemoveFile(i)}
                                     class="p-1 hover:bg-red-50 rounded transition-colors flex-shrink-0"
                                 >
                                     <Trash2 class="w-4 h-4 text-red-600" />
@@ -209,13 +220,38 @@
                         {/each}
                     </div>
                 {/if}
-            </div>
 
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p class="text-sm text-blue-800">
-                    <strong>Lưu ý:</strong> Thông báo sẽ được hiển thị cho tất cả
-                    sinh viên trong lớp.
-                </p>
+                {#if formData.existingFiles.length > 0}
+                    <div class="mt-4 space-y-2">
+                        <div class="text-sm font-medium">File hiện có:</div>
+                        {#each formData.existingFiles as file}
+                            <div
+                                class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                data-file-id={file.publicId}
+                            >
+                                <Paperclip
+                                    class="w-5 h-5 text-gray-600 flex-shrink-0"
+                                />
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm text-gray-900 truncate">
+                                        {file.fileName}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        {file.mimeType}
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onclick={() =>
+                                        handleRemoveExistingFile(file.fileUrl)}
+                                    class="p-1 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                                >
+                                    <Trash2 class="w-4 h-4 text-red-600" />
+                                </button>
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">

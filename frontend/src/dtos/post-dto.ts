@@ -1,14 +1,14 @@
 export interface CreatePostRequest {
     title: string;
     content: string;
-    files: File | File[]; // Một hoặc nhiều file từ input type="file"
+    files: File[]; // Ensure this is an array of File objects
 }
 
 export interface UpdatePostRequest {
     title: string;
     content: string;
     files: File | File[];
-    filesToRemove: File | File[];
+    filesToRemove: string[];
 }
 
 export interface PostResponse {
@@ -24,6 +24,13 @@ export interface PostResponse {
             uploadedAt: string;
         };
     };
+    attachments: {
+        fileName: string;
+        fileUrl: string;
+        publicId: string;
+        fileSize: number;
+        mimeType: string;
+    }[];
     title: string;
     content: string;
     isPinned: boolean;

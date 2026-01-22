@@ -22,6 +22,11 @@
     import type { ClassroomResponse } from "../../../dtos";
     import { getClassroom } from "../../../services/classroom-service";
     import { postStore } from "../../../stores/post-store";
+    import type {
+        CreatePostRequest,
+        PostResponse,
+        UpdatePostRequest,
+    } from "../../../dtos/post-dto";
 
     const classroomId = $derived($params?.id);
     const classesStore = classStore.classes;
@@ -62,7 +67,7 @@
     );
     let isCreateCategoryModalOpen = $state(false);
     let editingCategory = $state<ProjectRound | null>(null);
-    let editingAnnouncement = $state<Announcement | null>(null);
+    let editingAnnouncement = $state<PostResponse | null>(null);
     let showCreateAnnouncementModal = $state(false);
 
     const tabs = [
@@ -277,11 +282,14 @@
             showCreateAnnouncementModal = false;
             editingAnnouncement = null;
         }}
-        onSubmit={(announcement) => {
+        onSubmit={(post) => {
             if (editingAnnouncement) {
-                postStore.updatePostData(announcement, classroomId);
+                postStore.updatePostData(
+                    editingAnnouncement.id,
+                    post as UpdatePostRequest,
+                );
             } else {
-                postStore.addPost(announcement, classroomId);
+                postStore.addPost(post as CreatePostRequest, classroomId);
             }
             showCreateAnnouncementModal = false;
             editingAnnouncement = null;

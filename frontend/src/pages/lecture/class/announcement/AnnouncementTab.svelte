@@ -11,10 +11,11 @@
         User,
     } from "lucide-svelte"; // Sửa lại import cho chuẩn Lucide
     import { postStore } from "../../../../stores/post-store";
+    import type { PostResponse } from "../../../../dtos/post-dto";
 
     let { onOpen, onEdit, classroomId } = $props<{
         onOpen: () => void;
-        onEdit: (announcement: any) => void;
+        onEdit: (announcement: PostResponse) => void;
         classroomId: string;
     }>();
 
@@ -146,6 +147,15 @@
                                             <Calendar class="w-4 h-4" />
                                             {formatDate(announcement.createdAt)}
                                         </span>
+                                        <span class="flex items-center gap-1.5">
+                                            <Calendar class="w-4 h-4" />
+                                            Cập nhật: {formatDate(
+                                                announcement.updatedAt,
+                                            )}
+                                        </span>
+                                        <span class="flex items-center gap-1.5">
+                                            Lớp học: {announcement.classroom_id}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -203,6 +213,34 @@
                                 >
                                     {announcement.content}
                                 </div>
+                                {#if announcement.attachments?.length > 0}
+                                    <div class="mt-4">
+                                        <h4
+                                            class="text-lg font-semibold text-gray-800"
+                                        >
+                                            Tệp đính kèm:
+                                        </h4>
+                                        <ul
+                                            class="list-disc list-inside text-gray-700"
+                                        >
+                                            {#each announcement.attachments as attachment}
+                                                <li>
+                                                    <a
+                                                        href={attachment.fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="text-blue-600 hover:underline"
+                                                    >
+                                                        {attachment.fileName} ({(
+                                                            attachment.fileSize /
+                                                            1024
+                                                        ).toFixed(2)} KB)
+                                                    </a>
+                                                </li>
+                                            {/each}
+                                        </ul>
+                                    </div>
+                                {/if}
                             </div>
                         {/if}
                     </div>

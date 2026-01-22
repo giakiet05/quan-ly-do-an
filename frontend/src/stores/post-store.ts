@@ -1,5 +1,5 @@
 import { writable, derived } from "svelte/store";
-import type { PostResponse, CreatePostRequest } from "../dtos/post-dto";
+import type { PostResponse, CreatePostRequest, UpdatePostRequest } from "../dtos/post-dto";
 import {
     getPosts,
     getPost,
@@ -104,7 +104,7 @@ function createPostStore() {
         }
     }
 
-    async function updatePostData(postId: string, data: Partial<CreatePostRequest>) {
+    async function updatePostData(postId: string, data: UpdatePostRequest) {
         try {
             const updatedPost = await updatePost(postId, data);
             posts.update((list) =>
