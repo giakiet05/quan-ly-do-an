@@ -16,147 +16,35 @@
 
   let projectRound = $state<ProjectRound | null>(null);
   let groups = $state<Group[]>([]);
+
+  // Tính toán group của user hiện tại dựa trên danh sách groups tải về
   let myGroup = $derived(
     groups.find((g) => g.members.some((m) => m.id === $authStore.user?.id)),
   );
-
-  // Mock data - Replace with API calls
-  let category = $state({
-    id: params.categoryId,
-    name: "Đồ án chuyên ngành",
-    description: "Phát triển ứng dụng hoàn chỉnh với đầy đủ tính năng",
-    startDate: "2024-01-15",
-    endDate: "2024-05-30",
-    status: "ongoing",
-  });
-
-  let projects = $state([
-    {
-      id: "p1",
-      name: "Hệ thống quản lý thư viện",
-      description:
-        "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-      instructor: "TS. Nguyễn Văn A",
-      currentStudents: 2,
-      maxStudents: 3,
-      status: "available",
-      tags: ["Web", "React", "Node.js"],
-      isMyProject: false,
-    },
-    {
-      id: "p2",
-      name: "Ứng dụng quản lý chi tiêu",
-      description: "Ứng dụng mobile giúp theo dõi thu chi cá nhân",
-      instructor: "ThS. Trần Thị B",
-      currentStudents: 2,
-      maxStudents: 2,
-      status: "full",
-      tags: ["Mobile", "React Native"],
-      isMyProject: true,
-    },
-  ]);
-
-  let reports = $state([
-    {
-      id: "r1",
-      title: "Báo cáo đề cương",
-      deadline: "2024-02-15",
-      status: "submitted",
-      submittedDate: "2024-02-14",
-    },
-    {
-      id: "r2",
-      title: "Báo cáo tiến độ giữa kỳ",
-      deadline: "2024-03-30",
-      status: "pending",
-    },
-    {
-      id: "r3",
-      title: "Báo cáo cuối kỳ",
-      deadline: "2024-05-25",
-      status: "upcoming",
-    },
-  ]);
 
   onMount(async () => {
     try {
       loading = true;
       error = null;
 
-      // TEMPORARY: Use mock data if classroom ID starts with "mock-"
-      if (params.id.startsWith("mock-")) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      // 1. Lấy thông tin lớp học và tìm ProjectRound tương ứng
+      const classroom = await getClassroom(params.id);
 
-        const mockClassroom = {
-          id: params.id,
-          projectRounds:
-            params.id === "mock-class-1"
-              ? [
-                  {
-                    id: "round1",
-                    name: "Đợt 1 - Đồ án cuối kỳ",
-                    description: "Phát triển ứng dụng web hoàn chỉnh",
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-05-31T23:59:59Z",
-                    reportPeriods: [
-                      {
-                        id: "rp1",
-                        title: "Báo cáo đề cương",
-                        description: "Nộp báo cáo đề cương dự án",
-                        fileType: ["pdf", "docx"],
-                        startDate: "2024-02-01T00:00:00Z",
-                        endDate: "2024-02-15T23:59:59Z",
-                      },
-                    ],
-                    createdAt: "2024-01-15T00:00:00Z",
-                    isDeleted: false,
-                  },
-                ]
-              : [
-                  {
-                    id: "round2",
-                    name: "Đợt 1 - AI Research",
-                    description: "Nghiên cứu và ứng dụng AI",
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-05-31T23:59:59Z",
-                    reportPeriods: [],
-                    createdAt: "2024-01-15T00:00:00Z",
-                    isDeleted: false,
-                  },
-                ],
-        };
+      const foundRound = classroom.projectRounds?.find(
+        (round) => round.id === params.categoryId,
+      );
 
-        const foundRound = mockClassroom.projectRounds.find(
-          (round) => round.id === params.categoryId,
-        );
-
-        if (!foundRound) {
-          error = "Không tìm thấy đợt đồ án này";
-          return;
-        }
-
-        projectRound = foundRound as unknown as ProjectRound;
-        groups = []; // Empty groups for mock data
-      } else {
-        // Fetch classroom to get project round
-        const classroom = await getClassroom(params.id);
-        console.log("📚 Classroom data:", classroom);
-        console.log("📋 Project rounds:", classroom.projectRounds);
-        const foundRound = classroom.projectRounds.find(
-          (round) => round.id === params.categoryId,
-        );
-
-        if (!foundRound) {
-          error = "Không tìm thấy đợt đồ án này";
-          return;
-        }
-
-        // Cast to ProjectRound type (DTO has string status, model has enum)
-        projectRound = foundRound as unknown as ProjectRound;
-
-        // Fetch groups/projects for this round
-        groups = await getGroupsFilter({ project_round_id: params.categoryId });
+      if (!foundRound) {
+        error = "Không tìm thấy đợt đồ án này hoặc đợt đồ án đã bị xóa.";
+        return;
       }
+
+      // Ép kiểu về ProjectRound (nếu DTO và Model hơi lệch nhau)
+      projectRound = foundRound as unknown as ProjectRound;
+
+      // 2. Lấy danh sách các nhóm trong đợt này để tính toán slot và tìm nhóm của user
+      // API này cần trả về danh sách nhóm thuộc project_round_id này
+      groups = await getGroupsFilter({ project_round_id: params.categoryId });
     } catch (err) {
       console.error("Error loading project round:", err);
       error = err instanceof Error ? err.message : "Không thể tải dữ liệu";
@@ -170,18 +58,24 @@
   }
 
   function handleProjectClick(projectId: string) {
+    // Điều hướng vào chi tiết một đề tài cụ thể
     push(
       `/classes/${params.id}/categories/${params.categoryId}/projects/${projectId}`,
     );
   }
 
-  function formatDate(dateString: string): string {
+  function formatDate(dateString: string | undefined): string {
+    if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("vi-VN");
   }
 
   function getDaysUntil(dateString: string): number {
     const deadline = new Date(dateString);
     const today = new Date();
+    // Reset giờ để tính khoảng cách theo ngày chính xác hơn
+    today.setHours(0, 0, 0, 0);
+    deadline.setHours(0, 0, 0, 0);
+
     const diff = deadline.getTime() - today.getTime();
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }
@@ -191,7 +85,7 @@
   {#if loading}
     <div class="loading">
       <div class="spinner"></div>
-      <p>Đang tải...</p>
+      <p>Đang tải dữ liệu...</p>
     </div>
   {:else if error}
     <div class="error-message">
@@ -266,7 +160,7 @@
               </svg>
               <div>
                 <strong>Bạn đã đăng ký đề tài trong hạng mục này</strong>
-                <p>Đề tài: {myProject?.title || "N/A"}</p>
+                <p>Đề tài: {myProject?.title || "Không xác định"}</p>
               </div>
             </div>
           {:else}
@@ -293,7 +187,7 @@
           {/if}
 
           <div class="projects-list">
-            {#each projectRound.projects as project}
+            {#each projectRound.projects || [] as project}
               {@const projectGroups = groups.filter(
                 (g) => g.projectId === project.id,
               )}
@@ -301,7 +195,8 @@
                 (sum, g) => sum + g.members.length,
                 0,
               )}
-              {@const maxMembers = project.amount * project.maxMember}
+              {@const maxMembers =
+                (project.amount || 1) * (project.maxMember || 1)}
               {@const isMyProject = myProjectId === project.id}
               {@const isFull = currentMembers >= maxMembers}
 
@@ -317,13 +212,18 @@
                         Đề tài của tôi
                       </span>
                     {/if}
-                    {#if project.status === "approved"}
-                      <span class="badge badge-available">
+
+                    {#if project.status === "APPROVED" || project.status === "approved" || project.status === "AVAILABLE"}
+                      <span
+                        class="badge {isFull
+                          ? 'badge-full'
+                          : 'badge-available'}"
+                      >
                         {isFull ? "Đã đủ" : "Còn chỗ"}
                       </span>
-                    {:else if project.status === "ongoing"}
+                    {:else if project.status === "ONGOING" || project.status === "ongoing"}
                       <span class="badge badge-ongoing">Đang thực hiện</span>
-                    {:else if project.status === "completed"}
+                    {:else if project.status === "COMPLETED" || project.status === "completed"}
                       <span class="badge badge-closed">Đã hoàn thành</span>
                     {:else}
                       <span class="badge badge-pending">Chờ duyệt</span>
@@ -375,8 +275,8 @@
         <div class="reports-tab">
           {#if myGroup}
             <div class="reports-timeline">
-              {#each projectRound.reportPeriods as reportPeriod}
-                {@const myReport = myGroup.reports.find(
+              {#each projectRound.reportPeriods || [] as reportPeriod}
+                {@const myReport = myGroup.reports?.find(
                   (r) => r.reportPeriodId === reportPeriod.id,
                 )}
                 {@const daysUntil = getDaysUntil(reportPeriod.endDate)}
@@ -492,7 +392,10 @@
             </div>
           {:else}
             <div class="alert alert-info">
-              <p>Bạn chưa tham gia nhóm nào trong hạng mục này</p>
+              <p>
+                Bạn chưa tham gia nhóm nào trong hạng mục này nên chưa thể xem
+                timeline báo cáo.
+              </p>
             </div>
           {/if}
         </div>
@@ -531,6 +434,12 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  .error-message {
+    text-align: center;
+    padding: 3rem;
+    color: #dc2626;
   }
 
   .header-section {
@@ -640,6 +549,12 @@
     border: 1px solid #f59e0b;
   }
 
+  .alert-info {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #3b82f6;
+  }
+
   .alert strong {
     display: block;
     margin-bottom: 0.25rem;
@@ -707,30 +622,25 @@
     color: #92400e;
   }
 
+  .badge-ongoing {
+    background: #e0e7ff;
+    color: #4338ca;
+  }
+
   .badge-closed {
     background: #f3f4f6;
     color: #6b7280;
+  }
+
+  .badge-pending {
+    background: #ffedd5;
+    color: #9a3412;
   }
 
   .project-description {
     font-size: 0.875rem;
     color: #6b7280;
     margin-bottom: 1rem;
-  }
-
-  .project-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .tag {
-    padding: 0.25rem 0.75rem;
-    background: #f3f4f6;
-    color: #4b5563;
-    font-size: 0.75rem;
-    border-radius: 0.25rem;
   }
 
   .project-footer {
@@ -843,19 +753,19 @@
     color: #92400e;
   }
 
-  .status-upcoming {
-    background: #f3f4f6;
-    color: #6b7280;
+  .status-overdue {
+    background: #fee2e2;
+    color: #991b1b;
   }
 
-  .report-details {
+  .report-info {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     margin-bottom: 1rem;
   }
 
-  .detail-item {
+  .info-item {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -863,37 +773,42 @@
     color: #6b7280;
   }
 
-  .detail-item.urgent {
+  .info-item.success {
+    color: #059669;
+  }
+
+  .info-item.warning {
+    color: #d97706;
+  }
+
+  .info-item.error {
     color: #dc2626;
     font-weight: 600;
   }
 
-  .btn-view-report,
-  .btn-submit-report {
-    padding: 0.625rem 1.25rem;
-    border: none;
+  .feedback-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f9fafb;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
+    border-left: 3px solid #3b82f6;
   }
 
-  .btn-view-report {
-    background: #f3f4f6;
-    color: #374151;
+  .feedback-box h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #1f2937;
   }
 
-  .btn-view-report:hover {
-    background: #e5e7eb;
+  .feedback-box p {
+    font-size: 0.9rem;
+    color: #4b5563;
+    margin: 0;
   }
 
-  .btn-submit-report {
-    background: #3b82f6;
-    color: white;
-  }
-
-  .btn-submit-report:hover {
-    background: #2563eb;
+  .feedback-box .grade {
+    margin-top: 0.5rem;
+    font-weight: 700;
+    color: #1e3a8a;
   }
 </style>

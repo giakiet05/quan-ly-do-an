@@ -33,17 +33,38 @@
 
   // --- Handlers cho WebSocket ---
   const handleIncomingMessage = (payload: any) => {
+    console.log("=== [PHÍA NHẬN] Dữ liệu đến! ===", payload);
     const msg = payload.message;
-    if (msg && String(msg.channelId) === String(generalChannelId)) {
-      if (!messages.find((m) => String(m.id) === String(msg.id))) {
-        messages = [...messages, msg];
-        scrollToBottom();
+
+    if (msg) {
+      const incomingId = String(msg.channelId || msg.channel_id);
+      const currentId = String(generalChannelId);
+
+      if (incomingId === currentId) {
+        // Kiểm tra trùng lặp ID
+        const exists = messages.some(
+          (m) => String(m.id || m._id) === String(msg.id || msg._id),
+        );
+
+        if (!exists) {
+          // Sử dụng spread để tạo mảng mới, kích hoạt render
+          messages = [...messages, msg];
+          console.log(
+            "Đã thêm tin nhắn vào mảng messages. Độ dài mới:",
+            messages.length,
+          );
+          scrollToBottom();
+        }
       }
     }
   };
 
   const handleMessageAck = (payload: any) => {
     const msg = payload.message;
+    console.log(
+      "=== [PHÍA GỬI] Server xác nhận đã nhận tin (ACK)! ===",
+      payload,
+    );
     if (msg && String(msg.channel_id) === String(generalChannelId)) {
       if (!messages.find((m) => String(m.id) === String(msg.id))) {
         messages = [...messages, msg];
