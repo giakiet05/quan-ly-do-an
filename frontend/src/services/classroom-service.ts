@@ -99,6 +99,19 @@ export async function updateClassroomStatus(
 }
 
 /**
+ * Change the status of a classroom
+ */
+export async function changeClassroomStatus(
+  classroomId: string,
+  status: "active" | "inactive" | "archived"
+): Promise<void> {
+  await apiFetch(`/api/classrooms/${classroomId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+/**
  * Delete a classroom
  */
 export async function deleteClassroom(classroomId: string): Promise<void> {
