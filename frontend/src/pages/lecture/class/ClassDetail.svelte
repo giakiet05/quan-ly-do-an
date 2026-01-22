@@ -21,6 +21,7 @@
     import type { UpdateProjectRoundRequest } from "../../../dtos/project-dto";
     import type { ClassroomResponse } from "../../../dtos";
     import { getClassroom } from "../../../services/classroom-service";
+    import { postStore } from "../../../stores/post-store";
 
     const classroomId = $derived($params?.id);
     const classesStore = classStore.classes;
@@ -51,9 +52,7 @@
     });
 
     const students = $derived(classDetail?.students ?? []);
-    $effect(() => {
-        console.log("Students list updated:", classDetail);
-    });
+
     // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
@@ -73,7 +72,6 @@
     // 4. Handlers
     async function handleCreateRound(data: any) {
         try {
-            console.log("Creating round with data:", data);
             await projectRoundStore.addRound({
                 ...data,
                 classroomId: classroomId,
@@ -100,7 +98,6 @@
             editingCategory = null;
             alert("✅ Cập nhật hạng mục thành công!");
         } catch (error) {
-            console.error("❌ Error updating category:", error);
             alert("Có lỗi khi cập nhật: " + (error as Error).message);
         }
     }
@@ -238,7 +235,7 @@
                         onEdit={(announcement) =>
                             (editingAnnouncement = announcement)}
                         onOpen={() => (showCreateAnnouncementModal = true)}
-                        id={classroomId}
+                        {classroomId}
                     />
                 </div>
             {:else if activeTab === "chat"}
@@ -277,8 +274,12 @@
             showCreateAnnouncementModal = false;
             editingAnnouncement = null;
         }}
-        onSubmit={(data) => {
-            console.log("Announcement data:", data);
+        onSubmit={(announcement) => {
+            if (editingAnnouncement) {
+                postStore.updatePostData(announcement, classroomId);
+            } else {
+                postStore.addPost(announcement, classroomId);
+            }
             showCreateAnnouncementModal = false;
             editingAnnouncement = null;
         }}
