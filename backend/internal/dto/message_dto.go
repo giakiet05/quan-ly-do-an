@@ -25,14 +25,13 @@ type GetMessageFilterQuery struct {
 }
 
 type MessageResponse struct {
-	ID             string            `json:"id"`
-	ChannelID      string            `json:"channel_id"`
-	SenderID       string            `json:"sender_id"`
-	SenderUsername string            `json:"sender_username"`
-	Type           model.MessageType `json:"type"`
-	Content        string            `json:"content"`
-	ReadBy         []string          `json:"read_by"`
-	CreatedAt      time.Time         `json:"created_at"`
+	ID        string            `json:"id"`
+	ChannelID string            `json:"channel_id"`
+	SenderID  string            `json:"sender_id"`
+	Type      model.MessageType `json:"type"`
+	Content   string            `json:"content"`
+	ReadBy    []string          `json:"read_by"`
+	CreatedAt time.Time         `json:"created_at"`
 }
 
 func FromMessage(message *model.Message) MessageResponse {
@@ -51,14 +50,13 @@ func FromMessage(message *model.Message) MessageResponse {
 	}
 
 	return MessageResponse{
-		ID:             message.ID.Hex(),
-		ChannelID:      message.ChannelID.Hex(),
-		SenderID:       senderID,
-		SenderUsername: message.SenderUsername,
-		Type:           message.Type,
-		Content:        message.Content,
-		ReadBy:         readByString,
-		CreatedAt:      message.CreatedAt,
+		ID:        message.ID.Hex(),
+		ChannelID: message.ChannelID.Hex(),
+		SenderID:  senderID,
+		Type:      message.Type,
+		Content:   message.Content,
+		ReadBy:    readByString,
+		CreatedAt: message.CreatedAt,
 	}
 }
 

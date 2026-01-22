@@ -28,7 +28,7 @@ const (
 	TopicNotificationDeleted = "notification.deleted"
 
 	// Group
-	TopicGroupInvitation = "group.invitation"
+	TopicGroupInvitation  = "group.invitation"
 	TopicGroupJoinRequest = "group.join_request"
 
 	// Project Report
@@ -153,12 +153,11 @@ func (e NotificationCreatedEvent) Payload() map[string]interface{} {
 // --- Message Events ---
 
 type NewMessageEvent struct {
-	TempMessageID  string            `json:"temp_message_id"`
-	ChannelID      string            `json:"channel_id"`
-	SenderID       string            `json:"sender_id"`
-	SenderUsername string            `json:"sender_username"`
-	Type           model.MessageType `json:"type"`
-	Content        string            `json:"content"`
+	TempMessageID string            `json:"temp_message_id"`
+	ChannelID     string            `json:"channel_id"`
+	SenderID      string            `json:"sender_id"`
+	Type          model.MessageType `json:"type"`
+	Content       string            `json:"content"`
 }
 
 func (e NewMessageEvent) Topic() string {
@@ -170,7 +169,6 @@ func (e NewMessageEvent) Payload() map[string]interface{} {
 		"temp_message_id": e.TempMessageID,
 		"channel_id":      e.ChannelID,
 		"sender_id":       e.SenderID,
-		"sender_username": e.SenderUsername,
 		"type":            e.Type,
 		"content":         e.Content,
 	}
