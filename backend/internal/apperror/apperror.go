@@ -67,7 +67,7 @@ func StatusFromError(err error) int {
 	case isErrorType(err, ErrForbidden, ErrUserInactive, ErrEmailNotVerified):
 		return http.StatusForbidden
 	// 404 Not Found
-	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound, ErrPostNotFound):
+	case isErrorType(err, ErrUserNotFound, ErrMembershipNotFound, ErrInvitationNotFound, ErrClassroomNotFound, ErrJoinRequestNotFound, ErrPostNotFound, ErrChannelNotFound):
 		return http.StatusNotFound
 	// 409 Conflict
 	case isErrorType(err, ErrUsernameExists, ErrEmailExists, ErrAlreadyMember, ErrEmailAlreadyVerified, ErrLoginMethodMismatch, ErrInvitationAlreadyExists, ErrAlreadyInClassroom, ErrInvitationExpired, ErrInvitationAlreadyProcessed, ErrStudentCodeAlreadyUsed, ErrJoinRequestAlreadyProcessed):

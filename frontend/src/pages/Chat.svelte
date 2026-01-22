@@ -1,8 +1,13 @@
 <script lang="ts">
+  // ⚠️⚠️⚠️ VERSION TEST: 2026-01-22 22:50 ⚠️⚠️⚠️
+  console.log("🔥🔥🔥 CHAT.SVELTE VERSION 22:50 - CODE MỚI ĐÃ LOAD! 🔥🔥🔥");
+
   import { onMount, onDestroy } from "svelte";
   import { authStore } from "../stores/auth-store";
+  import { apiFetch } from "../utils/api-fetch";
   import {
     getChannelsByUserId,
+    getChannelById,
     type Channel,
   } from "../services/channel-service";
   import {
@@ -54,6 +59,8 @@
 
   // Load channels on mount
   onMount(async () => {
+    console.log("🚀 Chat.svelte onMount started");
+
     if (!currentUserId) {
       error = "User not authenticated";
       loading = false;
@@ -63,74 +70,162 @@
     try {
       loading = true;
       error = null;
+      console.log("📞 Calling API with userId:", currentUserId);
       const channelsData = await getChannelsByUserId(currentUserId, 1, 50);
+      console.log("📦 Raw API response:", channelsData);
+
+      if (!channelsData || !channelsData.channels) {
+        console.error("❌ Invalid response format:", channelsData);
+        conversations = [];
+        return;
+      }
 
       // Convert channels to conversations
-      conversations = await Promise.all(
-        channelsData.channels.map(async (channel) => {
-          // Get the other user (not current user)
+      conversations = channelsData.channels.map((channel) => {
+        // FIXED: Only check member count, ignore adminIds
+        // DM channel = exactly 2 members, Group channel = more than 2 members
+        const isGroupChannel = channel.members.length > 2;
+
+        let userName = "";
+        let userId = "";
+        let userAvatar = undefined;
+
+        if (isGroupChannel) {
+          userName = "Lớp học";
+          userId = channel.id;
+        } else {
+          // For DM channels, get the other user
           const otherMember = channel.members.find(
             (m) => m.userId !== currentUserId,
           );
+          userId = otherMember?.userId || "";
+          userName =
+            otherMember?.fullName ||
+            otherMember?.full_name ||
+            otherMember?.username ||
+            "Unknown";
+          userAvatar = otherMember?.avatar?.url;
+        }
 
-          // Try to fetch last message
-          let lastMessage = "Chưa có tin nhắn";
-          let lastMessageTime = "";
-          try {
-            const messagesData = await getMessages({
-              channel_id: channel.id,
-              page: 1,
-              page_size: 1,
-            });
-            if (messagesData.messages.length > 0) {
-              const lastMsg = messagesData.messages[0];
-              lastMessage = lastMsg.content;
-              lastMessageTime = new Date(lastMsg.created_at).toLocaleString(
-                "vi-VN",
-                {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                },
-              );
-            }
-          } catch (err) {
-            console.error("Error fetching last message:", err);
-          }
-
-          return {
-            id: channel.id,
-            channelId: channel.id,
-            userId: otherMember?.userId || "",
-            userName: otherMember?.username || "Unknown",
-            userRole: "User",
-            userAvatar: otherMember?.avatar?.url,
-            lastMessage,
-            lastMessageTime,
-            unread: channel.unread_message_count || 0,
-            messages: [],
-          };
-        }),
-      );
+        return {
+          id: channel.id,
+          channelId: channel.id,
+          userId,
+          userName,
+          userRole: isGroupChannel ? "Classroom" : "User",
+          userAvatar,
+          lastMessage: "Chưa có tin nhắn",
+          lastMessageTime: "",
+          unread: channel.unread_message_count || 0,
+          messages: [],
+        };
+      });
     } catch (err) {
       error =
         err instanceof Error ? err.message : "Failed to load conversations";
       console.error("Error loading channels:", err);
     } finally {
       loading = false;
+
+      // Auto-select channel from localStorage (set by "Chat với giảng viên")
+      const storedChannelId = localStorage.getItem("openChannelId");
+      if (storedChannelId) {
+        // Don't remove immediately - keep it for refresh persistence
+        console.log(
+          "🔍 Auto-selecting channel from localStorage:",
+          storedChannelId,
+        );
+
+        const existingConv = conversations.find(
+          (c) => c.channelId === storedChannelId,
+        );
+
+        if (existingConv) {
+          console.log("✅ Channel found in conversations");
+          selectedConversation = storedChannelId;
+          // Don't call loadMessages manually - let $effect handle it
+        } else {
+          console.log("📥 Fetching new channel...");
+          try {
+            const channel = await getChannelById(storedChannelId);
+            console.log("✅ Channel fetched:", channel);
+
+            const isGroupChannel = channel.members.length > 2;
+
+            let userName = "";
+            let userId = "";
+            let userAvatar = undefined;
+
+            if (isGroupChannel) {
+              userName = "Lớp học";
+              userId = channel.id;
+            } else {
+              const otherMember = channel.members.find(
+                (m) => m.userId !== currentUserId,
+              );
+              userId = otherMember?.userId || "";
+              userName =
+                otherMember?.fullName ||
+                otherMember?.full_name ||
+                otherMember?.username ||
+                "Unknown";
+              userAvatar = otherMember?.avatar?.url;
+            }
+
+            const newConv: Conversation = {
+              id: channel.id,
+              channelId: channel.id,
+              userId,
+              userName,
+              userRole: isGroupChannel ? "Classroom" : "User",
+              userAvatar,
+              lastMessage: "Chưa có tin nhắn",
+              lastMessageTime: "",
+              unread: 0,
+              messages: [],
+            };
+
+            conversations = [newConv, ...conversations];
+            selectedConversation = storedChannelId;
+            console.log("✅ Auto-selecting channel:", storedChannelId);
+            // Don't call loadMessages manually - let $effect handle it
+          } catch (err) {
+            console.error("❌ Failed to fetch channel:", err);
+          }
+        }
+      }
     }
 
-    // Connect WebSocket
+    // Connect WebSocket with retry
     const token = $authStore.accessToken;
     if (token) {
-      wsService
-        .connect(token)
-        .then(() => {
-          wsConnected = true;
-          setupWebSocketHandlers();
-        })
-        .catch((err) => {
-          console.error("WebSocket connection failed:", err);
-        });
+      // Add small delay to ensure page is fully loaded
+      setTimeout(() => {
+        wsService
+          .connect(token)
+          .then(() => {
+            wsConnected = true;
+            setupWebSocketHandlers();
+            console.log("✅ WebSocket connected successfully");
+          })
+          .catch((err) => {
+            console.error("❌ WebSocket connection failed:", err);
+            // Retry after 2 seconds
+            setTimeout(() => {
+              console.log("🔄 Retrying WebSocket connection...");
+              wsService
+                .connect(token)
+                .then(() => {
+                  wsConnected = true;
+                  setupWebSocketHandlers();
+                  console.log("✅ WebSocket reconnected successfully");
+                })
+                .catch((retryErr) => {
+                  console.error("❌ WebSocket retry failed:", retryErr);
+                });
+            }, 2000);
+          });
+      }, 500);
     }
   });
 
@@ -159,10 +254,13 @@
         senderName: msg.sender_username,
         content: msg.content,
         timestamp: new Date(msg.created_at).toLocaleString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
           hour: "2-digit",
           minute: "2-digit",
         }),
-        read: msg.read_by.includes(currentUserId),
+        read: msg.read_by ? msg.read_by.includes(currentUserId) : false,
       }));
 
       // Update conversation with messages
@@ -173,19 +271,47 @@
         return conv;
       });
     } catch (err) {
-      error = err instanceof Error ? err.message : "Failed to load messages";
       console.error("Error loading messages:", err);
+      // Don't show error for 500 (likely empty channel), just show empty
+      // Update conversation with empty messages
+      conversations = conversations.map((conv) => {
+        if (conv.channelId === channelId) {
+          return { ...conv, messages: [] };
+        }
+        return conv;
+      });
     } finally {
       loadingMessages = false;
     }
   }
 
   // Watch for conversation selection changes
+  let loadingChannelId: string | null = null; // Track which channel is being loaded
+  let attemptedChannels = new Set<string>(); // Track channels we already tried to load
+
   $effect(() => {
     if (selectedConversation) {
       const conv = conversations.find((c) => c.id === selectedConversation);
-      if (conv && conv.messages.length === 0) {
-        loadMessages(conv.channelId);
+      console.log(
+        "🔄 Effect triggered for conversation:",
+        selectedConversation,
+        "messages count:",
+        conv?.messages?.length,
+      );
+
+      // Only load if: 1) conversation exists, 2) no messages, 3) not already loading, 4) haven't attempted yet
+      if (
+        conv &&
+        conv.messages.length === 0 &&
+        loadingChannelId !== conv.channelId &&
+        !attemptedChannels.has(conv.channelId)
+      ) {
+        console.log("📥 Loading messages for channel:", conv.channelId);
+        loadingChannelId = conv.channelId;
+        attemptedChannels.add(conv.channelId);
+        loadMessages(conv.channelId).finally(() => {
+          loadingChannelId = null;
+        });
       }
     }
   });
@@ -207,6 +333,35 @@
     conversations.find((c) => c.id === selectedConversation),
   );
 
+  async function handleDeleteMessage(messageId: string) {
+    if (!selectedConversation) return;
+
+    const conv = conversations.find((c) => c.id === selectedConversation);
+    if (!conv) return;
+
+    if (!confirm("Bạn có chắc muốn xóa tin nhắn này?")) return;
+
+    try {
+      await apiFetch(`/api/messages/${conv.channelId}/${messageId}`, {
+        method: "DELETE",
+      });
+
+      // Remove message from UI
+      conversations = conversations.map((c) => {
+        if (c.id === selectedConversation) {
+          return {
+            ...c,
+            messages: c.messages.filter((m) => m.id !== messageId),
+          };
+        }
+        return c;
+      });
+    } catch (err) {
+      console.error("Error deleting message:", err);
+      error = "Không thể xóa tin nhắn. Vui lòng thử lại.";
+    }
+  }
+
   function handleSendMessage() {
     if (!messageText.trim() || !selectedConversation) return;
 
@@ -223,7 +378,10 @@
       senderId: currentUserId,
       senderName: currentUserName,
       content,
-      timestamp: new Date().toLocaleTimeString("vi-VN", {
+      timestamp: new Date().toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -246,7 +404,7 @@
 
     // Send via WebSocket
     if (wsConnected) {
-      const sent = wsService.send("new_message", {
+      const sent = wsService.send("send_message", {
         channel_id: conv.channelId,
         content,
         temp_message_id: tempId,
@@ -302,12 +460,16 @@
                     senderId: realMessage.sender_id,
                     senderName: realMessage.sender_username,
                     content: realMessage.content,
-                    timestamp: new Date(
-                      realMessage.created_at,
-                    ).toLocaleTimeString("vi-VN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
+                    timestamp: new Date(realMessage.created_at).toLocaleString(
+                      "vi-VN",
+                      {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    ),
                     read: realMessage.read_by.includes(currentUserId),
                   }
                 : m,
@@ -331,9 +493,12 @@
         senderId: incomingMessage.sender_id,
         senderName: incomingMessage.sender_username,
         content: incomingMessage.content,
-        timestamp: new Date(incomingMessage.created_at).toLocaleTimeString(
+        timestamp: new Date(incomingMessage.created_at).toLocaleString(
           "vi-VN",
           {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
           },
@@ -496,7 +661,17 @@
         {:else}
           {#each currentConversation.messages as message (message.id)}
             {@const isOwn = message.senderId === currentUserId}
-            <div class="message-wrapper" class:own={isOwn}>
+            <div
+              class="message-wrapper"
+              class:own={isOwn}
+              data-message-id={message.id}
+              data-sender-id={message.senderId}
+              data-current-user-id={currentUserId}
+              data-is-own={isOwn}
+            >
+              {console.log(
+                `🔍 Message ${message.id.slice(-4)}: senderId=${message.senderId}, currentUser=${currentUserId}, isOwn=${isOwn}`,
+              )}
               <div class="message-bubble" class:own={isOwn}>
                 {#if !isOwn}
                   <div class="sender-name">{message.senderName}</div>
@@ -505,8 +680,28 @@
                   <p>{message.content}</p>
                 </div>
                 <div class="message-footer" class:own={isOwn}>
-                  <span>{message.timestamp}</span>
+                  <span class="timestamp">{message.timestamp}</span>
                   {#if isOwn}
+                    <button
+                      class="delete-btn"
+                      onclick={() => handleDeleteMessage(message.id)}
+                      title="Xóa tin nhắn"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                        ></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                    </button>
                     {#if message.read}
                       <!-- CheckCheck icon -->
                       <svg
@@ -904,6 +1099,19 @@
     color: white;
   }
 
+  .message-bubble.own .message-footer {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .message-bubble.own .delete-btn {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .message-bubble.own .delete-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+
   .sender-name {
     font-size: 12px;
     color: #6b7280;
@@ -925,10 +1133,31 @@
   .message-footer {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     margin-top: 4px;
-    font-size: 12px;
+    font-size: 11px;
     color: #6b7280;
+  }
+
+  .message-footer .timestamp {
+    flex: 1;
+  }
+
+  .delete-btn {
+    padding: 2px 4px;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: all 0.2s;
+  }
+
+  .delete-btn:hover {
+    opacity: 1;
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
   }
 
   .message-footer.own {

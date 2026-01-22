@@ -17,7 +17,7 @@
   let projectRound = $state<ProjectRound | null>(null);
   let groups = $state<Group[]>([]);
   let myGroup = $derived(
-    groups.find((g) => g.members.some((m) => m.id === $authStore.user?.id))
+    groups.find((g) => g.members.some((m) => m.id === $authStore.user?.id)),
   );
 
   // Mock data - Replace with API calls
@@ -127,7 +127,7 @@
         };
 
         const foundRound = mockClassroom.projectRounds.find(
-          (round) => round.id === params.categoryId
+          (round) => round.id === params.categoryId,
         );
 
         if (!foundRound) {
@@ -140,8 +140,10 @@
       } else {
         // Fetch classroom to get project round
         const classroom = await getClassroom(params.id);
+        console.log("📚 Classroom data:", classroom);
+        console.log("📋 Project rounds:", classroom.projectRounds);
         const foundRound = classroom.projectRounds.find(
-          (round) => round.id === params.categoryId
+          (round) => round.id === params.categoryId,
         );
 
         if (!foundRound) {
@@ -169,7 +171,7 @@
 
   function handleProjectClick(projectId: string) {
     push(
-      `/classes/${params.id}/categories/${params.categoryId}/projects/${projectId}`
+      `/classes/${params.id}/categories/${params.categoryId}/projects/${projectId}`,
     );
   }
 
@@ -218,7 +220,7 @@
           <p class="category-description">{projectRound.description}</p>
           <p class="category-dates">
             Thời gian: {formatDate(projectRound.startDate)} - {formatDate(
-              projectRound.endDate
+              projectRound.endDate,
             )}
           </p>
         </div>
@@ -248,7 +250,7 @@
         <div class="projects-tab">
           {#if myProjectId}
             {@const myProject = projectRound.projects.find(
-              (p) => p.id === myProjectId
+              (p) => p.id === myProjectId,
             )}
             <div class="alert alert-success">
               <svg
@@ -293,11 +295,11 @@
           <div class="projects-list">
             {#each projectRound.projects as project}
               {@const projectGroups = groups.filter(
-                (g) => g.projectId === project.id
+                (g) => g.projectId === project.id,
               )}
               {@const currentMembers = projectGroups.reduce(
                 (sum, g) => sum + g.members.length,
-                0
+                0,
               )}
               {@const maxMembers = project.amount * project.maxMember}
               {@const isMyProject = myProjectId === project.id}
@@ -375,7 +377,7 @@
             <div class="reports-timeline">
               {#each projectRound.reportPeriods as reportPeriod}
                 {@const myReport = myGroup.reports.find(
-                  (r) => r.reportPeriodId === reportPeriod.id
+                  (r) => r.reportPeriodId === reportPeriod.id,
                 )}
                 {@const daysUntil = getDaysUntil(reportPeriod.endDate)}
                 {@const isSubmitted = !!myReport}

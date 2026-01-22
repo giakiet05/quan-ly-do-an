@@ -43,9 +43,12 @@
     try {
       loading = true;
       error = "";
+      console.log("🔍 Preview classroom with code:", invitationCode.trim());
       preview = await previewClassroom(invitationCode.trim());
+      console.log("✅ Preview success:", preview);
       step = "preview";
     } catch (err: any) {
+      console.error("❌ Preview failed:", err);
       error = getClassroomErrorMessage(
         err.error_code || CLASSROOM_ERROR_CODES.CODE_INVALID,
       );
@@ -59,9 +62,11 @@
     try {
       loading = true;
       error = "";
+      console.log("🔗 Join classroom with code:", invitationCode.trim());
       const result = await joinClassroom({
         invitationCode: invitationCode.trim(),
       });
+      console.log("✅ Join result:", result);
 
       if (result.status === "pending") {
         alert(
@@ -74,6 +79,7 @@
       handleClose();
       onSuccess?.();
     } catch (err: any) {
+      console.error("❌ Join failed:", err);
       error = getClassroomErrorMessage(err.error_code);
     } finally {
       loading = false;
