@@ -1,4 +1,4 @@
-import type { ProjectRoundResponse } from "../dtos/project-dto";
+import type { ProjectRoundResponse, UpdateProjectRoundRequest } from "../dtos/project-dto";
 import type { ProjectRound, ReportPeriod } from "../types/project-round";
 
 export const projectRoundMapper = {
@@ -34,6 +34,8 @@ export const projectRoundMapper = {
             createdAt: new Date(dto.createdAt),
             isDeleted: dto.isDeleted,
             status: status,
+            maxStudents: dto.defaultMaxMember,
+            minStudents: dto.defaultMinMember,
 
             // 1. Thêm statusText để UI dùng trực tiếp (thay thế logic trong category.ts)
             statusText: status === 'ended' ? "đã kết thúc" : (status === 'upcoming' ? "sắp diễn ra" : "đang diễn ra"),
@@ -46,7 +48,30 @@ export const projectRoundMapper = {
             progress: calculateProgress(start, end),
             reportPeriods: mappedPeriods
         };
-    }
+    },
+    toUpdateDto(entity: ProjectRound, classroomId: string): UpdateProjectRoundRequest {
+        return {
+            projectRoundId: entity.id, // Lấy từ id của Entity
+            classroomId: classroomId,
+            name: entity.name,
+            description: entity.description,
+            startDate: entity.startDate instanceof Date ? entity.startDate.toISOString().split('T')[0] : entity.startDate,
+            endDate: entity.endDate instanceof Date ? entity.endDate.toISOString().split('T')[0] : entity.endDate,
+            defaultMinMember: Number(entity.minStudents),
+            defaultMaxMember: Number(entity.maxStudents),
+        };
+    },
+    toCreateDto(data: any): any {
+        return {
+            classroomId: data.classroomId,
+            name: data.name,
+            description: data.description,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            defaultMinMember: data.minStudents,
+            defaultMaxMember: data.maxStudents, // Đổi tên trường ở đây
+        };
+    },
 };
 
 function calculateProgress(start: Date, end: Date): number {
@@ -55,3 +80,4 @@ function calculateProgress(start: Date, end: Date): number {
     const elapsed = new Date().getTime() - start.getTime();
     return Math.min(Math.max(Math.round((elapsed / total) * 100), 0), 100);
 }
+

@@ -6,6 +6,8 @@ export interface CreateProjectRoundRequest {
     startDate: string;
     endDate: string;
     description?: string;
+    defaultMinMember: number;
+    defaultMaxMember: number;
 }
 
 export interface CreateProjectRoundsRequest {
@@ -20,6 +22,8 @@ export interface UpdateProjectRoundRequest {
     startDate?: string;
     endDate?: string;
     description?: string;
+    defaultMinMember: number;
+    defaultMaxMember: number;
 }
 
 export interface CreateProjectRequest {
@@ -78,6 +82,8 @@ export interface ProjectRoundResponse {
     reportPeriods: ReportPeriodResponse[];
     createdAt: string;
     isDeleted: boolean;
+    defaultMinMember: number;
+    defaultMaxMember: number;
 }
 
 export interface ProjectResponse {

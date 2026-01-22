@@ -12,7 +12,7 @@ export async function getProjectRounds(classroomId: string): Promise<ProjectRoun
     const response = await apiFetch<ProjectRoundResponse[]>(
         `/api/projects/classrooms/${classroomId}/rounds`
     );
-
+    console.log("API getProjectRounds response:", response);
     if (!response) return [];
 
     return response.map(dto => projectRoundMapper.toEntity(dto));
@@ -30,11 +30,14 @@ export async function getProjectRoundById(classroomId: string, roundId: string):
 /**
  * Tạo mới vòng dự án
  */
-export async function createProjectRound(data: CreateProjectRoundRequest): Promise<ProjectRound> {
-    console.log("CreateProjectRound request data:", data);
+export async function createProjectRound(data: any): Promise<ProjectRound> {
+    const mappedData = projectRoundMapper.toCreateDto(data);
+
+    console.log("CreateProjectRound request mapped data:", mappedData);
+
     const response = await apiFetch<ProjectRoundResponse>("/api/projects/rounds", {
         method: "POST",
-        body: JSON.stringify(data)
+        body: JSON.stringify(mappedData) // Gửi data đã được map
     });
 
     return projectRoundMapper.toEntity(response);
@@ -43,17 +46,16 @@ export async function createProjectRound(data: CreateProjectRoundRequest): Promi
 /**
  * Cập nhật vòng dự án
  */
-export async function updateProjectRound(
-    data: UpdateProjectRoundRequest
-): Promise<ProjectRound> {
-    console.log("UpdateProjectRound request data:", data);
+export async function updateProjectRound(entity: ProjectRound, classroomId: string): Promise<ProjectRound> {
+    // Map dữ liệu ở đây
+    const mappedData = projectRoundMapper.toUpdateDto(entity, classroomId);
+    console.log("UpdateProjectRound request mapped data:", mappedData);
 
     const response = await apiFetch<ProjectRoundResponse>(`/api/projects/rounds`, {
         method: "PUT",
-        body: JSON.stringify(data)
+        body: JSON.stringify(mappedData)
     });
 
-    console.log("Updated Project Round Response:", response);
     return projectRoundMapper.toEntity(response);
 }
 
