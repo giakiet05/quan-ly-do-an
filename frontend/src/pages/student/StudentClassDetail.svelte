@@ -111,32 +111,7 @@
         console.log("✅ Found existing channel:", existingChannel.id);
         channelId = existingChannel.id;
       } else {
-        console.log("➕ No existing channel, creating new one...");
-        // Create new DM channel with lecturer (requires 2 members)
-        const members = [
-          {
-            id: currentUser.id,
-            full_name: currentUser.fullName || currentUser.fullname || "User",
-            email: currentUser.email,
-          },
-          {
-            id: classroom.lecturer.userId,
-            full_name: classroom.lecturer.fullName,
-            email: classroom.lecturer.email,
-          },
-        ];
-
-        console.log(
-          "📤 Creating channel with members:",
-          JSON.stringify(members, null, 2),
-        );
-        const channel = await createChannel(members);
-        console.log("✅ Channel created:", channel);
-        channelId = channel.id;
       }
-
-      // Store channel ID in localStorage to pass to Chat page
-      localStorage.setItem("openChannelId", channelId);
 
       // Navigate to Messages page
       push("/chats");
