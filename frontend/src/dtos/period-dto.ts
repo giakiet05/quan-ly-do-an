@@ -1,6 +1,7 @@
 // ==================== REQUEST DTOS (Gửi lên Backend) ====================
 
 export interface CreatePeriodRequest {
+    fileType: string[];
     title: string;
     description?: string;
     startDate: string;

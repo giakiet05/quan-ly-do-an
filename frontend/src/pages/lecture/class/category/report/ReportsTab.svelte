@@ -41,6 +41,7 @@
 
     const handleCreatePeriod = async (newPeriod: CreatePeriodRequest) => {
         try {
+            console.log(">>> PAGE ĐÃ NHẬN LỆNH TẠO GIAI ĐỔN:", newPeriod);
             const createdPeriod = await periodStore.addPeriod(
                 newPeriod,
                 classroomId,

@@ -13,6 +13,7 @@
     import type { ReportStage } from "../../../../../types/report";
     import GradeReportModal from "./GradeReportModal.svelte";
     import type { PeriodResponse } from "../../../../../dtos/period-dto";
+    import { periodStore } from "../../../../../stores/period-store";
 
     // Định nghĩa Interface địa phương
     interface GroupReport {
@@ -32,6 +33,7 @@
         period: PeriodResponse;
         onBack: () => void;
     }>();
+    // period store
 
     // 2. Local State
     let searchTerm = $state("");
@@ -156,6 +158,18 @@
         );
         gradingReport = null;
     };
+
+    const handleDeletePeriod = async () => {
+        if (confirm("Bạn có chắc chắn muốn xóa giai đoạn này không?")) {
+            try {
+                await periodStore.removePeriod(period.classroomId, period.id);
+                onBack();
+            } catch (error) {
+                console.error("Failed to delete period:", error);
+                alert("Xóa giai đoạn thất bại. Vui lòng thử lại.");
+            }
+        }
+    };
 </script>
 
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -185,6 +199,7 @@
                 </div>
             </div>
             <button
+                onclick={handleDeletePeriod}
                 class="rounded-lg bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
             >
                 Xóa giai đoạn
