@@ -17,7 +17,10 @@
     import type { ClassItem, CreateClassRequest } from "../../../types/class";
     import { push } from "svelte-spa-router";
     const statusMap = {
-        active: { label: "Đang chạy", class: "bg-green-100 text-green-700" },
+        active: {
+            label: "Đang chạy",
+            class: "bg-green-100 text-green-700",
+        },
         inactive: { label: "Tạm dừng", class: "bg-red-100 text-red-700" },
         archived: { label: "Lưu trữ", class: "bg-gray-100 text-gray-700" },
     };
@@ -114,11 +117,11 @@
         <table>
             <thead class="table-header">
                 <tr>
-                    <th class="w-4/15">Thông tin Lớp học</th>
-                    <th class="w-5/15">Mô tả</th>
-                    <th class="w-1/10 text-center">Năm</th>
-                    <th class="w-1/15 text-center">SV</th>
-                    <th class="w-1/10">Học kỳ</th>
+                    <th class="w-3/15">Thông tin Lớp học</th>
+                    <th class="w-4/15">Mô tả</th>
+                    <th class="w-2/15 text-center">Năm</th>
+                    <th class="w-2/15 text-center">Sĩ số</th>
+                    <th class="w-2/15">Học kỳ</th>
                     <th class="w-2/15 text-center">Trạng thái</th>
                     <th class="w-2/15 text-center">Hành động</th>
                 </tr>
@@ -155,12 +158,8 @@
                             {cls.year}
                         </td>
 
-                        <td class="px-6 py-4 text-center">
-                            <span
-                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
-                            >
-                                {cls.studentCount}
-                            </span>
+                        <td class="px-6 py-4 text-center text-gray-600 text-sm">
+                            {cls.studentCount}/{cls.maxStudents}
                         </td>
 
                         <td class="px-6 py-4 text-gray-600 text-sm text-center">

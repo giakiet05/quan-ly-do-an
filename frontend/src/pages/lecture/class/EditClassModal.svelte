@@ -42,37 +42,19 @@
         avatar: z.string().optional(),
         description: z.string().optional(),
     });
+
     let detail = $state<ClassroomResponse>({} as ClassroomResponse);
-
-    $effect(() => {
-        getClassroom(classData.id)
-            .then((res) => {
-                detail = res;
-
-                if (
-                    res.whitelistStudentCode &&
-                    res.whitelistStudentCode.length > 0
-                ) {
-                    const codes = res.whitelistStudentCode.map(
-                        (entry) => entry.studentCode,
-                    );
-                    whitelistStudentCodes = codes;
-                    console.log("✅ Whitelist codes loaded:", codes);
-                }
-            })
-            .catch((err) => {
-                console.error("Failed to fetch class detail:", err);
-            });
-    });
-
     let activeTab = $state<ActiveTab>("list");
     let uploadedFile = $state<File | null>(null);
     let errors = $state<Record<string, string>>({});
+
+    // Khởi tạo state nội bộ từ props (Chỉ chạy 1 lần khi mở modal)
     let whitelistStudentCodes = $state<string[]>(
         classData.whitelistStudentCodes || [],
     );
     let allowedEmailDomain = $state(classData.allowedEmailDomains?.[0] || "");
 
+    // 1. FORM DATA: Khởi tạo từ classData
     let formData = $state<CreateClassRequest>({
         name: classData.name || "",
         semester: classData.semester || "HK1",
@@ -86,16 +68,34 @@
         enableEmailRestriction: classData.enableEmailRestriction ?? false,
     });
 
+    // 2. CHỖ SỬA QUAN TRỌNG: Chỉ đồng bộ domain và whitelist nội bộ vào formData
+    // KHÔNG dùng $effect để gán ngược classData.name vào formData nữa (gây đè dữ liệu cũ)
     $effect(() => {
-        formData.name = classData.name || "";
-        formData.semester = classData.semester || "";
-        formData.description = classData.description || "";
-        formData.avatar = classData.avatar || "";
         formData.allowedEmailDomains = allowedEmailDomain
             ? [allowedEmailDomain]
             : [];
         formData.enableWhitelist = whitelistStudentCodes.length > 0;
         formData.enableEmailRestriction = !!allowedEmailDomain;
+    });
+
+    // 3. API Call giữ nguyên logic của bạn
+    $effect(() => {
+        getClassroom(classData.id)
+            .then((res) => {
+                detail = res;
+                if (
+                    res.whitelistStudentCode &&
+                    res.whitelistStudentCode.length > 0
+                ) {
+                    const codes = res.whitelistStudentCode.map(
+                        (entry) => entry.studentCode,
+                    );
+                    whitelistStudentCodes = codes;
+                }
+            })
+            .catch((err) => {
+                console.error("Failed to fetch class detail:", err);
+            });
     });
 
     let students = $state<Student[]>(
@@ -104,8 +104,6 @@
             selected: false,
         })),
     );
-
-    // Note: Co-lecturers are managed through StudentManagement component
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -120,8 +118,9 @@
         reader.readAsDataURL(input.files[0]);
     }
 
-    async function handleSubmit(event: SubmitEvent) {
+    async function handleSubmit(event: Event) {
         event.preventDefault();
+        event.stopPropagation();
         errors = {};
 
         const result = ClassSchema.safeParse(formData);
@@ -134,25 +133,12 @@
         }
 
         try {
-            // 1. Update classroom
             await classStore.updateClass(classData.id, formData);
-            console.log("✅ Classroom updated");
-            console.log("📋 Whitelist codes:", whitelistStudentCodes);
-
-            // 2. Upload whitelist if there are student codes
             if (whitelistStudentCodes.length > 0) {
-                console.log("📤 Uploading whitelist...", {
-                    studentCodes: whitelistStudentCodes,
-                });
                 await uploadWhitelistStudentCodes(classData.id, {
                     studentCodes: whitelistStudentCodes,
                 });
-                console.log("✅ Whitelist uploaded");
-            } else {
-                console.log("⚠️ No whitelist codes to upload");
             }
-
-            // Close modal without calling onSubmit (avoid side effects)
             onClose();
         } catch (err) {
             console.error(err);
@@ -160,21 +146,26 @@
         }
     }
 
+    // 4. CHẶN ENTER KHI GOOGLE GỢI Ý
+    function handleFormKeydown(e: KeyboardEvent) {
+        if (e.key === "Enter") {
+            const target = e.target as HTMLElement;
+            // Cho phép Enter trong Textarea, chặn ở các input khác để Google Suggestion không submit form
+            if (target.tagName !== "TEXTAREA") {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }
+
     function stopPropagation(event: MouseEvent) {
         event.stopPropagation();
     }
-
     function handleModalKeydown(event: KeyboardEvent) {
         event.stopPropagation();
     }
-
     function handleKeydown(event: KeyboardEvent) {
-        if (event.key === "Escape") {
-            onClose();
-        }
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-        }
+        if (event.key === "Escape") onClose();
     }
 </script>
 
@@ -204,7 +195,12 @@
             </button>
         </div>
 
-        <form onsubmit={handleSubmit} class="modal-body-wrapper">
+        <form
+            action="javascript:void(0);"
+            onsubmit={handleSubmit}
+            onkeydown={handleFormKeydown}
+            class="modal-body-wrapper"
+        >
             <div class="main-layout">
                 <ClassInfoSidebar
                     bind:formData
@@ -231,9 +227,9 @@
                 <div class="stats">
                     {#if detail.coLecturers}
                         Tổng cộng: <span>{detail.coLecturers.length}</span> giáo
-                        viên phụ trở
+                        viên phụ tá
                     {:else}
-                        Chưa có dữ liệu
+                        Đang tải dữ liệu...
                     {/if}
                 </div>
                 <div class="actions">
