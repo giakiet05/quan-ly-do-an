@@ -51,12 +51,13 @@
       route: "/notifications",
       icon: "/bell.svg",
     },
-    {
-      id: "chats",
-      label: "Tin nhắn",
-      route: "/chats",
-      icon: "/message-circle.svg",
-    },
+    // ❌ HIDDEN FOR TEST - TẠM ẨN ĐỂ KIỂM TRA FRONTEND CẬP NHẬT ❌
+    // {
+    //   id: "chats",
+    //   label: "Tin nhắn",
+    //   route: "/chats",
+    //   icon: "/message-circle.svg",
+    // },
   ];
 
   const studentMenuItems: MenuItem[] = [
@@ -84,12 +85,13 @@
       route: "/notifications",
       icon: "/bell.svg",
     },
-    {
-      id: "chats",
-      label: "Tin nhắn",
-      route: "/chats",
-      icon: "/message-circle.svg",
-    },
+    // ❌ HIDDEN FOR TEST - TẠM ẨN ĐỂ KIỂM TRA FRONTEND CẬP NHẬT ❌
+    // {
+    //   id: "chats",
+    //   label: "Tin nhắn",
+    //   route: "/chats",
+    //   icon: "/message-circle.svg",
+    // },
   ];
 
   // Helper check active route

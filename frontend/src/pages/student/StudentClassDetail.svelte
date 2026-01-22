@@ -8,7 +8,10 @@
     getClassroom,
     getClassPosts,
   } from "../../services/classroom-service";
-  import { createChannel } from "../../services/channel-service";
+  import {
+    createChannel,
+    getChannelBetweenUsers,
+  } from "../../services/channel-service";
   import { authStore } from "../../stores/auth-store";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
   import type { ClassPostResponse } from "../../dtos/class-post-dto";
@@ -287,6 +290,17 @@
     push("/student/classes");
   }
 
+  function handleClassroomChat() {
+    if (!classroom?.generalChannelId) {
+      alert("Kênh chat lớp chưa được tạo");
+      return;
+    }
+
+    // Store channel ID and navigate
+    localStorage.setItem("openChannelId", classroom.generalChannelId);
+    push("/chats");
+  }
+
   async function handleChatWithLecturer() {
     if (!classroom?.lecturer) return;
 
@@ -313,34 +327,50 @@
 
       console.log("📤 Current user:", JSON.stringify(currentUser, null, 2));
 
-      // Create or get existing DM channel with lecturer (requires 2 members)
-      const members = [
-        {
-          id: currentUser.id,
-          full_name: currentUser.fullName || currentUser.fullname || "User",
-          email: currentUser.email,
-        },
-        {
-          id: classroom.lecturer.userId,
-          full_name: classroom.lecturer.fullName,
-          email: classroom.lecturer.email,
-        },
-      ];
-
-      console.log(
-        "📤 Creating channel with members:",
-        JSON.stringify(members, null, 2),
+      // First, check if a channel already exists between these two users
+      console.log("🔍 Checking for existing channel...");
+      const existingChannel = await getChannelBetweenUsers(
+        currentUser.id,
+        classroom.lecturer.userId,
       );
-      const channel = await createChannel(members);
-      console.log("✅ Channel created:", channel);
+
+      let channelId: string;
+
+      if (existingChannel) {
+        console.log("✅ Found existing channel:", existingChannel.id);
+        channelId = existingChannel.id;
+      } else {
+        console.log("➕ No existing channel, creating new one...");
+        // Create new DM channel with lecturer (requires 2 members)
+        const members = [
+          {
+            id: currentUser.id,
+            full_name: currentUser.fullName || currentUser.fullname || "User",
+            email: currentUser.email,
+          },
+          {
+            id: classroom.lecturer.userId,
+            full_name: classroom.lecturer.fullName,
+            email: classroom.lecturer.email,
+          },
+        ];
+
+        console.log(
+          "📤 Creating channel with members:",
+          JSON.stringify(members, null, 2),
+        );
+        const channel = await createChannel(members);
+        console.log("✅ Channel created:", channel);
+        channelId = channel.id;
+      }
 
       // Store channel ID in localStorage to pass to Chat page
-      localStorage.setItem("openChannelId", channel.id);
+      localStorage.setItem("openChannelId", channelId);
 
       // Navigate to Messages page
       push("/chats");
     } catch (err) {
-      console.error("Error creating channel with lecturer:", err);
+      console.error("Error creating/getting channel with lecturer:", err);
       // If error, still try to navigate to Messages
       push("/chats");
     }
@@ -753,9 +783,9 @@
         </div>
       {:else if activeTab === "chat"}
         <div class="chat-tab">
-          {#if lecturerChannelId || classroom?.generalChannelId}
+          {#if classroom?.generalChannelId}
             <ChatTab
-              channelId={lecturerChannelId || classroom.generalChannelId}
+              channelId={classroom.generalChannelId}
               currentUserRole="student"
               currentUserName={$authStore.user?.fullname || "Student"}
             />

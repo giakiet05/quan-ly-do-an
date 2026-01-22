@@ -4,7 +4,9 @@ import { apiFetch } from "../utils/api-fetch";
 
 export interface ChannelMember {
   userId: string;
-  username: string;
+  username?: string;
+  fullName?: string;
+  full_name?: string; // Backend sometimes returns this
   avatar?: {
     url: string;
     public_id: string;
@@ -20,6 +22,7 @@ export interface ChannelSetting {
 
 export interface Channel {
   id: string;
+  adminIds?: string[];
   members: ChannelMember[];
   settings: ChannelSetting[];
   background?: string;
