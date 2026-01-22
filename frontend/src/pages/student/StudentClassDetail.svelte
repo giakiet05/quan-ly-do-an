@@ -4,6 +4,7 @@
   import ChatTab from "../../components/ChatTab.svelte";
   import ClassroomRequirements from "../../components/ClassroomRequirements.svelte";
   import CoLecturersModal from "../../components/CoLecturersModal.svelte";
+  import type { ProjectRound } from "../../types/project-round";
   import {
     getClassroom,
     getClassPosts,
@@ -15,15 +16,8 @@
   import { authStore } from "../../stores/auth-store";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
   import type { ClassPostResponse } from "../../dtos/class-post-dto";
-
-  // Interface riêng cho project rounds (không có trong DTO)
-  interface ProjectRound {
-    id: string;
-    name: string;
-    description: string;
-    startDate: string;
-    endDate: string;
-  }
+  import { projectRoundStore } from "../../stores/project-round-store";
+  import { classStore } from "../../stores/class-store";
 
   let { params } = $props<{ params: { id: string } }>();
 
@@ -39,248 +33,25 @@
   let registrationFilter = $state<"all" | "registered" | "not-registered">(
     "all",
   );
-  let unreadNotifications = $state(1); // Mock số thông báo chưa đọc
+  let unreadNotifications = $state(1);
 
   // Mock data - sinh viên đã đăng ký category nào
   let registeredCategoryIds = $state<string[]>(["round1"]);
-
   onMount(async () => {
-    console.log("StudentClassDetail mounted, ID:", params.id);
     try {
       loading = true;
+      classroom = await getClassroom(params.id);
 
-      // TEMPORARY: Use mock data if ID starts with "mock-"
-      if (params.id.startsWith("mock-")) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      // 1. Gọi API để đổ dữ liệu vào roundsStore
+      await projectRoundStore.fetchRounds(params.id);
 
-        classroom = {
-          id: params.id,
-          name:
-            params.id === "mock-class-1"
-              ? "Đồ án Phát triển ứng dụng web"
-              : "Đồ án Trí tuệ nhân tạo",
-          description:
-            params.id === "mock-class-1"
-              ? "Lớp học đồ án cuối kỳ HK2 2024-2025 - Phát triển ứng dụng web full-stack"
-              : "Áp dụng AI vào bài toán thực tế",
-          semester: "HK2",
-          year: 2024,
-          invitationCode: params.id === "mock-class-1" ? "WEB2024" : "AI2024",
-          status: "active",
-          generalChannelId: "channel1",
-          lecturer: {
-            userId: "lecturer1",
-            fullName:
-              params.id === "mock-class-1"
-                ? "TS. Nguyễn Văn A"
-                : "TS. Trần Thị B",
-            avatar: "",
-          },
-          students: [
-            { userId: "s1", fullName: "Nguyễn Văn Minh", avatar: "" },
-            { userId: "s2", fullName: "Trần Thị Lan", avatar: "" },
-            { userId: "s3", fullName: "Lê Hoàng Nam", avatar: "" },
-          ],
-          projectRounds:
-            params.id === "mock-class-1"
-              ? [
-                  {
-                    id: "round1",
-                    name: "Đợt 1 - Đồ án cuối kỳ",
-                    description: "Phát triển ứng dụng web hoàn chỉnh",
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-05-31T23:59:59Z",
-                    reportPeriods: [
-                      {
-                        id: "rp1",
-                        title: "Báo cáo đề cương",
-                        description: "Nộp báo cáo đề cương dự án",
-                        fileType: ["pdf", "docx"],
-                        startDate: "2024-02-01T00:00:00Z",
-                        endDate: "2024-02-15T23:59:59Z",
-                      },
-                    ],
-                    createdAt: "2024-01-15T00:00:00Z",
-                    isDeleted: false,
-                  },
-                ]
-              : [
-                  {
-                    id: "round2",
-                    name: "Đợt 1 - AI Research",
-                    description: "Nghiên cứu và ứng dụng AI",
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-05-31T23:59:59Z",
-                    reportPeriods: [],
-                    createdAt: "2024-01-15T00:00:00Z",
-                    isDeleted: false,
-                  },
-                ],
-          maxStudents: 50,
-          autoApprove: false,
-          canStudentDeleteGroup: false,
-          avatar: "",
-          createdAt: "2024-01-15T00:00:00Z",
-        } as any;
+      // 2. Gán danh sách từ getter "currentRounds" (có chữ 's' ở cuối)
+      // chứ không phải "currentRound"
+      projectRounds = projectRoundStore.currentRounds;
 
-        classPosts = [
-          {
-            id: "post1",
-            classroomId: params.id,
-            title: "Thông báo về lịch bảo vệ đồ án",
-            content:
-              "Lịch bảo vệ đồ án sẽ diễn ra vào tuần 15 (20-24/5/2024). Các nhóm vui lòng chuẩn bị slides và demo sản phẩm.",
-            attachments: [
-              {
-                fileName: "lich-bao-ve.pdf",
-                fileURL: "#",
-                fileSize: 245680,
-                mimeType: "application/pdf",
-              },
-            ],
-            isPinned: true,
-            author: {
-              userId: "lecturer1",
-              fullName: "TS. Nguyễn Văn A",
-              avatar: "",
-            },
-            createdAt: "2024-05-01T10:00:00Z",
-            updatedAt: "2024-05-01T10:00:00Z",
-          },
-          {
-            id: "post2",
-            classroomId: params.id,
-            title: "Hướng dẫn nộp báo cáo giữa kỳ",
-            content:
-              "Các nhóm nộp báo cáo giữa kỳ theo template đã gửi. Deadline: 15/4/2024.",
-            attachments: [],
-            isPinned: false,
-            author: {
-              userId: "lecturer1",
-              fullName: "TS. Nguyễn Văn A",
-              avatar: "",
-            },
-            createdAt: "2024-04-01T09:00:00Z",
-            updatedAt: "2024-04-01T09:00:00Z",
-          },
-        ] as any;
-      } else {
-        // Fetch real data from API
-        classroom = await getClassroom(params.id);
-        console.log("📚 [StudentClassDetail] Fetched classroom:", classroom);
-        console.log(
-          "📋 [StudentClassDetail] Project rounds:",
-          classroom.projectRounds,
-        );
-        classPosts = await getClassPosts(params.id);
-      }
-
-      /* MOCK DATA - Uncomment for testing
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      classroom = {
-        id: params.id,
-        name: "Đồ án Phát triển ứng dụng web",
-        description:
-          "Lớp học đồ án cuối kỳ HK2 2024-2025 - Phát triển ứng dụng web full-stack",
-        semester: "HK2",
-        year: 2024,
-        invitationCode: "WEB2024",
-        status: "active",
-        lecturer: {
-          userId: "lecturer1",
-          fullName: "TS. Nguyễn Văn A",
-          avatar: "",
-        },
-        students: [
-          {
-            userId: "student1",
-            fullName: "Nguyễn Văn Minh",
-            avatar: "",
-          },
-          {
-            userId: "student2",
-            fullName: "Trần Thị Lan",
-            avatar: "",
-          },
-        ],
-        maxStudents: 50,
-        autoApprove: false,
-        avatar: "",
-        createdAt: "2024-01-15T00:00:00Z",
-      };
-
-      // Mock project rounds riêng
-      projectRounds = [
-        {
-          id: "round1",
-          name: "Đợt 1 - Đồ án cuối kỳ",
-          description: "Phát triển ứng dụng web hoàn chỉnh",
-          startDate: "2024-02-01",
-          endDate: "2024-05-31",
-        },
-        {
-          id: "round2",
-          name: "Đợt 2 - Nâng cao",
-          description: "Tích hợp các tính năng nâng cao",
-          startDate: "2024-06-01",
-          endDate: "2024-08-31",
-        },
-      ];
-
-      classPosts = [
-        {
-          id: "post1",
-          classroomId: params.id,
-          title: "Thông báo về lịch bảo vệ đồ án",
-          content:
-            "Lịch bảo vệ đồ án sẽ diễn ra vào tuần 15 (20-24/5/2024). Các nhóm vui lòng chuẩn bị slides và demo sản phẩm.",
-          attachments: [
-            {
-              fileName: "lich-bao-ve.pdf",
-              fileURL: "#",
-              fileSize: 245680,
-              mimeType: "application/pdf",
-            },
-          ],
-          isPinned: true,
-          author: {
-            userId: "lecturer1",
-            fullName: "TS. Nguyễn Văn A",
-            avatar: "",
-          },
-          createdAt: "2024-05-01T10:00:00Z",
-          updatedAt: "2024-05-01T10:00:00Z",
-        },
-        {
-          id: "post2",
-          classroomId: params.id,
-          title: "Hướng dẫn nộp báo cáo giữa kỳ",
-          content:
-            "Các nhóm nộp báo cáo giữa kỳ theo template đã gửi. Deadline: 15/4/2024.",
-          attachments: [],
-          isPinned: false,
-          author: {
-            userId: "lecturer1",
-            fullName: "TS. Nguyễn Văn A",
-            avatar: "",
-          },
-          createdAt: "2024-04-01T09:00:00Z",
-          updatedAt: "2024-04-01T09:00:00Z",
-        },
-      ];
-
-      // Tạo extended type để thêm isRead cho mock data
-      classPosts = classPosts.map((post, index) => ({
-        ...post,
-        isRead: index > 0, // post đầu là chưa đọc
-      })) as any;
-      */
+      classPosts = await getClassPosts(params.id);
     } catch (err) {
-      console.error("❌ StudentClassDetail - Error loading classroom:", err);
-      console.error(
-        "❌ StudentClassDetail - Error details:",
-        err instanceof Error ? err.message : String(err),
-      );
+      // ... handle error
     } finally {
       loading = false;
     }
@@ -784,11 +555,7 @@
       {:else if activeTab === "chat"}
         <div class="chat-tab">
           {#if classroom?.generalChannelId}
-            <ChatTab
-              channelId={classroom.generalChannelId}
-              currentUserRole="student"
-              currentUserName={$authStore.user?.fullname || "Student"}
-            />
+            <ChatTab generalChannelId={classroom.generalChannelId} />
           {:else}
             <div class="no-chat">
               <p>Kênh chat chưa được tạo</p>
