@@ -11,6 +11,7 @@ function createClassStore() {
     const searchTerm = writable("");
     const currentPage = writable(1);
     const itemsPerPage = writable(5);
+    const classDetail = writable<ClassroomResponse | null>(null);
 
     // ===== derived =====
     const filteredClasses = derived(
@@ -54,6 +55,10 @@ function createClassStore() {
     function changePageSize(size: number) {
         itemsPerPage.set(size);
         currentPage.set(1);
+    }
+
+    function setClassDetail(data: ClassroomResponse | null) {
+        classDetail.set(data);
     }
 
     async function addClass(uiData: CreateClassRequest, file?: File) {
@@ -121,12 +126,24 @@ function createClassStore() {
         }
     }
 
+    async function fetchClassDetail(classId: string) {
+        try {
+            const classDetails = await getClassroom(classId);
+            setClassDetail(classDetails);
+        } catch (err) {
+            console.error("Failed to fetch class details", err);
+            setClassDetail(null);
+            throw err;
+        }
+    }
+
     return {
         // state
         classes,
         searchTerm,
         currentPage,
         itemsPerPage,
+        classDetail,
 
         // derived
         filteredClasses,
@@ -143,6 +160,8 @@ function createClassStore() {
         removeClass,
         fetchMyClasses,
         fetchClassById,
+        setClassDetail,
+        fetchClassDetail,
     };
 }
 

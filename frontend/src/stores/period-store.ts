@@ -40,9 +40,25 @@ function createPeriodStore() {
         }
     );
 
+    // ===== utility =====
+    function calculateStatus(startDate: string, endDate: string): string {
+        const now = new Date();
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (now < start) return "upcoming"; // Sắp tới
+        if (now > end) return "overdue"; // Quá hạn
+        return "ongoing"; // Đang diễn ra
+    }
+
     // ===== actions =====
     function setData(data: PeriodResponse[]) {
-        periods.set(data);
+        periods.set(
+            data.map((period) => ({
+                ...period,
+                status: calculateStatus(period.startDate, period.endDate),
+            }))
+        );
     }
 
     function setSearch(value: string) {
