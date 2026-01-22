@@ -19,6 +19,8 @@
     import { classStore } from "../../../stores/class-store";
     import type { ClassItem } from "../../../types/class";
     import type { UpdateProjectRoundRequest } from "../../../dtos/project-dto";
+    import type { ClassroomResponse } from "../../../dtos";
+    import { getClassroom } from "../../../services/classroom-service";
 
     const classroomId = $derived($params?.id);
     const classesStore = classStore.classes;
@@ -34,8 +36,24 @@
             }
         }
     });
-    const students = $derived(classData?.students ?? []);
 
+    let classDetail = $state<ClassroomResponse | null>(null);
+    $effect(() => {
+        if (classroomId) {
+            getClassroom(classroomId)
+                .then((data) => {
+                    classDetail = data;
+                })
+                .catch((err) => {
+                    console.error("Lỗi khi lấy chi tiết lớp học:", err);
+                });
+        }
+    });
+
+    const students = $derived(classDetail?.students ?? []);
+    $effect(() => {
+        console.log("Students list updated:", classDetail);
+    });
     // UI States
     let activeTab = $state<"overview" | "students" | "announcements" | "chat">(
         "overview",
