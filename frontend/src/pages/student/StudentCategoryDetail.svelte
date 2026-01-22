@@ -2,9 +2,12 @@
   import { onMount } from "svelte";
   import { push } from "svelte-spa-router";
   import { getClassroom } from "../../services/classroom-service";
+  import { getProjectRounds } from "../../services/project-round-service";
+  import { getProjects } from "../../services/project-service";
   import { getGroupsFilter } from "../../services/group-service";
   import { authStore } from "../../stores/auth-store";
   import type { ProjectRound, Group } from "../../models";
+  import type { ProjectResponse } from "../../dtos/project-dto";
 
   let { params } = $props<{
     params: { id: string; categoryId: string };
@@ -15,6 +18,7 @@
   let error = $state<string | null>(null);
 
   let projectRound = $state<ProjectRound | null>(null);
+  let projects = $state<ProjectResponse[]>([]);
   let groups = $state<Group[]>([]);
   let myGroup = $derived(
     groups.find((g) => g.members.some((m) => m.id === $authStore.user?.id)),
@@ -30,31 +34,7 @@
     status: "ongoing",
   });
 
-  let projects = $state([
-    {
-      id: "p1",
-      name: "Hệ thống quản lý thư viện",
-      description:
-        "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-      instructor: "TS. Nguyễn Văn A",
-      currentStudents: 2,
-      maxStudents: 3,
-      status: "available",
-      tags: ["Web", "React", "Node.js"],
-      isMyProject: false,
-    },
-    {
-      id: "p2",
-      name: "Ứng dụng quản lý chi tiêu",
-      description: "Ứng dụng mobile giúp theo dõi thu chi cá nhân",
-      instructor: "ThS. Trần Thị B",
-      currentStudents: 2,
-      maxStudents: 2,
-      status: "full",
-      tags: ["Mobile", "React Native"],
-      isMyProject: true,
-    },
-  ]);
+  // ...
 
   let reports = $state([
     {
@@ -138,11 +118,15 @@
         projectRound = foundRound as unknown as ProjectRound;
         groups = []; // Empty groups for mock data
       } else {
-        // Fetch classroom to get project round
+        // Fetch classroom info first
         const classroom = await getClassroom(params.id);
         console.log("📚 Classroom data:", classroom);
-        console.log("📋 Project rounds:", classroom.projectRounds);
-        const foundRound = classroom.projectRounds.find(
+
+        // Fetch project rounds separately
+        const projectRounds = await getProjectRounds(params.id);
+        console.log("📋 Project rounds:", projectRounds);
+
+        const foundRound = projectRounds.find(
           (round) => round.id === params.categoryId,
         );
 
@@ -151,11 +135,20 @@
           return;
         }
 
-        // Cast to ProjectRound type (DTO has string status, model has enum)
-        projectRound = foundRound as unknown as ProjectRound;
+        projectRound = foundRound;
 
-        // Fetch groups/projects for this round
-        groups = await getGroupsFilter({ project_round_id: params.categoryId });
+        // Fetch projects in this round
+        projects = await getProjects(params.id, params.categoryId);
+        console.log("📁 Projects in this round:", projects);
+
+        // Try to fetch groups (may fail if backend not fixed)
+        try {
+          groups = await getGroupsFilter({ classroom_id: params.id });
+          console.log("👥 Groups in this classroom:", groups);
+        } catch (groupErr) {
+          console.warn("⚠️ Could not load groups (backend issue):", groupErr);
+          groups = []; // Continue without groups
+        }
       }
     } catch (err) {
       console.error("Error loading project round:", err);
@@ -249,9 +242,7 @@
         {@const myProjectId = myGroup?.projectId}
         <div class="projects-tab">
           {#if myProjectId}
-            {@const myProject = projectRound.projects.find(
-              (p) => p.id === myProjectId,
-            )}
+            {@const myProject = projects.find((p) => p.id === myProjectId)}
             <div class="alert alert-success">
               <svg
                 width="20"
@@ -292,84 +283,109 @@
             </div>
           {/if}
 
-          <div class="projects-list">
-            {#each projectRound.projects as project}
-              {@const projectGroups = groups.filter(
-                (g) => g.projectId === project.id,
-              )}
-              {@const currentMembers = projectGroups.reduce(
-                (sum, g) => sum + g.members.length,
-                0,
-              )}
-              {@const maxMembers = project.amount * project.maxMember}
-              {@const isMyProject = myProjectId === project.id}
-              {@const isFull = currentMembers >= maxMembers}
-
-              <div
-                class="project-card"
-                onclick={() => handleProjectClick(project.id)}
+          {#if projects.length === 0}
+            <div class="empty-state">
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
               >
-                <div class="project-header">
-                  <h3 class="project-name">{project.title}</h3>
-                  <div class="project-badges">
-                    {#if isMyProject}
-                      <span class="badge badge-my-project">
-                        Đề tài của tôi
-                      </span>
-                    {/if}
-                    {#if project.status === "approved"}
-                      <span class="badge badge-available">
-                        {isFull ? "Đã đủ" : "Còn chỗ"}
-                      </span>
-                    {:else if project.status === "ongoing"}
-                      <span class="badge badge-ongoing">Đang thực hiện</span>
-                    {:else if project.status === "completed"}
-                      <span class="badge badge-closed">Đã hoàn thành</span>
-                    {:else}
-                      <span class="badge badge-pending">Chờ duyệt</span>
-                    {/if}
+                <path
+                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                ></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <h3>Chưa có đề tài nào</h3>
+              <p>
+                Giảng viên chưa tạo đề tài cho đợt này. Vui lòng quay lại sau.
+              </p>
+            </div>
+          {:else}
+            <div class="projects-list">
+              {#each projects as project}
+                {@const projectGroups = groups.filter(
+                  (g) => g.projectId === project.id,
+                )}
+                {@const currentMembers = projectGroups.reduce(
+                  (sum, g) => sum + g.members.length,
+                  0,
+                )}
+                {@const maxMembers = project.amount * project.maxMember}
+                {@const isMyProject = myProjectId === project.id}
+                {@const isFull = currentMembers >= maxMembers}
+
+                <div
+                  class="project-card"
+                  onclick={() => handleProjectClick(project.id)}
+                >
+                  <div class="project-header">
+                    <h3 class="project-name">{project.title}</h3>
+                    <div class="project-badges">
+                      {#if isMyProject}
+                        <span class="badge badge-my-project">
+                          Đề tài của tôi
+                        </span>
+                      {/if}
+                      {#if project.status === "approved"}
+                        <span class="badge badge-available">
+                          {isFull ? "Đã đủ" : "Còn chỗ"}
+                        </span>
+                      {:else if project.status === "ongoing"}
+                        <span class="badge badge-ongoing">Đang thực hiện</span>
+                      {:else if project.status === "completed"}
+                        <span class="badge badge-closed">Đã hoàn thành</span>
+                      {:else}
+                        <span class="badge badge-pending">Chờ duyệt</span>
+                      {/if}
+                    </div>
+                  </div>
+
+                  <p class="project-description">{project.description}</p>
+
+                  <div class="project-footer">
+                    <div class="footer-item">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                        ></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                      </svg>
+                      <span>{currentMembers}/{maxMembers} sinh viên</span>
+                    </div>
+                    <div class="footer-item">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                        ></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                      </svg>
+                      <span>Số lượng nhóm: {project.amount}</span>
+                    </div>
                   </div>
                 </div>
-
-                <p class="project-description">{project.description}</p>
-
-                <div class="project-footer">
-                  <div class="footer-item">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                      ></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <span>{currentMembers}/{maxMembers} sinh viên</span>
-                  </div>
-                  <div class="footer-item">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                      ></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                    </svg>
-                    <span>Số lượng nhóm: {project.amount}</span>
-                  </div>
-                </div>
-              </div>
-            {/each}
-          </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       {:else if activeTab === "reports"}
         <div class="reports-tab">
@@ -895,5 +911,33 @@
 
   .btn-submit-report:hover {
     background: #2563eb;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    background: white;
+    border-radius: 0.75rem;
+  }
+
+  .empty-state svg {
+    color: #d1d5db;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
+  }
+
+  .empty-state p {
+    font-size: 0.875rem;
+    color: #6b7280;
   }
 </style>
