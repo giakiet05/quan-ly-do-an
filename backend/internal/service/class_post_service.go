@@ -1,12 +1,15 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/dto"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/model"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/bus"
+	"github.com/giakiet05/quan-ly-do-an/backend/internal/platform/cloudinary"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/repo"
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,35 +17,114 @@ import (
 )
 
 type ClassPostService interface {
-	CreatePost(req dto.CreateClassPostRequest, classroomID string, authorID string) (*model.ClassPost, error)
-	GetPostByID(postID string) (*model.ClassPost, error)
-	GetPostsByClassroom(classroomID string, userID string, page, pageSize int) ([]model.ClassPost, int64, error)
-	UpdatePost(req dto.UpdateClassPostRequest, postID string, userID string) (*model.ClassPost, error)
+	CreatePost(req dto.CreateClassPostRequest, classroomID string, authorID string) (*dto.ClassPostResponse, error)
+	GetPostByID(postID string) (*dto.ClassPostResponse, error)
+	GetPostsByClassroom(classroomID string, userID string, page, pageSize int) ([]dto.ClassPostResponse, int64, error)
+	UpdatePost(req dto.UpdateClassPostRequest, postID string, userID string) (*dto.ClassPostResponse, error)
 	DeletePost(postID string, userID string) error
 	TogglePinPost(postID string, userID string, isPinned bool) error
-	AddAttachment(postID string, userID string, attachment model.Attachment) (*model.ClassPost, error)
-	RemoveAttachment(postID string, userID string, fileURL string) (*model.ClassPost, error)
 }
 
 type classPostService struct {
 	postRepo      repo.ClassPostRepo
 	classroomRepo repo.ClassroomRepo
 	userRepo      repo.UserRepo
+	eventBus      *bus.EventBus
 }
 
 func NewClassPostService(
 	postRepo repo.ClassPostRepo,
 	classroomRepo repo.ClassroomRepo,
 	userRepo repo.UserRepo,
+	eventBus *bus.EventBus,
 ) ClassPostService {
 	return &classPostService{
 		postRepo:      postRepo,
 		classroomRepo: classroomRepo,
 		userRepo:      userRepo,
+		eventBus:      eventBus,
 	}
 }
 
-func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomID string, authorID string) (*model.ClassPost, error) {
+// Helper: Publish ClassPostCreatedEvent
+func (s *classPostService) publishClassPostCreatedEvent(ctx context.Context, classroomID string, post *model.ClassPost, author *model.User) {
+	// Get classroom to get student IDs
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return
+	}
+
+	// Don't send notification if classroom has no students
+	if len(classroom.StudentIDs) == 0 {
+		return
+	}
+
+	s.eventBus.Publish(bus.ClassPostCreatedEvent{
+		ClassroomID: classroomID,
+		PostID:      post.ID.Hex(),
+		PostTitle:   post.Title,
+		AuthorID:    author.ID.Hex(),
+		AuthorName:  author.FullName,
+	})
+}
+
+// Helper: Publish ClassPostUpdatedEvent
+func (s *classPostService) publishClassPostUpdatedEvent(ctx context.Context, classroomID string, post *model.ClassPost, author *model.User) {
+	// Get classroom to get student IDs
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return
+	}
+
+	// Don't send notification if classroom has no students
+	if len(classroom.StudentIDs) == 0 {
+		return
+	}
+
+	s.eventBus.Publish(bus.ClassPostUpdatedEvent{
+		ClassroomID: classroomID,
+		PostID:      post.ID.Hex(),
+		PostTitle:   post.Title,
+		AuthorID:    author.ID.Hex(),
+		AuthorName:  author.FullName,
+	})
+}
+
+// Helper: Populate author for a single post
+func (s *classPostService) populatePostAuthor(ctx context.Context, post *model.ClassPost) (*model.User, error) {
+	return s.userRepo.GetByID(ctx, post.AuthorID.Hex())
+}
+
+// Helper: Batch populate authors for multiple posts
+func (s *classPostService) populatePostsAuthors(ctx context.Context, posts []model.ClassPost) (map[string]*model.User, error) {
+	// Collect unique author IDs
+	authorIDsMap := make(map[string]bool)
+	for _, post := range posts {
+		authorIDsMap[post.AuthorID.Hex()] = true
+	}
+
+	// Convert to slice
+	authorIDs := make([]string, 0, len(authorIDsMap))
+	for id := range authorIDsMap {
+		authorIDs = append(authorIDs, id)
+	}
+
+	// Batch query users
+	users, err := s.userRepo.GetByIDs(ctx, authorIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create map
+	userMap := make(map[string]*model.User)
+	for _, user := range users {
+		userMap[user.ID.Hex()] = user
+	}
+
+	return userMap, nil
+}
+
+func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomID string, authorID string) (*dto.ClassPostResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
@@ -55,7 +137,7 @@ func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomI
 		return nil, apperror.ErrForbidden
 	}
 
-	// Get author info
+	// Get author info for response
 	author, err := s.userRepo.GetByID(ctx, authorID)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -65,6 +147,7 @@ func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomI
 	}
 
 	classroomOID, _ := primitive.ObjectIDFromHex(classroomID)
+	authorOID, _ := primitive.ObjectIDFromHex(authorID)
 
 	// Convert attachments
 	attachments := make([]model.Attachment, 0, len(req.Attachments))
@@ -72,6 +155,7 @@ func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomI
 		attachments = append(attachments, model.Attachment{
 			FileName: att.FileName,
 			FileURL:  att.FileURL,
+			PublicID: att.PublicID,
 			FileSize: att.FileSize,
 			MimeType: att.MimeType,
 		})
@@ -79,11 +163,7 @@ func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomI
 
 	post := &model.ClassPost{
 		ClassroomID: classroomOID,
-		Author: model.UserInfo{
-			ID:       author.ID,
-			FullName: author.FullName,
-			Avatar:   author.Avatar,
-		},
+		AuthorID:    authorOID,
 		Title:       req.Title,
 		Content:     req.Content,
 		Attachments: attachments,
@@ -92,17 +172,39 @@ func (s *classPostService) CreatePost(req dto.CreateClassPostRequest, classroomI
 		UpdatedAt:   time.Now(),
 	}
 
-	return s.postRepo.Create(ctx, post)
+	createdPost, err := s.postRepo.Create(ctx, post)
+	if err != nil {
+		return nil, err
+	}
+
+	// Publish event for notification
+	s.publishClassPostCreatedEvent(ctx, classroomID, createdPost, author)
+
+	// Return DTO with author info
+	response := dto.FromClassPostWithAuthor(createdPost, author)
+	return &response, nil
 }
 
-func (s *classPostService) GetPostByID(postID string) (*model.ClassPost, error) {
+func (s *classPostService) GetPostByID(postID string) (*dto.ClassPostResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	return s.postRepo.GetByID(ctx, postID)
+	post, err := s.postRepo.GetByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate author
+	author, err := s.populatePostAuthor(ctx, post)
+	if err != nil {
+		return nil, err
+	}
+
+	response := dto.FromClassPostWithAuthor(post, author)
+	return &response, nil
 }
 
-func (s *classPostService) GetPostsByClassroom(classroomID string, userID string, page, pageSize int) ([]model.ClassPost, int64, error) {
+func (s *classPostService) GetPostsByClassroom(classroomID string, userID string, page, pageSize int) ([]dto.ClassPostResponse, int64, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
@@ -114,10 +216,23 @@ func (s *classPostService) GetPostsByClassroom(classroomID string, userID string
 		return nil, 0, apperror.ErrForbidden
 	}
 
-	return s.postRepo.GetByClassroom(ctx, classroomID, page, pageSize)
+	posts, total, err := s.postRepo.GetByClassroom(ctx, classroomID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Batch populate authors
+	authorsMap, err := s.populatePostsAuthors(ctx, posts)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Convert to DTOs
+	responses := dto.FromClassPostsWithAuthors(posts, authorsMap)
+	return responses, total, nil
 }
 
-func (s *classPostService) UpdatePost(req dto.UpdateClassPostRequest, postID string, userID string) (*model.ClassPost, error) {
+func (s *classPostService) UpdatePost(req dto.UpdateClassPostRequest, postID string, userID string) (*dto.ClassPostResponse, error) {
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
@@ -129,7 +244,7 @@ func (s *classPostService) UpdatePost(req dto.UpdateClassPostRequest, postID str
 
 	// Check if user is the author or lecturer
 	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
-	isAuthor := post.Author.ID.Hex() == userID
+	isAuthor := post.AuthorID.Hex() == userID
 
 	if !isLecturer && !isAuthor {
 		return nil, apperror.ErrForbidden
@@ -167,6 +282,7 @@ func (s *classPostService) UpdatePost(req dto.UpdateClassPostRequest, postID str
 			post.Attachments = append(post.Attachments, model.Attachment{
 				FileName: att.FileName,
 				FileURL:  att.FileURL,
+				PublicID: att.PublicID,
 				FileSize: att.FileSize,
 				MimeType: att.MimeType,
 			})
@@ -175,7 +291,22 @@ func (s *classPostService) UpdatePost(req dto.UpdateClassPostRequest, postID str
 
 	post.UpdatedAt = time.Now()
 
-	return s.postRepo.Update(ctx, post)
+	updatedPost, err := s.postRepo.Update(ctx, post)
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate author for response
+	author, err := s.populatePostAuthor(ctx, updatedPost)
+	if err != nil {
+		return nil, err
+	}
+
+	// Publish event for notification
+	s.publishClassPostUpdatedEvent(ctx, post.ClassroomID.Hex(), updatedPost, author)
+
+	response := dto.FromClassPostWithAuthor(updatedPost, author)
+	return &response, nil
 }
 
 func (s *classPostService) DeletePost(postID string, userID string) error {
@@ -197,7 +328,20 @@ func (s *classPostService) DeletePost(postID string, userID string) error {
 		return apperror.ErrForbidden
 	}
 
-	return s.postRepo.Delete(ctx, postID)
+	// Delete post from DB first
+	err = s.postRepo.Delete(ctx, postID)
+	if err != nil {
+		return err
+	}
+
+	// Delete attachments from Cloudinary (best effort, ignore errors)
+	for _, att := range post.Attachments {
+		if att.PublicID != "" {
+			_, _ = cloudinary.Delete(att.PublicID)
+		}
+	}
+
+	return nil
 }
 
 func (s *classPostService) TogglePinPost(postID string, userID string, isPinned bool) error {
@@ -222,59 +366,3 @@ func (s *classPostService) TogglePinPost(postID string, userID string, isPinned 
 	return s.postRepo.TogglePin(ctx, postID, isPinned)
 }
 
-func (s *classPostService) AddAttachment(postID string, userID string, attachment model.Attachment) (*model.ClassPost, error) {
-	ctx, cancel := util.NewDefaultDBContext()
-	defer cancel()
-
-	// Get existing post
-	post, err := s.postRepo.GetByID(ctx, postID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if user is the author or lecturer
-	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
-	isAuthor := post.Author.ID.Hex() == userID
-
-	if !isLecturer && !isAuthor {
-		return nil, apperror.ErrForbidden
-	}
-
-	// Add attachment to array
-	post.Attachments = append(post.Attachments, attachment)
-	post.UpdatedAt = time.Now()
-
-	return s.postRepo.Update(ctx, post)
-}
-
-func (s *classPostService) RemoveAttachment(postID string, userID string, fileURL string) (*model.ClassPost, error) {
-	ctx, cancel := util.NewDefaultDBContext()
-	defer cancel()
-
-	// Get existing post
-	post, err := s.postRepo.GetByID(ctx, postID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if user is the author or lecturer
-	isLecturer, _ := s.classroomRepo.IsLecturerOrCoLecturer(ctx, post.ClassroomID.Hex(), userID)
-	isAuthor := post.Author.ID.Hex() == userID
-
-	if !isLecturer && !isAuthor {
-		return nil, apperror.ErrForbidden
-	}
-
-	// Filter out the attachment
-	newAttachments := make([]model.Attachment, 0)
-	for _, att := range post.Attachments {
-		if att.FileURL != fileURL {
-			newAttachments = append(newAttachments, att)
-		}
-	}
-
-	post.Attachments = newAttachments
-	post.UpdatedAt = time.Now()
-
-	return s.postRepo.Update(ctx, post)
-}

@@ -20,12 +20,11 @@ type WebSocketMessage struct {
 }
 
 type NewMessagePayload struct {
-	TempMessageID  string            `json:"temp_message_id"`
-	ChannelID      string            `json:"channel_id"`
-	SenderID       string            `json:"sender_id"`
-	SenderUsername string            `json:"sender_username"`
-	Type           model.MessageType `json:"type"`
-	Content        string            `json:"content"`
+	TempMessageID string            `json:"temp_message_id"`
+	ChannelID     string            `json:"channel_id"`
+	SenderID      string            `json:"sender_id"`
+	Type          model.MessageType `json:"type"`
+	Content       string            `json:"content"`
 }
 
 type SendMessagePayload struct {

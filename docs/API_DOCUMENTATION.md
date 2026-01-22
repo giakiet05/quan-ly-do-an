@@ -21,6 +21,64 @@ Tất cả endpoints trả về response theo format:
 
 ---
 
+## ⚠️ BREAKING CHANGES - Class Posts API (Updated: 2026-01-22)
+
+### Endpoints Removed ❌
+The following endpoints have been **REMOVED**:
+- ❌ `POST /api/classrooms/posts/upload-attachments` (standalone upload)
+- ❌ `DELETE /api/classrooms/posts/attachments/:public_id` (standalone delete)
+- ❌ `POST /api/classrooms/posts/:post_id/attachments` (add attachment)
+- ❌ `DELETE /api/classrooms/posts/:post_id/attachments` (remove attachment)
+
+### Endpoints Changed 🔄
+- **Create Post**: Changed from `application/json` to `multipart/form-data`
+  - OLD: Upload files separately → Get URLs → Create post with URLs
+  - NEW: Upload files directly in the same request
+
+- **Update Post**: Changed from `application/json` to `multipart/form-data`
+  - OLD: Upload files separately → Get URLs → Update post
+  - NEW: Upload files directly in the same request
+
+### Response Schema Changes 📝
+**Author object** now includes additional fields:
+```json
+{
+  "author": {
+    "user_id": "...",        // Changed from "_id"
+    "full_name": "...",
+    "email": "...",          // NEW FIELD
+    "avatar": {...},
+    "student_code": "..."    // NEW FIELD (nullable)
+  }
+}
+```
+
+**Attachment object** now includes `public_id`:
+```json
+{
+  "file_name": "...",
+  "file_url": "...",
+  "public_id": "...",      // NEW FIELD
+  "file_size": 123,
+  "mime_type": "..."
+}
+```
+
+### New Features ✨
+- **Atomic uploads**: Files are uploaded in the same request as create/update
+- **Automatic rollback**: If operation fails, uploaded files are deleted automatically
+- **Auto-cleanup**: Deleting a post automatically deletes all files from Cloudinary
+- **Notifications**: Students receive real-time notifications when posts are created/updated
+
+### Migration Guide
+If you're using the old API:
+1. Remove all calls to standalone upload/delete endpoints
+2. Update Create Post to use `multipart/form-data` with `files` field
+3. Update Update Post to use `multipart/form-data` with `files` and `files_to_remove` fields
+4. Update response parsing to include new `email`, `student_code`, and `public_id` fields
+
+---
+
 ## Authentication
 
 ### Local Authentication Flow
@@ -1396,51 +1454,64 @@ Authorization: Bearer <access_token>
 ### Tạo bài đăng (Giảng viên hoặc trợ giảng)
 **Endpoint:** `POST /api/classrooms/:id/posts`
 
-**Mô tả:** Tạo bài đăng mới trong lớp học.
+**Mô tả:** Tạo bài đăng mới trong lớp học với file attachments.
 
-**Workflow:**
-1. Upload files trước: `POST /api/classrooms/posts/upload-attachments`
-2. Lấy URLs từ bước 1
-3. Tạo post với URLs trong `attachments`
+**Content-Type:** `multipart/form-data`
 
-**Request Body:**
-```json
-{
-  "title": "Bài tập tuần 1",
-  "content": "Nội dung bài tập...",
-  "attachments": [
-    {
-      "file_name": "bt-tuan-1.pdf",
-      "file_url": "https://res.cloudinary.com/.../bt-tuan-1.pdf",
-      "file_size": 2048000,
-      "mime_type": "application/pdf"
-    }
-  ]
-}
+**Form Fields:**
+- `title` (string, required): Tiêu đề bài đăng
+- `content` (string, required): Nội dung bài đăng
+- `files` (File[], optional): Các file đính kèm (multiple files)
+
+**Example Request:**
+```
+POST /api/classrooms/507f1f77bcf86cd799439011/posts
+Content-Type: multipart/form-data
+Authorization: Bearer <token>
+
+FormData:
+  title: "Bài tập tuần 1"
+  content: "Nội dung bài tập..."
+  files: [document.pdf, image.png, slides.pptx]
 ```
 
 **Success Response (201):**
 ```json
 {
   "success": true,
-  "message": "Tạo bài đăng thành công",
+  "message": "Post created successfully",
   "data": {
     "id": "507f1f77bcf86cd799439015",
     "classroom_id": "507f1f77bcf86cd799439011",
     "author": {
       "user_id": "507f1f77bcf86cd799439012",
       "full_name": "GV. Nguyễn Văn A",
-      "avatar": null
+      "email": "nguyenvana@gmail.com",
+      "avatar": null,
+      "student_code": null
     },
     "title": "Bài tập tuần 1",
     "content": "Nội dung bài tập...",
-    "attachments": [...],
+    "attachments": [
+      {
+        "file_name": "bt-tuan-1.pdf",
+        "file_url": "https://res.cloudinary.com/.../bt-tuan-1.pdf",
+        "public_id": "posts/abc123",
+        "file_size": 2048000,
+        "mime_type": "application/pdf"
+      }
+    ],
     "is_pinned": false,
-    "created_at": "2024-01-01T10:00:00Z",
-    "updated_at": "2024-01-01T10:00:00Z"
+    "created_at": "2026-01-22T10:00:00Z",
+    "updated_at": "2026-01-22T10:00:00Z"
   }
 }
 ```
+
+**Notes:**
+- Files được upload trực tiếp trong request (không cần upload riêng trước)
+- Nếu upload hoặc tạo post thất bại, files đã upload sẽ được xóa tự động (rollback)
+- Notification sẽ được gửi cho tất cả students trong lớp
 
 ---
 
@@ -1457,9 +1528,35 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": true,
-  "message": "Lấy danh sách bài đăng thành công",
+  "message": "Posts retrieved successfully",
   "data": {
-    "posts": [...],
+    "posts": [
+      {
+        "id": "507f1f77bcf86cd799439015",
+        "classroom_id": "507f1f77bcf86cd799439011",
+        "author": {
+          "user_id": "507f1f77bcf86cd799439012",
+          "full_name": "GV. Nguyễn Văn A",
+          "email": "nguyenvana@gmail.com",
+          "avatar": null,
+          "student_code": null
+        },
+        "title": "Bài tập tuần 1",
+        "content": "Nội dung bài tập...",
+        "attachments": [
+          {
+            "file_name": "bt-tuan-1.pdf",
+            "file_url": "https://res.cloudinary.com/.../bt-tuan-1.pdf",
+            "public_id": "posts/abc123",
+            "file_size": 2048000,
+            "mime_type": "application/pdf"
+          }
+        ],
+        "is_pinned": true,
+        "created_at": "2026-01-22T10:00:00Z",
+        "updated_at": "2026-01-22T10:00:00Z"
+      }
+    ],
     "total": 50,
     "page": 1,
     "page_size": 20
@@ -1480,17 +1577,31 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": true,
-  "message": "Lấy bài đăng thành công",
+  "message": "Post retrieved successfully",
   "data": {
     "id": "507f1f77bcf86cd799439015",
     "classroom_id": "507f1f77bcf86cd799439011",
-    "author": {...},
+    "author": {
+      "user_id": "507f1f77bcf86cd799439012",
+      "full_name": "GV. Nguyễn Văn A",
+      "email": "nguyenvana@gmail.com",
+      "avatar": null,
+      "student_code": null
+    },
     "title": "Bài tập tuần 1",
     "content": "Nội dung bài tập...",
-    "attachments": [...],
+    "attachments": [
+      {
+        "file_name": "bt-tuan-1.pdf",
+        "file_url": "https://res.cloudinary.com/.../bt-tuan-1.pdf",
+        "public_id": "posts/abc123",
+        "file_size": 2048000,
+        "mime_type": "application/pdf"
+      }
+    ],
     "is_pinned": false,
-    "created_at": "2024-01-01T10:00:00Z",
-    "updated_at": "2024-01-01T10:00:00Z"
+    "created_at": "2026-01-22T10:00:00Z",
+    "updated_at": "2026-01-22T10:00:00Z"
   }
 }
 ```
@@ -1502,36 +1613,65 @@ Authorization: Bearer <access_token>
 
 **Mô tả:** Cập nhật bài đăng (giảng viên, trợ giảng hoặc tác giả).
 
-**Request Body:**
-```json
-{
-  "title": "Bài tập tuần 1 (Cập nhật)",
-  "content": "Nội dung mới...",
-  "attachments_to_add": [
-    {
-      "file_name": "file-moi.pdf",
-      "file_url": "https://res.cloudinary.com/.../file-moi.pdf",
-      "file_size": 1024000,
-      "mime_type": "application/pdf"
-    }
-  ],
-  "attachments_to_remove": [
-    "https://res.cloudinary.com/.../file-cu.pdf"
-  ]
-}
+**Content-Type:** `multipart/form-data`
+
+**Form Fields:**
+- `title` (string, optional): Tiêu đề mới
+- `content` (string, optional): Nội dung mới
+- `files` (File[], optional): Files mới cần thêm
+- `files_to_remove` (string, optional): JSON array của URLs files cần xóa
+
+**Example Request:**
+```
+PUT /api/classrooms/posts/507f1f77bcf86cd799439015
+Content-Type: multipart/form-data
+Authorization: Bearer <token>
+
+FormData:
+  title: "Bài tập tuần 1 (Cập nhật)"
+  content: "Nội dung mới..."
+  files: [new-document.pdf, updated-image.png]
+  files_to_remove: ["https://res.cloudinary.com/.../old-file.pdf"]
 ```
 
 **Lưu ý:**
 - Tất cả field đều optional
-- `attachments_to_add`: Mảng file mới cần thêm
-- `attachments_to_remove`: Mảng URLs file cần xóa
+- `files`: Upload files mới (multipart)
+- `files_to_remove`: JSON string array của URLs cần xóa
+  - Example: `["url1", "url2"]`
+- Files được xóa khỏi Cloudinary tự động
+- Notification sẽ được gửi cho tất cả students trong lớp
 
 **Success Response (200):**
 ```json
 {
   "success": true,
-  "message": "Cập nhật bài đăng thành công",
-  "data": {...}
+  "message": "Post updated successfully",
+  "data": {
+    "id": "507f1f77bcf86cd799439015",
+    "classroom_id": "507f1f77bcf86cd799439011",
+    "author": {
+      "user_id": "507f1f77bcf86cd799439012",
+      "full_name": "GV. Nguyễn Văn A",
+      "email": "nguyenvana@gmail.com",
+      "avatar": null,
+      "student_code": null
+    },
+    "title": "Bài tập tuần 1 (Cập nhật)",
+    "content": "Nội dung mới...",
+    "attachments": [
+      {
+        "file_name": "new-document.pdf",
+        "file_url": "https://res.cloudinary.com/.../new-document.pdf",
+        "public_id": "posts/xyz789",
+        "file_size": 3072000,
+        "mime_type": "application/pdf"
+      }
+    ],
+    "is_pinned": false,
+    "created_at": "2026-01-22T10:00:00Z",
+    "updated_at": "2026-01-22T11:30:00Z"
+  }
 }
 ```
 
@@ -1540,18 +1680,22 @@ Authorization: Bearer <access_token>
 ### Xóa bài đăng (Giảng viên hoặc trợ giảng)
 **Endpoint:** `DELETE /api/classrooms/posts/:post_id`
 
-**Mô tả:** Xóa bài đăng.
+**Mô tả:** Xóa bài đăng và tất cả attachments trên Cloudinary.
 
 **Success Response (200):**
 ```json
 {
   "success": true,
-  "message": "Xóa bài đăng thành công",
+  "message": "Post deleted successfully",
   "data": {
     "post_id": "507f1f77bcf86cd799439015"
   }
 }
 ```
+
+**Notes:**
+- Tất cả files đính kèm sẽ được xóa khỏi Cloudinary tự động
+- Chỉ lecturer hoặc co-lecturer mới có quyền xóa post
 
 ---
 
@@ -1571,107 +1715,10 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": true,
-  "message": "Cập nhật trạng thái ghim thành công",
+  "message": "Post pin status updated",
   "data": {
     "is_pinned": true
   }
-}
-```
-
----
-
-### Upload attachments
-**Endpoint:** `POST /api/classrooms/posts/upload-attachments`
-
-**Mô tả:** Upload nhiều file lên Cloudinary trước khi tạo/cập nhật bài đăng.
-
-**Request:** `multipart/form-data`
-- `files`: Mảng các file cần upload
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Upload files thành công",
-  "data": {
-    "attachments": [
-      {
-        "file_name": "document.pdf",
-        "file_url": "https://res.cloudinary.com/.../document.pdf",
-        "file_size": 2048000,
-        "mime_type": "application/pdf",
-        "public_id": "class_posts/xyz123"
-      }
-    ]
-  }
-}
-```
-
----
-
-### Xóa attachment
-**Endpoint:** `DELETE /api/classrooms/posts/attachments/:public_id`
-
-**Mô tả:** Xóa một file khỏi Cloudinary bằng public_id.
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Xóa file thành công",
-  "data": {
-    "public_id": "class_posts/xyz123",
-    "result": "ok"
-  }
-}
-```
-
----
-
-### Thêm attachment vào post
-**Endpoint:** `POST /api/classrooms/posts/:post_id/attachments`
-
-**Mô tả:** Thêm một attachment vào bài đăng đã tồn tại.
-
-**Request Body:**
-```json
-{
-  "file_name": "new-file.pdf",
-  "file_url": "https://res.cloudinary.com/.../new-file.pdf",
-  "file_size": 1024000,
-  "mime_type": "application/pdf"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Thêm attachment thành công",
-  "data": {...}
-}
-```
-
----
-
-### Xóa attachment khỏi post
-**Endpoint:** `DELETE /api/classrooms/posts/:post_id/attachments`
-
-**Mô tả:** Xóa một attachment khỏi bài đăng.
-
-**Request Body:**
-```json
-{
-  "file_url": "https://res.cloudinary.com/.../file-to-remove.pdf"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "message": "Xóa attachment thành công",
-  "data": {...}
 }
 ```
 

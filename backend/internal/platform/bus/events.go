@@ -28,7 +28,7 @@ const (
 	TopicNotificationDeleted = "notification.deleted"
 
 	// Group
-	TopicGroupInvitation = "group.invitation"
+	TopicGroupInvitation  = "group.invitation"
 	TopicGroupJoinRequest = "group.join_request"
 
 	// Project Report
@@ -39,6 +39,10 @@ const (
 	// Class
 	TopicClassUpdated        = "class.updated"
 	TopicClassroomInvitation = "classroom.invitation"
+
+	// Class Post
+	TopicClassPostCreated = "class.post.created"
+	TopicClassPostUpdated = "class.post.updated"
 )
 
 type BroadcastEventType string
@@ -153,12 +157,11 @@ func (e NotificationCreatedEvent) Payload() map[string]interface{} {
 // --- Message Events ---
 
 type NewMessageEvent struct {
-	TempMessageID  string            `json:"temp_message_id"`
-	ChannelID      string            `json:"channel_id"`
-	SenderID       string            `json:"sender_id"`
-	SenderUsername string            `json:"sender_username"`
-	Type           model.MessageType `json:"type"`
-	Content        string            `json:"content"`
+	TempMessageID string            `json:"temp_message_id"`
+	ChannelID     string            `json:"channel_id"`
+	SenderID      string            `json:"sender_id"`
+	Type          model.MessageType `json:"type"`
+	Content       string            `json:"content"`
 }
 
 func (e NewMessageEvent) Topic() string {
@@ -170,7 +173,6 @@ func (e NewMessageEvent) Payload() map[string]interface{} {
 		"temp_message_id": e.TempMessageID,
 		"channel_id":      e.ChannelID,
 		"sender_id":       e.SenderID,
-		"sender_username": e.SenderUsername,
 		"type":            e.Type,
 		"content":         e.Content,
 	}
@@ -345,5 +347,49 @@ func (e TopicReportGradedEvent) Payload() map[string]interface{} {
 		"group_id":     e.GroupID,
 		"report_id":    e.ReportID,
 		"graded_at":    e.GradedAt,
+	}
+}
+
+type ClassPostCreatedEvent struct {
+	ClassroomID string `json:"classroom_id"`
+	PostID      string `json:"post_id"`
+	PostTitle   string `json:"post_title"`
+	AuthorID    string `json:"author_id"`
+	AuthorName  string `json:"author_name"`
+}
+
+func (e ClassPostCreatedEvent) Topic() string {
+	return TopicClassPostCreated
+}
+
+func (e ClassPostCreatedEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"classroom_id": e.ClassroomID,
+		"post_id":      e.PostID,
+		"post_title":   e.PostTitle,
+		"author_id":    e.AuthorID,
+		"author_name":  e.AuthorName,
+	}
+}
+
+type ClassPostUpdatedEvent struct {
+	ClassroomID string `json:"classroom_id"`
+	PostID      string `json:"post_id"`
+	PostTitle   string `json:"post_title"`
+	AuthorID    string `json:"author_id"`
+	AuthorName  string `json:"author_name"`
+}
+
+func (e ClassPostUpdatedEvent) Topic() string {
+	return TopicClassPostUpdated
+}
+
+func (e ClassPostUpdatedEvent) Payload() map[string]interface{} {
+	return map[string]interface{}{
+		"classroom_id": e.ClassroomID,
+		"post_id":      e.PostID,
+		"post_title":   e.PostTitle,
+		"author_id":    e.AuthorID,
+		"author_name":  e.AuthorName,
 	}
 }

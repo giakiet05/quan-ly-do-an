@@ -126,12 +126,11 @@ func (h *Hub) handleIncoming(raw []byte, userID string) {
 		}
 
 		h.eventBus.Publish(bus.NewMessageEvent{
-			TempMessageID:  payload.TempMessageID,
-			ChannelID:      payload.ChannelID,
-			SenderID:       userID,
-			SenderUsername: payload.SenderUsername,
-			Type:           payload.Type,
-			Content:        payload.Content,
+			TempMessageID: payload.TempMessageID,
+			ChannelID:     payload.ChannelID,
+			SenderID:      userID,
+			Type:          payload.Type,
+			Content:       payload.Content,
 		})
 	case dto.TypingIndicator:
 		var payload dto.TypingIndicatorPayload

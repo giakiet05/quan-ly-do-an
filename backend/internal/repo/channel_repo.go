@@ -81,14 +81,18 @@ func (c *channelRepo) CreateClassroomChannel(
 ) (*model.Channel, error) {
 	now := time.Now()
 
-	settings := make([]model.ChannelUserSetting, 0, len(students))
+	userIDSet := make(map[primitive.ObjectID]bool)
+	settings := make([]model.ChannelUserSetting, 0, len(students)+len(adminIDs))
 	for _, m := range students {
-		settings = append(settings, model.ChannelUserSetting{
-			UserID:          m.ID,
-			Notification:    true,
-			TypingIndicator: true,
-			IsDeleted:       false,
-		})
+		if !userIDSet[m.ID] {
+			userIDSet[m.ID] = true
+			settings = append(settings, model.ChannelUserSetting{
+				UserID:          m.ID,
+				Notification:    true,
+				TypingIndicator: true,
+				IsDeleted:       false,
+			})
+		}
 	}
 
 	adminObjectIDs := make([]primitive.ObjectID, 0, len(adminIDs))
@@ -98,12 +102,16 @@ func (c *channelRepo) CreateClassroomChannel(
 			return nil, err
 		}
 		adminObjectIDs = append(adminObjectIDs, oid)
-		settings = append(settings, model.ChannelUserSetting{
-			UserID:          oid,
-			Notification:    true,
-			TypingIndicator: true,
-			IsDeleted:       false,
-		})
+
+		if !userIDSet[oid] {
+			userIDSet[oid] = true
+			settings = append(settings, model.ChannelUserSetting{
+				UserID:          oid,
+				Notification:    true,
+				TypingIndicator: true,
+				IsDeleted:       false,
+			})
+		}
 	}
 
 	channel := &model.Channel{
@@ -156,12 +164,6 @@ func (c *channelRepo) CreateGroupChannel(ctx context.Context, leaderID string, m
 		return nil, err
 	}
 	adminIDs := []primitive.ObjectID{leaderObjectID}
-	settings = append(settings, model.ChannelUserSetting{
-		UserID:          leaderObjectID,
-		Notification:    true,
-		TypingIndicator: true,
-		IsDeleted:       false,
-	})
 
 	channel := &model.Channel{
 		ID:           primitive.NewObjectID(),

@@ -132,6 +132,29 @@ func (g *GroupController) DeleteGroup(ctx *gin.Context) {
 	dto.SendSuccess(ctx, http.StatusOK, "Group deleted successfully", nil)
 }
 
+func (g *GroupController) LeaveGroup(ctx *gin.Context) {
+	groupID := ctx.Param("group_id")
+	userID := ctx.Param("user_id")
+	if groupID == "" || userID == "" {
+		dto.SendError(ctx, http.StatusBadRequest, "Group ID and User ID are required", apperror.ErrBadRequest.Code)
+		return
+	}
+
+	authUser, exists := ctx.Get("authUser")
+	if !exists {
+		dto.SendError(ctx, http.StatusForbidden, apperror.ErrForbidden.Message, apperror.ErrForbidden.Code)
+		return
+	}
+
+	err := g.groupService.RemoveMemberFromGroup(groupID, userID, authUser.(auth.AuthUser).ID)
+	if err != nil {
+		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
+		return
+	}
+
+	dto.SendSuccess(ctx, http.StatusOK, "Left group successfully", nil)
+}
+
 // Join Request Operations
 
 func (g *GroupController) CreateJoinRequest(ctx *gin.Context) {
