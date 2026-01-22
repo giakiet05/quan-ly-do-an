@@ -28,8 +28,6 @@
         return dateString.split("T")[0];
     };
 
-    // 3. Khởi tạo formData trực tiếp từ initialData prop
-    // Svelte 5 sẽ dùng giá trị này khi component được mount
     let formData = $state({
         name: initialData?.name ?? "",
         description: initialData?.description ?? "",
