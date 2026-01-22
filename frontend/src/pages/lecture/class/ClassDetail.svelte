@@ -51,6 +51,7 @@
     });
 
     const students = $derived(classDetail?.students ?? []);
+    const generalChannelId = $derived(classDetail?.generalChannelId ?? "");
     $effect(() => {
         console.log("Students list updated:", classDetail);
     });
@@ -243,7 +244,7 @@
                 </div>
             {:else if activeTab === "chat"}
                 <div class="w-full h-full min-h-[650px]">
-                    <ChatTab {classroomId} />
+                    <ChatTab {generalChannelId} />
                 </div>
             {/if}
         </div>
