@@ -61,7 +61,6 @@
         classData: CreateClassRequest,
         file?: File,
     ): Promise<void> {
-        console.log(">>> PAGE ĐÃ NHẬN LỆNH TẠO LỚP:", classData);
         isProcessing = true;
         try {
             await classStore.addClass(classData, file);

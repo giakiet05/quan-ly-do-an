@@ -7,42 +7,30 @@
         Trash2,
         ChevronDown,
         ChevronUp,
-        CheckCheck,
-    } from "@lucide/svelte";
-    import { notificationStore } from "../../../../stores/notification-store";
+        Pin,
+        User,
+    } from "lucide-svelte"; // Sửa lại import cho chuẩn Lucide
+    import { postStore } from "../../../../stores/post-store";
+    import type { PostResponse } from "../../../../dtos/post-dto";
 
-    // 1. Props & State
-    let { onOpen, onEdit, id } = $props<{
+    let { onOpen, onEdit, classroomId } = $props<{
         onOpen: () => void;
-        onEdit: (announcement: any) => void;
-        id: string;
+        onEdit: (announcement: PostResponse) => void;
+        classroomId: string;
     }>();
 
     let expandedId = $state<string | null>(null);
+    const { posts, fetchPosts } = postStore;
 
-    // 2. Kết nối Store
-    const {
-        notifications,
-        loading,
-        fetchClassroomNotifications,
-        markAsRead,
-        markAllAsRead,
-        remove,
-    } = notificationStore;
-
-    // 3. Khởi tạo dữ liệu
     onMount(() => {
-        if (id) {
-            fetchClassroomNotifications(id);
-        }
+        if (classroomId) fetchPosts(classroomId);
     });
 
-    // 4. Helpers
-    const formatDate = (dateString: any): string => {
+    const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
         return date.toLocaleDateString("vi-VN", {
             day: "2-digit",
-            month: "2-digit",
+            month: "short",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
@@ -51,145 +39,211 @@
 
     function toggleExpand(id: string) {
         expandedId = expandedId === id ? null : id;
-        const item = $notifications.find((n) => n.id === id);
-        if (item && !item.read) {
-            markAsRead(id);
+    }
+    const handleDelete = (announcementId: string) => async () => {
+        if (confirm("Bạn có chắc chắn muốn xóa thông báo này không?")) {
+            await postStore.removePost(announcementId);
+        }
+    };
+    function togglePin(announcementId: string) {
+        const announcement = $posts.find((post) => post.id === announcementId);
+        if (announcement) {
+            postStore.togglePinPost(announcementId, !announcement.isPinned);
         }
     }
 </script>
 
-<div
-    class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
->
+<div class="max-w-4xl mx-auto space-y-6 p-4">
     <div
-        class="p-6 border-b border-gray-50 flex justify-between items-center bg-white"
+        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8"
     >
         <div>
-            <h2 class="text-xl font-bold text-gray-800">Thông báo lớp học</h2>
-            <p class="text-sm text-gray-500">Cập nhật tin tức mới nhất</p>
+            <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                Bảng tin <span class="text-blue-600">Lớp học</span>
+            </h2>
+            <p class="text-gray-500 mt-1">
+                Nơi cập nhật những thông tin quan trọng nhất
+            </p>
         </div>
 
-        <div class="flex gap-2">
-            <button
-                onclick={() => markAllAsRead()}
-                class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
-            >
-                <CheckCheck class="w-4 h-4" />
-                Đọc tất cả
-            </button>
-            <button
-                onclick={onOpen}
-                class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all active:scale-95"
-            >
-                <Plus class="w-5 h-5" />
-                Tạo mới
-            </button>
-        </div>
+        <button
+            onclick={onOpen}
+            class="group flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold transition-all duration-300 shadow-[0_10px_20px_-10px_rgba(37,99,235,0.4)] hover:shadow-blue-500/40 active:scale-95"
+        >
+            <Plus class="w-5 h-5 transition-transform group-hover:rotate-90" />
+            Tạo thông báo
+        </button>
     </div>
 
-    {#if $loading}
-        <div class="p-12 flex justify-center items-center">
-            <div
-                class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
-            ></div>
-        </div>
-    {:else if $notifications.length === 0}
-        <div class="text-center py-20 bg-gray-50/50">
-            <div
-                class="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm"
-            >
-                <Plus class="w-8 h-8 text-gray-300" />
+    {#if $posts.length === 0}
+        <div
+            class="flex flex-col items-center justify-center py-24 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200"
+        >
+            <div class="bg-gray-100 p-4 rounded-full mb-4">
+                <Calendar class="w-8 h-8 text-gray-400" />
             </div>
-            <p class="text-gray-600 font-medium">Chưa có thông báo nào</p>
+            <p class="text-gray-500 font-medium text-lg">Hộp thư đang trống</p>
         </div>
     {:else}
-        <div class="divide-y divide-gray-100">
-            {#each $notifications as announcement (announcement.id)}
+        <div class="grid gap-4">
+            {#each $posts as announcement (announcement.id)}
                 {@const isExpanded = expandedId === announcement.id}
 
                 <div
-                    class="group transition-colors {announcement.read
-                        ? 'bg-white'
-                        : 'bg-blue-50/30'}"
+                    class="relative group bg-white rounded-2xl border border-gray-100 transition-all duration-300
+                    {announcement.isPinned
+                        ? 'ring-2 ring-yellow-400/30'
+                        : 'hover:shadow-xl hover:shadow-gray-200/50'}"
                 >
-                    <div class="p-5">
-                        <div class="flex justify-between items-start">
-                            <div
-                                class="flex-1 min-w-0 cursor-pointer"
-                                onclick={() => toggleExpand(announcement.id)}
-                            >
-                                <div class="flex items-center gap-2 mb-1">
-                                    {#if !announcement.read}
-                                        <span
-                                            class="w-2.5 h-2.5 bg-blue-600 rounded-full"
-                                        ></span>
-                                    {/if}
-                                    <h3
-                                        class="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors"
-                                    >
-                                        {announcement.title}
-                                    </h3>
+                    {#if announcement.isPinned}
+                        <div
+                            class="absolute -top-3 left-6 px-3 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold uppercase tracking-wider rounded-full shadow-sm flex items-center gap-1"
+                        >
+                            <Pin class="w-3 h-3" /> Ghim
+                        </div>
+                    {/if}
+
+                    <div class="p-6">
+                        <div
+                            class="flex flex-col md:flex-row justify-between gap-4"
+                        >
+                            <div class="flex items-start gap-4">
+                                <div class="relative">
+                                    <img
+                                        src={announcement.author.avatar.url}
+                                        alt="Avatar"
+                                        class="w-12 h-12 rounded-2xl object-cover ring-2 ring-gray-50 shadow-sm"
+                                    />
+                                    <div
+                                        class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"
+                                    ></div>
                                 </div>
 
-                                <div
-                                    class="flex items-center gap-4 text-sm text-gray-500"
-                                >
-                                    <div class="flex items-center gap-1.5">
-                                        <Calendar class="w-4 h-4" />
-                                        <span
-                                            >{formatDate(
-                                                announcement.createdAt,
-                                            )}</span
+                                <div class="flex-1 min-w-0">
+                                    <button
+                                        onclick={() =>
+                                            toggleExpand(announcement.id)}
+                                        class="text-left block group"
+                                    >
+                                        <h3
+                                            class="text-xl font-bold text-gray-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-1"
                                         >
+                                            {announcement.title}
+                                        </h3>
+                                    </button>
+
+                                    <div
+                                        class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-500"
+                                    >
+                                        <span
+                                            class="flex items-center gap-1.5 font-medium text-gray-700"
+                                        >
+                                            <User
+                                                class="w-4 h-4 text-blue-500"
+                                            />
+                                            {announcement.author.fullName}
+                                        </span>
+                                        <span class="flex items-center gap-1.5">
+                                            <Calendar class="w-4 h-4" />
+                                            {formatDate(announcement.createdAt)}
+                                        </span>
+                                        <span class="flex items-center gap-1.5">
+                                            <Calendar class="w-4 h-4" />
+                                            Cập nhật: {formatDate(
+                                                announcement.updatedAt,
+                                            )}
+                                        </span>
+                                        <span class="flex items-center gap-1.5">
+                                            Lớp học: {announcement.classroom_id}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-1 ml-4">
+                            <div
+                                class="flex items-center justify-end gap-2 bg-gray-50 p-1.5 rounded-xl self-end md:self-start"
+                            >
+                                <button
+                                    onclick={() => togglePin(announcement.id)}
+                                    title="Ghim thông báo"
+                                    class="p-2.5 {announcement.isPinned
+                                        ? 'text-yellow-600 bg-white shadow-sm'
+                                        : 'text-gray-400 hover:text-yellow-500'} rounded-lg transition-all"
+                                >
+                                    <Pin
+                                        class="w-4 h-4 {announcement.isPinned
+                                            ? 'fill-current'
+                                            : ''}"
+                                    />
+                                </button>
+
+                                <div class="w-[1px] h-4 bg-gray-200 mx-1"></div>
+
                                 <button
                                     onclick={() => onEdit(announcement)}
-                                    class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                    class="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                                 >
                                     <Edit class="w-4 h-4" />
                                 </button>
                                 <button
-                                    onclick={() => remove(announcement.id)}
-                                    class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                    onclick={handleDelete(announcement.id)}
+                                    class="p-2.5 text-gray-400 hover:text-red-600 hover:bg-white hover:shadow-sm rounded-lg transition-all"
                                 >
                                     <Trash2 class="w-4 h-4" />
                                 </button>
+
                                 <button
                                     onclick={() =>
                                         toggleExpand(announcement.id)}
-                                    class="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-all"
+                                    class="ml-1 p-2.5 bg-gray-200/50 text-gray-600 hover:bg-gray-200 rounded-lg transition-all"
                                 >
-                                    {#if isExpanded}
-                                        <ChevronUp class="w-5 h-5" />
-                                    {:else}
-                                        <ChevronDown class="w-5 h-5" />
-                                    {/if}
+                                    <ChevronDown
+                                        class="w-5 h-5 transition-transform duration-300 {isExpanded
+                                            ? 'rotate-180'
+                                            : ''}"
+                                    />
                                 </button>
                             </div>
                         </div>
 
-                        {#if !isExpanded}
-                            <p class="mt-2 text-gray-600 text-sm line-clamp-1">
-                                {announcement.content}
-                            </p>
+                        {#if isExpanded}
+                            <div class="mt-6 pt-6 border-t border-gray-100">
+                                <div
+                                    class="prose prose-blue max-w-none text-gray-700 leading-relaxed bg-blue-50/30 p-5 rounded-2xl border border-blue-100/50 whitespace-pre-wrap"
+                                >
+                                    {announcement.content}
+                                </div>
+                                {#if announcement.attachments?.length > 0}
+                                    <div class="mt-4">
+                                        <h4
+                                            class="text-lg font-semibold text-gray-800"
+                                        >
+                                            Tệp đính kèm:
+                                        </h4>
+                                        <ul
+                                            class="list-disc list-inside text-gray-700"
+                                        >
+                                            {#each announcement.attachments as attachment}
+                                                <li>
+                                                    <a
+                                                        href={attachment.fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="text-blue-600 hover:underline"
+                                                    >
+                                                        {attachment.fileName} ({(
+                                                            attachment.fileSize /
+                                                            1024
+                                                        ).toFixed(2)} KB)
+                                                    </a>
+                                                </li>
+                                            {/each}
+                                        </ul>
+                                    </div>
+                                {/if}
+                            </div>
                         {/if}
                     </div>
-
-                    {#if isExpanded}
-                        <div
-                            class="px-5 pb-6 animate-in fade-in slide-in-from-top-2 duration-200"
-                        >
-                            <div
-                                class="prose prose-sm max-w-none text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100 whitespace-pre-wrap"
-                            >
-                                {announcement.content}
-                            </div>
-                        </div>
-                    {/if}
                 </div>
             {/each}
         </div>
@@ -197,10 +251,8 @@
 </div>
 
 <style>
-    .line-clamp-1 {
-        display: -webkit-box;
-        -webkit-line-clamp: 1;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+    /* Animation cho việc mở rộng content */
+    div {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 </style>

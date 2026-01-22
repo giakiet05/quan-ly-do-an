@@ -1,7 +1,7 @@
 // src/stores/class.store.ts
 import { writable, derived } from "svelte/store";
 import type { ClassItem, CreateClassRequest } from "../types/class";
-import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile, getClassroom, removeStudentFromClassroom } from "../services/classroom-service";
+import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile, getClassroom, removeStudentFromClassroom, changeClassroomStatus } from "../services/classroom-service";
 import { mapClassroomToClassItem, mapUIRequestToDTO } from "../mappers/classroom-mapper";
 import type { ClassroomResponse } from "../dtos/classroom-dto";
 
@@ -147,6 +147,16 @@ function createClassStore() {
         }
     }
 
+    async function updateClassroomStatus(classroomId: string, status: "active" | "inactive" | "archived") {
+        try {
+            await changeClassroomStatus(classroomId, status);
+            await fetchMyClasses(); // Refresh the class list after status update
+        } catch (err) {
+            console.error("Failed to update classroom status", err);
+            throw err;
+        }
+    }
+
     return {
         // state
         classes,
@@ -173,6 +183,7 @@ function createClassStore() {
         setClassDetail,
         fetchClassDetail,
         removeStudent,
+        updateClassroomStatus,
     };
 }
 

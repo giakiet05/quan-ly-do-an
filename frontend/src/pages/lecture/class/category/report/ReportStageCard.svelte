@@ -9,6 +9,7 @@
         ChevronRight,
     } from "lucide-svelte";
     import type { PeriodResponse } from "../../../../../dtos/period-dto";
+    import { Pencil } from "@lucide/svelte";
 
     let { period, onDelete, onViewDetail } = $props<{
         period: PeriodResponse;
@@ -92,10 +93,10 @@
         <div class="flex items-center gap-2">
             <button
                 onclick={() => onViewDetail(period)}
-                class="flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold transition-colors shadow-sm"
+                class="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-bue-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
             >
-                <Eye class="w-5 h-5" />
-                Chi tiết
+                <Pencil class="w-5 h-5" />
+                sửa
             </button>
             <button
                 onclick={() => onDelete(period.id)}
