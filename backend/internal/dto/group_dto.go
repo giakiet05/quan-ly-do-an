@@ -93,9 +93,9 @@ type UpdateReportFeedbackRequest struct {
 }
 
 type GetGroupsFilterQuery struct {
-	ClassroomID string  `json:"classroom_id"`
-	ProjectID   *string `json:"project_id,omitempty"`
-	MemberID    *string `json:"member_id,omitempty"`
+	ClassroomID string  `form:"classroom_id"`
+	ProjectID   *string `form:"project_id,omitempty"`
+	MemberID    *string `form:"member_id,omitempty"`
 }
 
 type GroupResponse struct {
@@ -113,7 +113,7 @@ type GroupResponse struct {
 
 type TaskResponse struct {
 	ID          string    `json:"id"`
-	Title       string    `son:"title"`
+	Title       string    `json:"title"`
 	AssignToIDs []string  `json:"assign_to_ids"`
 	DueDate     time.Time `json:"due_date"`
 	Status      string    `json:"status"`

@@ -49,7 +49,7 @@ func (mc *MessageController) GetMessageByID(ctx *gin.Context) {
 }
 
 func (mc *MessageController) GetMessageFilter(ctx *gin.Context) {
-	var query *dto.GetMessageFilterQuery
+	var query dto.GetMessageFilterQuery
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
@@ -61,7 +61,7 @@ func (mc *MessageController) GetMessageFilter(ctx *gin.Context) {
 		return
 	}
 
-	response, err := mc.messageService.GetMessageFilter(query, authUser.(auth.AuthUser).ID)
+	response, err := mc.messageService.GetMessageFilter(&query, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
