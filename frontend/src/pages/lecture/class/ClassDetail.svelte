@@ -230,7 +230,7 @@
                 </div>
             {:else if activeTab === "students"}
                 <div class="bg-white rounded-lg shadow-sm">
-                    <StudentTab {students} />
+                    <StudentTab {classroomId} {students} />
                 </div>
             {:else if activeTab === "announcements"}
                 <div class="bg-white rounded-lg shadow-sm">
