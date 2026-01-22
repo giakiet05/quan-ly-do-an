@@ -97,7 +97,7 @@ func initServices(
 		ClassroomJoinService:       service.NewClassroomJoinService(repos.ClassroomJoinRequestRepo, repos.ClassroomRepo, repos.UserRepo),
 		ClassroomService:           service.NewClassroomService(repos.ClassroomRepo, repos.UserRepo, repos.ChannelRepo),
 		ClassroomInvitationService: service.NewClassroomInvitationService(repos.ClassroomInvitationRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
-		ClassPostService:           service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo),
+		ClassPostService:           service.NewClassPostService(repos.ClassPostRepo, repos.ClassroomRepo, repos.UserRepo, eventBus),
 		ProjectService:             service.NewProjectService(repos.ProjectRepo, repos.ClassroomRepo, repos.GroupRepo, eventBus, cron),
 	}
 }

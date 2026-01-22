@@ -62,6 +62,8 @@ func (s *notificationService) Start() {
 	s.eventBus.Subscribe(bus.TopicClassroomInvitation, eventChannel)
 	s.eventBus.Subscribe(bus.TopicReportSubmitted, eventChannel)
 	s.eventBus.Subscribe(bus.TopicReportGraded, eventChannel)
+	s.eventBus.Subscribe(bus.TopicClassPostCreated, eventChannel)
+	s.eventBus.Subscribe(bus.TopicClassPostUpdated, eventChannel)
 
 	log.Println("NotificationService started and subscribed to events.")
 
@@ -83,6 +85,10 @@ func (s *notificationService) processEvents(ch bus.EventListener) {
 			s.handleReportSubmitted(event)
 		case bus.TopicReportGraded:
 			s.handleReportGraded(event)
+		case bus.TopicClassPostCreated:
+			s.handleClassPostCreated(event)
+		case bus.TopicClassPostUpdated:
+			s.handleClassPostUpdated(event)
 		}
 	}
 }
@@ -582,6 +588,94 @@ func (s *notificationService) handleReportGraded(event bus.Event) {
 		}
 
 		s.createAndPublish(ctx, member.ID.Hex(), notification)
+	}
+}
+
+func (s *notificationService) handleClassPostCreated(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	payload := event.Payload()
+	classroomID, _ := payload["classroom_id"].(string)
+	postID, _ := payload["post_id"].(string)
+	postTitle, _ := payload["post_title"].(string)
+	authorID, _ := payload["author_id"].(string)
+	authorName, _ := payload["author_name"].(string)
+
+	// Get classroom to get all students
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get classroom for post notification: %v", err)
+		return
+	}
+
+	authorOID, err := primitive.ObjectIDFromHex(authorID)
+	if err != nil {
+		return
+	}
+
+	// Notify all students (except author)
+	for _, studentID := range classroom.StudentIDs {
+		if studentID.Hex() == authorID {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: studentID,
+			ActorID:     authorOID,
+			Type:        model.NotificationTypeClassPostCreated,
+			Message:     fmt.Sprintf("%s đã đăng bài viết mới: %s", authorName, postTitle),
+			Link:        fmt.Sprintf("/classrooms/%s/posts/%s", classroomID, postID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+
+		s.createAndPublish(ctx, studentID.Hex(), notification)
+	}
+}
+
+func (s *notificationService) handleClassPostUpdated(event bus.Event) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	payload := event.Payload()
+	classroomID, _ := payload["classroom_id"].(string)
+	postID, _ := payload["post_id"].(string)
+	postTitle, _ := payload["post_title"].(string)
+	authorID, _ := payload["author_id"].(string)
+	authorName, _ := payload["author_name"].(string)
+
+	// Get classroom to get all students
+	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get classroom for post notification: %v", err)
+		return
+	}
+
+	authorOID, err := primitive.ObjectIDFromHex(authorID)
+	if err != nil {
+		return
+	}
+
+	// Notify all students (except author)
+	for _, studentID := range classroom.StudentIDs {
+		if studentID.Hex() == authorID {
+			continue
+		}
+
+		notification := &model.Notification{
+			RecipientID: studentID,
+			ActorID:     authorOID,
+			Type:        model.NotificationTypeClassPostUpdated,
+			Message:     fmt.Sprintf("%s đã cập nhật bài viết: %s", authorName, postTitle),
+			Link:        fmt.Sprintf("/classrooms/%s/posts/%s", classroomID, postID),
+			IsRead:      false,
+			Metadata:    payload,
+			CreatedAt:   time.Now(),
+		}
+
+		s.createAndPublish(ctx, studentID.Hex(), notification)
 	}
 }
 
