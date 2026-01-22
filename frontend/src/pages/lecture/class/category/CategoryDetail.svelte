@@ -8,12 +8,50 @@
     import { mockClasses } from "../../../../mocks/classes.mock";
     import ProjectTab from "./project/ProjectTab.svelte";
     import ReportsTab from "./report/ReportsTab.svelte";
+    import { projectRoundStore } from "../../../../stores/project-round-store";
+    import type { ProjectRound } from "../../../../types/project-round";
+    import { getClassroom } from "../../../../services/classroom-service";
+    import type { ClassroomResponse } from "../../../../dtos";
 
-    const classData = mockClasses[0];
-    const category = {
-        ...mockCategoriesList[0],
-        status: "đang diễn ra",
-    };
+    // Lấy params từ URL
+    let { params } = $props();
+    let classroomId: string = $derived(params.id);
+    let projectRoundId: string = $derived(params.categoryId);
+
+    // 2. Tạo một state để chứa dữ liệu sau khi fetch xong
+    let projectRound = $state<ProjectRound | null>(null);
+    let isLoading = $state(true);
+
+    // 3. Sử dụng $effect để tự động fetch lại khi classroomId hoặc projectRoundId thay đổi
+    $effect(() => {
+        if (classroomId && projectRoundId) {
+            isLoading = true;
+            projectRoundStore
+                .getRoundById(classroomId, projectRoundId)
+                .then((data) => {
+                    projectRound = data;
+                })
+                .catch((err) => {
+                    console.error("Lỗi khi lấy dữ liệu:", err);
+                })
+                .finally(() => {
+                    isLoading = false;
+                });
+        }
+    });
+    // state cho class
+    let classDetail = $state<ClassroomResponse | null>(null);
+    $effect(() => {
+        if (classroomId) {
+            getClassroom(classroomId)
+                .then((data) => {
+                    classDetail = data;
+                })
+                .catch((err) => {
+                    console.error("Lỗi khi lấy chi tiết lớp học:", err);
+                });
+        }
+    });
 
     // 2. State quản lý tab hiện tại
     let activeTab = $state("projects");
@@ -40,20 +78,14 @@
 
     <div class="mb-6 flex items-start justify-between">
         <div>
-            <h1 class="mb-2 text-2xl font-semibold">{category.name}</h1>
-            <p class="mb-2 text-gray-600">{category.description}</p>
+            <h1 class="mb-2 text-2xl font-semibold">{projectRound?.name}</h1>
+            <p class="mb-2 text-gray-600">{projectRound?.description}</p>
             <p class="text-sm text-gray-500">
-                Lớp: {classData.name} - {classData.semester} | Thời gian: {formatDate(
-                    category.startDate,
-                )} - {formatDate(category.endDate)}
+                Lớp: {classDetail?.name} - {classDetail?.semester} | Thời gian: {formatDate(
+                    projectRound?.startDate.toDateString() || "",
+                )} - {formatDate(projectRound?.endDate.toDateString() || "")}
             </p>
         </div>
-        <button
-            class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 transition-colors hover:bg-gray-50"
-        >
-            <Download class="h-4 w-4" />
-            Xuất dữ liệu
-        </button>
     </div>
 
     <div class="flex gap-6 border-b border-gray-200">
@@ -77,9 +109,9 @@
 </div>
 
 {#if activeTab === "projects"}
-    <ProjectTab {category} />
+    <ProjectTab {classroomId} {projectRoundId} />
 {:else if activeTab === "reports"}
-    <ReportsTab />
+    <ReportsTab {classroomId} {projectRoundId} />
 {:else if activeTab === "settings"}
     <div class="rounded-lg bg-white p-6 shadow-sm">
         <h2 class="mb-6 text-xl font-semibold">Cài đặt hạng mục</h2>
@@ -94,7 +126,7 @@
                         >
                         <input
                             type="text"
-                            value={category.name}
+                            value={projectRound?.name}
                             class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -133,7 +165,7 @@
                             >
                             <input
                                 type="date"
-                                value={category.startDate}
+                                value={projectRound?.startDate}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -143,7 +175,7 @@
                             >
                             <input
                                 type="date"
-                                value={category.endDate}
+                                value={projectRound?.endDate}
                                 class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>

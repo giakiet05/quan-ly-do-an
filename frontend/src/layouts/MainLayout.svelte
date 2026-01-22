@@ -62,11 +62,11 @@
   <main class="content">
     <header class="top-bar">
       <div class="header-left">
-        <div class="breadcrumb">
+        <!-- <div class="breadcrumb">
           <span class="breadcrumb-item">Trang chủ</span>
           <span class="separator">/</span>
           <span class="breadcrumb-item active">{currentBreadcrumb}</span>
-        </div>
+        </div> -->
       </div>
 
       <!-- Role Switcher -->

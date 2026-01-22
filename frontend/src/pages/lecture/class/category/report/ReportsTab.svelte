@@ -1,83 +1,70 @@
 <script lang="ts">
     import { Plus } from "lucide-svelte";
+    import { periodStore } from "../../../../../stores/period-store";
 
     import type { ReportStage } from "../../../../../types/report";
     import ReportStageCard from "./ReportStageCard.svelte";
     import ReportStageDetail from "./ReportStageDetail.svelte";
+    import type {
+        CreatePeriodRequest,
+        PeriodResponse,
+    } from "../../../../../dtos/period-dto";
     import CreateReportStageModal from "./CreateReportStageModal.svelte";
 
-    // 1. Quản lý State bằng Runes
-    let showCreateModal = $state(false);
-    let selectedStage = $state<ReportStage | null>(null);
-    let reportStages = $state<ReportStage[]>([
-        {
-            id: "1",
-            title: "Báo cáo tuần 1-2",
-            description: "Báo cáo tiến độ thực hiện đề tài giai đoạn đầu",
-            startDate: "2024-01-15",
-            endDate: "2024-01-29",
-            totalStudents: 45,
-            submittedCount: 38,
-            status: "completed",
-        },
-        {
-            id: "2",
-            title: "Báo cáo tuần 3-4",
-            description: "Báo cáo phân tích yêu cầu và thiết kế hệ thống",
-            startDate: "2024-02-01",
-            endDate: "2024-02-15",
-            totalStudents: 45,
-            submittedCount: 42,
-            status: "ongoing",
-        },
-        {
-            id: "3",
-            title: "Báo cáo tuần 5-6",
-            description: "Báo cáo triển khai và coding",
-            startDate: "2024-02-20",
-            endDate: "2024-03-05",
-            totalStudents: 45,
-            submittedCount: 0,
-            status: "upcoming",
-        },
-    ]);
+    // Props
+    let { classroomId, projectRoundId } = $props<{
+        classroomId: string;
+        projectRoundId: string;
+    }>();
 
-    // 2. Các hàm xử lý (Handlers)
-    const handleCreateStage = (
-        newStage: Omit<ReportStage, "id" | "submittedCount" | "status">,
-    ) => {
-        const stage: ReportStage = {
-            ...newStage,
-            id: Date.now().toString(),
-            submittedCount: 0,
-            status:
-                new Date(newStage.startDate) > new Date()
-                    ? "upcoming"
-                    : "ongoing",
-        };
-        reportStages = [...reportStages, stage];
-        showCreateModal = false;
-    };
+    // State
+    let showCreateModal = $state(false);
+    let selectedPeriod: PeriodResponse | null = $state(null);
+
+    // Derived store data
+    const { periods, fetchPeriods } = periodStore;
+    $effect(() => {
+        fetchPeriods(classroomId, projectRoundId);
+    });
+
+    // Handlers
 
     const handleDeleteStage = (id: string) => {
         if (confirm("Bạn có chắc chắn muốn xóa giai đoạn báo cáo này?")) {
-            reportStages = reportStages.filter((stage) => stage.id !== id);
+            periods.update((list) => list.filter((stage) => stage.id !== id));
         }
     };
 
-    const handleViewDetail = (stage: ReportStage) => {
-        selectedStage = stage;
+    const handleViewDetail = (period: PeriodResponse) => {
+        selectedPeriod = period;
+    };
+
+    const handleCreatePeriod = async (newPeriod: CreatePeriodRequest) => {
+        try {
+            console.log(">>> PAGE ĐÃ NHẬN LỆNH TẠO GIAI ĐỔN:", newPeriod);
+            const createdPeriod = await periodStore.addPeriod(
+                newPeriod,
+                classroomId,
+                projectRoundId,
+            );
+            if (createdPeriod) {
+                showCreateModal = false;
+            }
+        } catch (error) {
+            console.error("Failed to create period:", error);
+            alert("Đã xảy ra lỗi khi tạo giai đoạn báo cáo. Vui lòng thử lại.");
+        }
     };
 </script>
 
-{#if selectedStage}
+{#if selectedPeriod}
     <ReportStageDetail
-        stage={selectedStage}
-        onBack={() => (selectedStage = null)}
+        period={selectedPeriod}
+        onBack={() => (selectedPeriod = null)}
     />
 {:else}
     <div class="rounded-lg bg-white p-6 shadow-sm">
-        {#if reportStages.length === 0}
+        {#if $periods.length === 0}
             <div class="py-16 text-center">
                 <button
                     onclick={() => (showCreateModal = true)}
@@ -106,9 +93,9 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-4">
-                    {#each reportStages as stage (stage.id)}
+                    {#each $periods as period (period.id)}
                         <ReportStageCard
-                            {stage}
+                            {period}
                             onDelete={handleDeleteStage}
                             onViewDetail={handleViewDetail}
                         />
@@ -122,7 +109,8 @@
 {#if showCreateModal}
     <CreateReportStageModal
         onClose={() => (showCreateModal = false)}
-        onSubmit={handleCreateStage}
+        onSubmit={handleCreatePeriod}
         totalStudents={45}
+        maxStudents={60}
     />
 {/if}

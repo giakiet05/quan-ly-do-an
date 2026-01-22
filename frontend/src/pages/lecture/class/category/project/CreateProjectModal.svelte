@@ -1,26 +1,24 @@
 <script lang="ts">
     import { X, Plus } from "lucide-svelte";
-    import type { Project } from "../../../../../types/project";
+    import type { UpdateProjectRequest } from "../../../../../dtos/project-dto";
     // 1. Props
-    let { onClose, onSubmit, categoryId, editingProject } = $props<{
+    let { onClose, onSubmit, projectRoundId, editingProject } = $props<{
         onClose: () => void;
         onSubmit: (project: any) => void;
-        categoryId: string;
-        editingProject?: Project;
+        projectRoundId: string;
+        editingProject?: UpdateProjectRequest;
     }>();
 
     // 2. Form State sử dụng Rune $state
     let formData = $state({
-        categoryId,
-        name: editingProject?.name || "",
+        projectRoundId,
+        title: editingProject?.title || "",
+        amount: editingProject?.amount || 1, // Map to "amount" field
         description: editingProject?.description || "",
-        maxStudents: editingProject?.maxStudents || 3,
-        minTeamMembers: editingProject?.minTeamMembers || 1,
-        maxTeamMembers: editingProject?.maxTeamMembers || 3,
-        instructor: editingProject?.instructor || "TS. Nguyễn Văn A",
+        minMember: editingProject?.minMember || 1, // Map to "minMember"
+        maxMember: editingProject?.maxMember || 3, // Map to "maxMember"
         tags: [...(editingProject?.tags || [])],
         status: editingProject?.status || "available",
-        quantity: 1,
     });
 
     let tagInput = $state("");
@@ -44,11 +42,15 @@
         e.preventDefault();
         const newErrors: Record<string, string> = {};
 
-        if (!formData.name.trim()) newErrors.name = "Vui lòng nhập tên đề tài";
+        if (!formData.title.trim()) newErrors.title = "Vui lòng nhập tiêu đề";
+        if (formData.amount < 1) newErrors.amount = "Số lượng phải lớn hơn 0"; // Validate "amount"
         if (!formData.description.trim())
             newErrors.description = "Vui lòng nhập mô tả";
-        if (formData.maxStudents < 1)
-            newErrors.maxStudents = "Số lượng sinh viên phải lớn hơn 0";
+        if (formData.minMember < 1)
+            newErrors.minMember = "Số thành viên tối thiểu phải lớn hơn 0";
+        if (formData.maxMember < formData.minMember)
+            newErrors.maxMember =
+                "Số thành viên tối đa phải lớn hơn hoặc bằng tối thiểu";
 
         if (Object.keys(newErrors).length > 0) {
             errors = newErrors;
@@ -86,27 +88,46 @@
 
         <form onsubmit={handleSubmit} class="space-y-6 p-6">
             <div>
-                <label class="mb-2 block text-sm font-medium" for="name">
-                    Tên đề tài <span class="text-red-500">*</span>
+                <label class="mb-2 block text-sm font-medium" for="title">
+                    Tiêu đề <span class="text-red-500">*</span>
                 </label>
                 <input
-                    id="name"
+                    id="title"
                     type="text"
-                    bind:value={formData.name}
-                    oninput={() => clearError("name")}
-                    class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.name
+                    bind:value={formData.title}
+                    oninput={() => clearError("title")}
+                    class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.title
                         ? 'border-red-500'
                         : 'border-gray-300'}"
-                    placeholder="Ví dụ: Hệ thống quản lý thư viện trực tuyến"
+                    placeholder="Ví dụ: Đề tài nghiên cứu AI"
                 />
-                {#if errors.name}
-                    <p class="mt-1 text-sm text-red-500">{errors.name}</p>
+                {#if errors.title}
+                    <p class="mt-1 text-sm text-red-500">{errors.title}</p>
+                {/if}
+            </div>
+
+            <div>
+                <label class="mb-2 block text-sm font-medium" for="amount">
+                    Số lượng <span class="text-red-500">*</span>
+                </label>
+                <input
+                    id="amount"
+                    type="number"
+                    bind:value={formData.amount}
+                    oninput={() => clearError("amount")}
+                    class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.amount
+                        ? 'border-red-500'
+                        : 'border-gray-300'}"
+                    placeholder="Nhập số lượng đề tài"
+                />
+                {#if errors.amount}
+                    <p class="mt-1 text-sm text-red-500">{errors.amount}</p>
                 {/if}
             </div>
 
             <div>
                 <label class="mb-2 block text-sm font-medium" for="desc">
-                    Mô tả đề tài <span class="text-red-500">*</span>
+                    Mô tả <span class="text-red-500">*</span>
                 </label>
                 <textarea
                     id="desc"
@@ -127,48 +148,52 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="mb-2 block text-sm font-medium" for="qty">
-                        Số lượng đề tài {!editingProject ? "*" : ""}
+                    <label
+                        class="mb-2 block text-sm font-medium"
+                        for="minMember"
+                    >
+                        Số thành viên tối thiểu <span class="text-red-500"
+                            >*</span
+                        >
                     </label>
                     <input
-                        id="qty"
+                        id="minMember"
                         type="number"
-                        bind:value={formData.quantity}
-                        disabled={!!editingProject}
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                        bind:value={formData.minMember}
+                        oninput={() => clearError("minMember")}
+                        class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.minMember
+                            ? 'border-red-500'
+                            : 'border-gray-300'}"
+                        placeholder="Nhập số thành viên tối thiểu"
                     />
-                    {#if !editingProject}
-                        <p class="mt-1 text-xs text-gray-500">
-                            Hệ thống sẽ tạo {formData.quantity} đề tài giống nhau
+                    {#if errors.minMember}
+                        <p class="mt-1 text-sm text-red-500">
+                            {errors.minMember}
                         </p>
                     {/if}
                 </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="mb-2 block text-sm font-medium" for="minT"
-                        >Số thành viên tối thiểu</label
+                    <label
+                        class="mb-2 block text-sm font-medium"
+                        for="maxMember"
                     >
+                        Số thành viên tối đa <span class="text-red-500">*</span>
+                    </label>
                     <input
-                        id="minT"
+                        id="maxMember"
                         type="number"
-                        bind:value={formData.minTeamMembers}
-                        max={formData.maxTeamMembers}
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        bind:value={formData.maxMember}
+                        oninput={() => clearError("maxMember")}
+                        class="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.maxMember
+                            ? 'border-red-500'
+                            : 'border-gray-300'}"
+                        placeholder="Nhập số thành viên tối đa"
                     />
-                </div>
-                <div>
-                    <label class="mb-2 block text-sm font-medium" for="maxT"
-                        >Số thành viên tối đa</label
-                    >
-                    <input
-                        id="maxT"
-                        type="number"
-                        bind:value={formData.maxTeamMembers}
-                        min={formData.minTeamMembers}
-                        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    {#if errors.maxMember}
+                        <p class="mt-1 text-sm text-red-500">
+                            {errors.maxMember}
+                        </p>
+                    {/if}
                 </div>
             </div>
 

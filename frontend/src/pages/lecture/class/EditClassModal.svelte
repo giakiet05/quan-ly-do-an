@@ -24,7 +24,7 @@
     const { onClose, onSubmit, classData } = $props<{
         classData: ClassData;
         onClose: () => void;
-        onSubmit: (data: CreateClassRequest) => void;
+        onSubmit: (data: CreateClassRequest, file?: File) => void;
     }>();
 
     type ActiveTab = "list" | "excel" | "upload";

@@ -1,11 +1,9 @@
 // src/stores/class.store.ts
 import { writable, derived } from "svelte/store";
 import type { ClassItem, CreateClassRequest } from "../types/class";
-import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile } from "../services/classroom-service";
+import { createClassroom, deleteClassroom, getMyClassrooms, updateClassroom, uploadWhitelistStudentCodeFile, getClassroom } from "../services/classroom-service";
 import { mapClassroomToClassItem, mapUIRequestToDTO } from "../mappers/classroom-mapper";
 import type { ClassroomResponse } from "../dtos/classroom-dto";
-
-
 
 function createClassStore() {
     // ===== state =====
@@ -76,9 +74,12 @@ function createClassStore() {
         }
     }
 
-    async function updateClass(id: string, uiData: CreateClassRequest) {
+    async function updateClass(id: string, uiData: CreateClassRequest, file?: File) {
         try {
             const dtoPayload = mapUIRequestToDTO(uiData);
+            if (file) {
+                await uploadWhitelistStudentCodeFile(id, file);
+            }
             const response = await updateClassroom(id, dtoPayload);
 
             console.log("API update response:", response);
@@ -90,10 +91,9 @@ function createClassStore() {
         }
     }
 
-    // xóa gọi api xóa lớp học thật sự 
     async function removeClass(id: string) {
         try {
-            deleteClassroom(id);
+            await deleteClassroom(id);
             classes.update((list) => list.filter((c) => c.id !== id));
         } catch (err) {
             console.error("Failed to delete classroom", err);
@@ -104,14 +104,22 @@ function createClassStore() {
     async function fetchMyClasses() {
         try {
             const data = await getMyClassrooms();
-            console.log("Dữ liệu nhận được:", data);
             const rawClasses = (data as any).classrooms || [];
             const mapped = rawClasses.map(mapClassroomToClassItem);
             setData(mapped);
-
         } catch (err) {
             console.error("Failed to fetch classrooms", err);
-            setData([]); // Lỗi thì cho danh sách trống để không vỡ giao diện
+            setData([]); // Clear data on error to avoid UI issues
+        }
+    }
+
+    async function fetchClassById(classId: string) {
+        try {
+            const classDetails = await getClassroom(classId);
+            return classDetails;
+        } catch (err) {
+            console.error("Failed to fetch class details", err);
+            throw err;
         }
     }
 
@@ -136,6 +144,7 @@ function createClassStore() {
         updateClass,
         removeClass,
         fetchMyClasses,
+        fetchClassById,
     };
 }
 

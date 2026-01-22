@@ -14,7 +14,6 @@
 
     type ActiveTab = "list" | "excel" | "upload";
 
-    let allCheckbox = $state<HTMLInputElement>();
     let uploadedData = $state<string[]>([]);
     let manualCode = $state("");
     let domainInput = $state("");
@@ -140,6 +139,7 @@
 <div class="content-area">
     <div class="tabs">
         <button
+            hidden={!classDetail}
             type="button"
             class:active={activeTab === "list"}
             onclick={() => setActiveTab("list")}

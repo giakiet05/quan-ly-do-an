@@ -3,7 +3,8 @@ import {
     getProjectRounds,
     createProjectRound,
     deleteProjectRound,
-    updateProjectRound
+    updateProjectRound,
+    getProjectRoundById
 } from "../services/project-round-service";
 import type { ProjectRound } from "../types/project-round";
 import type { CreateProjectRoundRequest, UpdateProjectRoundRequest } from "../dtos/project-dto";
@@ -11,6 +12,7 @@ import type { CreateProjectRoundRequest, UpdateProjectRoundRequest } from "../dt
 const roundsStore = writable<ProjectRound[]>([]);
 const isLoadingStore = writable(false);
 const errorStore = writable<string | null>(null);
+const currentRoundStore = writable<ProjectRound | null>(null);
 
 export const projectRoundStore = {
     // Để component có thể dùng $projectRoundStore
@@ -65,9 +67,24 @@ export const projectRoundStore = {
             errorStore.set("Lỗi khi xóa vòng dự án");
             alert("Xóa thất bại!");
         }
+    },
+    async getRoundById(classroomId: string, roundId: string) {
+        try {
+            const data = await getProjectRoundById(classroomId, roundId);
+            currentRoundStore.set(data); // Set the current round
+            return data;
+        } catch (e) {
+            errorStore.set("Lỗi khi lấy chi tiết vòng dự án");
+            throw e;
+        }
+    },
+    get currentRound() {
+        return get(currentRoundStore);
     }
 };
 
 // Export thêm các trạng thái phụ dưới dạng readable để an toàn
 export const projectRoundLoading = { subscribe: isLoadingStore.subscribe };
 export const projectRoundError = { subscribe: errorStore.set };
+// Export the current round as a readable store
+export const currentProjectRound = { subscribe: currentRoundStore.subscribe };
