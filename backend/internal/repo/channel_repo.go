@@ -414,7 +414,7 @@ func (c *channelRepo) RemoveMember(ctx context.Context, channelID string, userID
 	update := bson.M{
 		"$pull": bson.M{
 			"members": bson.M{
-				"user_id": userObjectID,
+				"_id": userObjectID,
 			},
 			"settings": bson.M{
 				"user_id": userObjectID,
