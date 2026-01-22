@@ -26,6 +26,7 @@ type ClassroomService interface {
 	RemoveCoLecturerFromClassroom(classroomID, lecturerID, coLecturerID string) error
 	LeaveClassroom(classroomID, userID string) error
 
+	GetClassroomByChannelID(channelID string) (*dto.ClassroomResponse, error)
 	// Whitelist management
 	UploadWhitelistStudentCode(classroomID, lecturerID string, studentCodes []string) error
 	UpdateWhitelistStudentCode(classroomID, lecturerID string, addCodes, removeCodes []string) error
@@ -138,6 +139,26 @@ func (s *classroomService) GetClassroomByID(classroomID string) (*dto.ClassroomR
 
 	// Get classroom
 	classroom, err := s.classroomRepo.GetByID(ctx, classroomID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Populate users
+	lecturer, coLecturers, students, err := s.PopulateClassroomUsers(ctx, classroom)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DTO
+	response := dto.FromClassroomWithUsers(classroom, lecturer, coLecturers, students)
+	return &response, nil
+}
+func (s *classroomService) GetClassroomByChannelID(channelID string) (*dto.ClassroomResponse, error) {
+	ctx, cancel := util.NewDefaultDBContext()
+	defer cancel()
+
+	// Get classroom
+	classroom, err := s.classroomRepo.GetByChannelID(ctx, channelID)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,8 @@ func RegisterClassroomRoutes(router *gin.RouterGroup, controller *controller.Cla
 		classrooms.PUT("/:id", controller.UpdateClassroom)
 		classrooms.DELETE("/:id", controller.DeleteClassroom)
 
+		// Get by channel ID
+		classrooms.GET("/channel/:id", controller.GetClassroomByChannelID)
 		// Status management
 		classrooms.PATCH("/:id/status", controller.UpdateClassroomStatus)
 
