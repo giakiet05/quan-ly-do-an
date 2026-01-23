@@ -14,23 +14,27 @@ Tất cả endpoints trả về response theo format:
 ```
 
 **Ký hiệu:**
--  = Yêu cầu authentication (gửi `Authorization: Bearer <access_token>` trong header)
--  = Chỉ giảng viên mới có quyền truy cập
--  = Giảng viên hoặc trợ giảng có quyền truy cập
--  = Cả sinh viên và giảng viên đều có quyền truy cập
+
+- = Yêu cầu authentication (gửi `Authorization: Bearer <access_token>` trong header)
+- = Chỉ giảng viên mới có quyền truy cập
+- = Giảng viên hoặc trợ giảng có quyền truy cập
+- = Cả sinh viên và giảng viên đều có quyền truy cập
 
 ---
 
 ## ⚠️ BREAKING CHANGES - Class Posts API (Updated: 2026-01-22)
 
 ### Endpoints Removed ❌
+
 The following endpoints have been **REMOVED**:
+
 - ❌ `POST /api/classrooms/posts/upload-attachments` (standalone upload)
 - ❌ `DELETE /api/classrooms/posts/attachments/:public_id` (standalone delete)
 - ❌ `POST /api/classrooms/posts/:post_id/attachments` (add attachment)
 - ❌ `DELETE /api/classrooms/posts/:post_id/attachments` (remove attachment)
 
 ### Endpoints Changed 🔄
+
 - **Create Post**: Changed from `application/json` to `multipart/form-data`
   - OLD: Upload files separately → Get URLs → Create post with URLs
   - NEW: Upload files directly in the same request
@@ -40,7 +44,9 @@ The following endpoints have been **REMOVED**:
   - NEW: Upload files directly in the same request
 
 ### Response Schema Changes 📝
+
 **Author object** now includes additional fields:
+
 ```json
 {
   "author": {
@@ -54,24 +60,28 @@ The following endpoints have been **REMOVED**:
 ```
 
 **Attachment object** now includes `public_id`:
+
 ```json
 {
   "file_name": "...",
   "file_url": "...",
-  "public_id": "...",      // NEW FIELD
+  "public_id": "...", // NEW FIELD
   "file_size": 123,
   "mime_type": "..."
 }
 ```
 
 ### New Features ✨
+
 - **Atomic uploads**: Files are uploaded in the same request as create/update
 - **Automatic rollback**: If operation fails, uploaded files are deleted automatically
 - **Auto-cleanup**: Deleting a post automatically deletes all files from Cloudinary
 - **Notifications**: Students receive real-time notifications when posts are created/updated
 
 ### Migration Guide
+
 If you're using the old API:
+
 1. Remove all calls to standalone upload/delete endpoints
 2. Update Create Post to use `multipart/form-data` with `files` field
 3. Update Update Post to use `multipart/form-data` with `files` and `files_to_remove` fields
@@ -84,11 +94,13 @@ If you're using the old API:
 ### Local Authentication Flow
 
 #### 1. Gửi mã xác minh email
+
 **Endpoint:** `POST /api/auth/local/send-verification`
 
 **Mô tả:** Gửi mã OTP 6 số đến email để xác minh quyền sở hữu.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com"
@@ -96,6 +108,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -105,17 +118,20 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `400 BAD_REQUEST` - Email không hợp lệ
 - `409 EMAIL_EXISTS` - Email đã được đăng ký
 
 ---
 
 #### 2. Xác minh mã OTP
+
 **Endpoint:** `POST /api/auth/local/verify-email`
 
 **Mô tả:** Xác minh mã OTP đã gửi tới email và trả về verification token.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -124,6 +140,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -135,27 +152,31 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `400 INVALID_OTP` - Mã OTP không đúng
 - `400 OTP_EXPIRED` - Mã OTP đã hết hạn (15 phút)
 
 ---
 
 #### 3. Hoàn tất đăng ký
+
 **Endpoint:** `POST /api/auth/local/complete-registration`
 
 **Mô tả:** Hoàn tất đăng ký tài khoản với thông tin bổ sung.
 
 **Request Body:**
+
 ```json
 {
   "verification_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "full_name": "Nguyễn Văn A",
-  "student_code": "2021600001",  // Để trống nếu là giảng viên
+  "student_code": "2021600001", // Để trống nếu là giảng viên
   "password": "securePassword123"
 }
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -177,25 +198,29 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `400 INVALID_TOKEN` - Token xác minh không hợp lệ
 - `400 BAD_REQUEST` - Dữ liệu không hợp lệ (tên quá ngắn, mật khẩu yếu)
 
 ---
 
 #### 4. Đăng nhập
+
 **Endpoint:** `POST /api/auth/local/login`
 
 **Mô tả:** Đăng nhập bằng email/username và mật khẩu.
 
 **Request Body:**
+
 ```json
 {
-  "identifier": "user@example.com",  // Email hoặc username
+  "identifier": "user@example.com", // Email hoặc username
   "password": "securePassword123"
 }
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -217,6 +242,7 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `401 INVALID_CREDENTIALS` - Email/mật khẩu không đúng
 - `403 EMAIL_NOT_VERIFIED` - Email chưa được xác minh
 - `403 USER_INACTIVE` - Tài khoản đã bị vô hiệu hóa
@@ -224,11 +250,13 @@ If you're using the old API:
 ---
 
 #### 5. Gửi lại mã OTP
+
 **Endpoint:** `POST /api/auth/local/resend-otp`
 
 **Mô tả:** Gửi lại mã OTP xác minh đến email.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com"
@@ -236,6 +264,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -249,11 +278,13 @@ If you're using the old API:
 ### Quên mật khẩu
 
 #### 1. Yêu cầu đặt lại mật khẩu
+
 **Endpoint:** `POST /api/auth/local/forgot-password`
 
 **Mô tả:** Gửi mã OTP đặt lại mật khẩu đến email người dùng.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com"
@@ -261,6 +292,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -270,17 +302,20 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `404 EMAIL_NOT_REGISTERED` - Email chưa được đăng ký
 - `409 LOGIN_METHOD_MISMATCH` - Tài khoản đăng nhập bằng Google
 
 ---
 
 #### 2. Xác minh OTP đặt lại mật khẩu
+
 **Endpoint:** `POST /api/auth/local/verify-reset-otp`
 
 **Mô tả:** Xác minh mã OTP và trả về reset token.
 
 **Request Body:**
+
 ```json
 {
   "email": "user@example.com",
@@ -289,6 +324,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -300,17 +336,20 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `400 INVALID_OTP` - Mã OTP không đúng
 - `400 OTP_EXPIRED` - Mã OTP đã hết hạn
 
 ---
 
 #### 3. Đặt lại mật khẩu
+
 **Endpoint:** `POST /api/auth/local/reset-password`
 
 **Mô tả:** Đặt lại mật khẩu bằng reset token.
 
 **Request Body:**
+
 ```json
 {
   "reset_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -319,6 +358,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -328,6 +368,7 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `400 INVALID_TOKEN` - Reset token không hợp lệ
 - `400 BAD_REQUEST` - Mật khẩu quá yếu
 
@@ -336,6 +377,7 @@ If you're using the old API:
 ### Google OAuth Flow
 
 #### 1. Khởi tạo đăng nhập Google
+
 **Endpoint:** `GET /api/auth/google/login`
 
 **Mô tả:** Chuyển hướng đến trang đồng ý OAuth của Google.
@@ -345,13 +387,16 @@ If you're using the old API:
 ---
 
 #### 2. Google Callback
+
 **Endpoint:** `GET /api/auth/google/callback`
 
 **Mô tả:** Google chuyển hướng về đây sau khi xác thực. Xử lý 2 trường hợp:
+
 - **Người dùng mới:** Trả về `setup_token` để hoàn tất thông tin
 - **Người dùng cũ:** Trả về `access_token` và `refresh_token`
 
 **Query Parameters:**
+
 - `code` - Mã authorization từ Google
 
 **Response:** Trang HTML chuyển hướng với tokens trong URL fragment
@@ -359,20 +404,23 @@ If you're using the old API:
 ---
 
 #### 3. Hoàn tất thiết lập Google
+
 **Endpoint:** `POST /api/auth/google/complete-setup`
 
 **Mô tả:** Hoàn tất thông tin cho người dùng Google mới.
 
 **Request Body:**
+
 ```json
 {
   "setup_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "full_name": "Nguyễn Văn A",
-  "student_code": "2021600001"  // Để trống nếu là giảng viên
+  "student_code": "2021600001" // Để trống nếu là giảng viên
 }
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -401,11 +449,13 @@ If you're using the old API:
 ### Quản lý Token
 
 #### Làm mới Access Token
+
 **Endpoint:** `POST /api/auth/refresh`
 
 **Mô tả:** Tạo access token mới bằng refresh token.
 
 **Request Body:**
+
 ```json
 {
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -413,6 +463,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -425,16 +476,19 @@ If you're using the old API:
 ```
 
 **Lỗi:**
+
 - `401 INVALID_TOKEN` - Refresh token không hợp lệ hoặc đã hết hạn
 
 ---
 
 #### Đăng xuất
+
 **Endpoint:** `POST /api/auth/logout`
 
 **Mô tả:** Vô hiệu hóa cả access token và refresh token.
 
 **Request Body:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -443,6 +497,7 @@ If you're using the old API:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -456,17 +511,21 @@ If you're using the old API:
 ## Notes
 
 ### Authentication Headers
+
 For protected endpoints (marked with ), include the access token:
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 ### Token Expiration
+
 - **Access Token:** 15 minutes
 - **Refresh Token:** 7 days
 - **OTP Codes:** 15 minutes
 
 ### User Types
+
 - **Student:** Has `student_code` field populated
 - **Lecturer:** `student_code` is `null`
 
@@ -476,12 +535,14 @@ Authorization: Bearer <access_token>
 
 ## Users
 
-### Lấy thông tin cá nhân 
+### Lấy thông tin cá nhân
+
 **Endpoint:** `GET /api/users/me`
 
 **Mô tả:** Lấy thông tin profile của user đang đăng nhập.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -503,12 +564,14 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Cập nhật thông tin cá nhân 
+### Cập nhật thông tin cá nhân
+
 **Endpoint:** `PUT /api/users/me`
 
 **Mô tả:** Cập nhật thông tin profile (tên, mã sinh viên).
 
 **Request Body:**
+
 ```json
 {
   "full_name": "Nguyễn Văn B",
@@ -519,6 +582,7 @@ Authorization: Bearer <access_token>
 **Lưu ý:** Tất cả các field đều optional, chỉ gửi field muốn cập nhật.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -537,12 +601,14 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Đổi mật khẩu 
+### Đổi mật khẩu
+
 **Endpoint:** `PUT /api/users/me/password`
 
 **Mô tả:** Đổi mật khẩu (chỉ cho tài khoản local, không dùng cho Google OAuth).
 
 **Request Body:**
+
 ```json
 {
   "old_password": "oldPassword123",
@@ -551,6 +617,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -560,20 +627,24 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `401 INVALID_CREDENTIALS` - Mật khẩu cũ không đúng
 - `409 LOGIN_METHOD_MISMATCH` - Tài khoản đăng nhập bằng Google
 
 ---
 
-### Upload avatar 
+### Upload avatar
+
 **Endpoint:** `POST /api/users/me/avatar`
 
 **Mô tả:** Upload ảnh đại diện lên Cloudinary.
 
 **Request:** `multipart/form-data`
+
 - `file`: File ảnh (jpg, png, gif, ...)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -595,12 +666,14 @@ Authorization: Bearer <access_token>
 
 ---
 
-### Xóa avatar 
+### Xóa avatar
+
 **Endpoint:** `DELETE /api/users/me/avatar`
 
 **Mô tả:** Xóa ảnh đại diện khỏi Cloudinary và đặt về null.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -622,11 +695,13 @@ Authorization: Bearer <access_token>
 ## Classrooms
 
 ### Tạo lớp học (Chỉ giảng viên)
+
 **Endpoint:** `POST /api/classrooms`
 
 **Mô tả:** Tạo lớp học mới (chỉ giảng viên).
 
 **Request Body:**
+
 ```json
 {
   "name": "Lập trình Web",
@@ -643,6 +718,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Lưu ý:**
+
 - `max_students` mặc định: 100
 - `auto_approve` mặc định: false (yêu cầu phê duyệt thủ công)
 - `allowed_email_domains`: Mảng các domain email được phép (VD: ["@hcmut.edu.vn"])
@@ -650,6 +726,7 @@ Authorization: Bearer <access_token>
 - `enable_whitelist`: Bật/tắt whitelist mã sinh viên (mặc định: false)
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -684,11 +761,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy danh sách lớp do mình tạo
+
 **Endpoint:** `GET /api/classrooms/my`
 
 **Mô tả:** Lấy danh sách các lớp học mà user là giảng viên.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -719,11 +798,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy danh sách lớp đã tham gia
+
 **Endpoint:** `GET /api/classrooms/joined`
 
 **Mô tả:** Lấy danh sách các lớp học mà user là học sinh.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -752,11 +833,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy chi tiết lớp học
+
 **Endpoint:** `GET /api/classrooms/:id`
 
 **Mô tả:** Lấy thông tin chi tiết của một lớp học.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -813,22 +896,26 @@ Authorization: Bearer <access_token>
 ```
 
 **Lưu ý:**
+
 - `whitelist_student_code`: Mảng các object chứa mã sinh viên và trạng thái join
   - `joined_by`: ID của user đã claim mã này (null nếu chưa có ai)
   - `joined_at`: Thời điểm user claim mã (null nếu chưa có ai)
 
 **Lỗi:**
+
 - `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
 - `403 FORBIDDEN` - Không có quyền truy cập
 
 ---
 
 ### Cập nhật lớp học (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `PUT /api/classrooms/:id`
 
 **Mô tả:** Cập nhật thông tin lớp học (giảng viên hoặc trợ giảng).
 
 **Request Body:**
+
 ```json
 {
   "name": "Lập trình Web Nâng cao",
@@ -845,6 +932,7 @@ Authorization: Bearer <access_token>
 **Lưu ý:** Tất cả các field đều optional.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -858,17 +946,20 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Không phải giảng viên hoặc trợ giảng của lớp
 - `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
 
 ---
 
 ### Xóa lớp học (Chỉ giảng viên)
+
 **Endpoint:** `DELETE /api/classrooms/:id`
 
 **Mô tả:** Xóa lớp học (chỉ giảng viên).
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -882,11 +973,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Cập nhật trạng thái lớp học (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `PATCH /api/classrooms/:id/status`
 
 **Mô tả:** Cập nhật trạng thái lớp học (active, inactive, archived).
 
 **Request Body:**
+
 ```json
 {
   "status": "archived"
@@ -896,6 +989,7 @@ Authorization: Bearer <access_token>
 **Giá trị hợp lệ:** `active`, `inactive`, `archived`
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -910,11 +1004,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Xóa sinh viên khỏi lớp (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `DELETE /api/classrooms/:id/students/:student_id`
 
 **Mô tả:** Xóa một sinh viên khỏi lớp học.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -926,11 +1022,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Rời lớp học
+
 **Endpoint:** `POST /api/classrooms/:id/leave`
 
 **Mô tả:** Sinh viên hoặc trợ giảng tự rời khỏi lớp học. Giảng viên chính không thể rời lớp.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -940,17 +1038,20 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Giảng viên chính không thể rời lớp / Không phải thành viên lớp
 - `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
 
 ---
 
 ### Xóa trợ giảng khỏi lớp (Chỉ giảng viên chính)
+
 **Endpoint:** `DELETE /api/classrooms/:id/co-lecturers/:co_lecturer_id`
 
 **Mô tả:** Giảng viên chính xóa trợ giảng khỏi lớp học.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -960,12 +1061,14 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Không phải giảng viên chính
 - `404 CLASSROOM_NOT_FOUND` - Lớp học không tồn tại
 
 ---
 
 ### Tải template whitelist
+
 **Endpoint:** `GET /api/classrooms/whitelist-template`
 
 **Mô tả:** Tải file Excel template cho danh sách mã sinh viên được phép.
@@ -975,11 +1078,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy whitelist mã sinh viên (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `GET /api/classrooms/:id/whitelist-student-code`
 
 **Mô tả:** Lấy danh sách mã sinh viên được phép tham gia lớp, kèm trạng thái đã join.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1007,17 +1112,20 @@ Authorization: Bearer <access_token>
 ```
 
 **Lưu ý:**
+
 - `joined_by`: ID user đã claim mã sinh viên này (null nếu chưa ai claim)
 - `joined_at`: Thời điểm claim (null nếu chưa ai claim)
 
 ---
 
 ### Upload whitelist (JSON) (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/:id/whitelist-student-code`
 
 **Mô tả:** Upload danh sách mã sinh viên bằng JSON (thay thế toàn bộ whitelist cũ).
 
 **Request Body:**
+
 ```json
 {
   "student_codes": ["2021600001", "2021600002", "2021600003"]
@@ -1025,6 +1133,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1038,14 +1147,17 @@ Authorization: Bearer <access_token>
 ---
 
 ### Upload whitelist (Excel) (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/:id/whitelist-student-code/upload`
 
 **Mô tả:** Upload danh sách mã sinh viên bằng file Excel.
 
 **Request:** `multipart/form-data`
+
 - `file`: File Excel (.xlsx)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1059,11 +1171,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Cập nhật whitelist (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `PATCH /api/classrooms/:id/whitelist-student-code`
 
 **Mô tả:** Thêm hoặc xóa mã sinh viên khỏi whitelist.
 
 **Request Body:**
+
 ```json
 {
   "add_codes": ["2021600004", "2021600005"],
@@ -1072,6 +1186,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1085,11 +1200,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Xóa whitelist (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `DELETE /api/classrooms/:id/whitelist-student-code`
 
 **Mô tả:** Xóa toàn bộ whitelist mã sinh viên.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1101,11 +1218,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Tạo lại mã mời (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/:id/regenerate-code`
 
 **Mô tả:** Tạo lại invitation code mới cho lớp học.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1122,14 +1241,17 @@ Authorization: Bearer <access_token>
 ## Classroom Join
 
 ### Xem trước lớp học (Không cần đăng nhập)
+
 **Endpoint:** `GET /api/classrooms/preview?code=ABC123XYZ`
 
 **Mô tả:** Xem thông tin cơ bản của lớp học trước khi tham gia (không cần auth).
 
 **Query Parameters:**
+
 - `code`: Mã mời lớp học
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1145,16 +1267,19 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `400 CODE_INVALID` - Mã mời không hợp lệ hoặc đã hết hạn
 
 ---
 
 ### Tham gia lớp học
+
 **Endpoint:** `POST /api/classrooms/join`
 
 **Mô tả:** Gửi yêu cầu tham gia lớp học bằng mã mời.
 
 **Request Body:**
+
 ```json
 {
   "invitation_code": "ABC123XYZ"
@@ -1162,6 +1287,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1175,10 +1301,12 @@ Authorization: Bearer <access_token>
 ```
 
 **Lưu ý:**
+
 - Nếu `auto_approve = true`: Tự động duyệt, `status = "approved"`
 - Nếu `auto_approve = false`: Chờ phê duyệt, `status = "pending"`
 
 **Lỗi:**
+
 - `400 CODE_INVALID` - Mã mời không hợp lệ
 - `409 ALREADY_IN_CLASSROOM` - Đã là thành viên của lớp
 - `409 STUDENT_CODE_NOT_IN_WHITELIST` - Mã SV không trong whitelist
@@ -1188,11 +1316,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy danh sách yêu cầu tham gia (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `GET /api/classrooms/:id/join-requests`
 
 **Mô tả:** Lấy danh sách các yêu cầu tham gia đang chờ duyệt.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1213,11 +1343,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Phê duyệt yêu cầu tham gia (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/join-requests/:id/approve`
 
 **Mô tả:** Chấp nhận yêu cầu tham gia lớp.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1227,17 +1359,20 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `404 JOIN_REQUEST_NOT_FOUND` - Yêu cầu không tồn tại
 - `409 JOIN_REQUEST_ALREADY_PROCESSED` - Yêu cầu đã được xử lý
 
 ---
 
 ### Từ chối yêu cầu tham gia (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/join-requests/:id/reject`
 
 **Mô tả:** Từ chối yêu cầu tham gia lớp.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1251,11 +1386,13 @@ Authorization: Bearer <access_token>
 ## Classroom Invitations (Mời trợ giảng)
 
 ### Mời trợ giảng vào lớp (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/:id/invitations`
 
 **Mô tả:** Mời người khác làm trợ giảng cho lớp học thông qua email.
 
 **Request Body:**
+
 ```json
 {
   "email": "ta@hcmut.edu.vn"
@@ -1263,6 +1400,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -1279,6 +1417,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `400 BAD_REQUEST` - Email không hợp lệ
 - `404 USER_NOT_FOUND` - Không tìm thấy user với email này
 - `409 ALREADY_LECTURER` - User đã là giảng viên chính của lớp
@@ -1289,15 +1428,18 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy danh sách lời mời của lớp (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `GET /api/classrooms/:id/invitations?page=1&pageSize=20`
 
 **Mô tả:** Lấy danh sách các lời mời trợ giảng của lớp.
 
 **Query Parameters:**
+
 - `page`: Số trang (mặc định: 1)
 - `pageSize`: Số lời mời/trang (mặc định: 20)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1338,15 +1480,18 @@ Authorization: Bearer <access_token>
 ---
 
 ### Lấy danh sách lời mời của tôi
+
 **Endpoint:** `GET /api/classroom-invitations/my?page=1&pageSize=20`
 
 **Mô tả:** Lấy danh sách các lời mời trợ giảng mà mình nhận được.
 
 **Query Parameters:**
+
 - `page`: Số trang (mặc định: 1)
 - `pageSize`: Số lời mời/trang (mặc định: 20)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1387,11 +1532,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Chấp nhận lời mời trợ giảng
+
 **Endpoint:** `POST /api/classroom-invitations/:id/accept`
 
 **Mô tả:** Chấp nhận lời mời làm trợ giảng.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1401,6 +1548,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `404 INVITATION_NOT_FOUND` - Lời mời không tồn tại
 - `403 FORBIDDEN` - Không phải người được mời
 - `409 INVITATION_ALREADY_PROCESSED` - Lời mời đã được xử lý
@@ -1408,11 +1556,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Từ chối lời mời trợ giảng
+
 **Endpoint:** `POST /api/classroom-invitations/:id/reject`
 
 **Mô tả:** Từ chối lời mời làm trợ giảng.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1422,6 +1572,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `404 INVITATION_NOT_FOUND` - Lời mời không tồn tại
 - `403 FORBIDDEN` - Không phải người được mời
 - `409 INVITATION_ALREADY_PROCESSED` - Lời mời đã được xử lý
@@ -1429,11 +1580,13 @@ Authorization: Bearer <access_token>
 ---
 
 ### Hủy lời mời trợ giảng (Người mời)
+
 **Endpoint:** `DELETE /api/classroom-invitations/:id`
 
 **Mô tả:** Hủy lời mời đã gửi (chỉ người mời hoặc giảng viên/trợ giảng của lớp).
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1443,6 +1596,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Lỗi:**
+
 - `404 INVITATION_NOT_FOUND` - Lời mời không tồn tại
 - `403 FORBIDDEN` - Không có quyền hủy lời mời
 - `409 INVITATION_ALREADY_PROCESSED` - Lời mời đã được xử lý
@@ -1452,6 +1606,7 @@ Authorization: Bearer <access_token>
 ## Class Posts
 
 ### Tạo bài đăng (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/classrooms/:id/posts`
 
 **Mô tả:** Tạo bài đăng mới trong lớp học với file attachments.
@@ -1459,11 +1614,13 @@ Authorization: Bearer <access_token>
 **Content-Type:** `multipart/form-data`
 
 **Form Fields:**
+
 - `title` (string, required): Tiêu đề bài đăng
 - `content` (string, required): Nội dung bài đăng
 - `files` (File[], optional): Các file đính kèm (multiple files)
 
 **Example Request:**
+
 ```
 POST /api/classrooms/507f1f77bcf86cd799439011/posts
 Content-Type: multipart/form-data
@@ -1476,6 +1633,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -1509,6 +1667,7 @@ FormData:
 ```
 
 **Notes:**
+
 - Files được upload trực tiếp trong request (không cần upload riêng trước)
 - Nếu upload hoặc tạo post thất bại, files đã upload sẽ được xóa tự động (rollback)
 - Notification sẽ được gửi cho tất cả students trong lớp
@@ -1516,15 +1675,18 @@ FormData:
 ---
 
 ### Lấy danh sách bài đăng
+
 **Endpoint:** `GET /api/classrooms/:id/posts?page=1&pageSize=20`
 
 **Mô tả:** Lấy danh sách bài đăng trong lớp (có phân trang).
 
 **Query Parameters:**
+
 - `page`: Số trang (mặc định: 1)
 - `pageSize`: Số bài/trang (mặc định: 20)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1569,11 +1731,13 @@ FormData:
 ---
 
 ### Lấy chi tiết bài đăng
+
 **Endpoint:** `GET /api/classrooms/posts/:post_id`
 
 **Mô tả:** Lấy thông tin chi tiết một bài đăng.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1609,6 +1773,7 @@ FormData:
 ---
 
 ### Cập nhật bài đăng
+
 **Endpoint:** `PUT /api/classrooms/posts/:post_id`
 
 **Mô tả:** Cập nhật bài đăng (giảng viên, trợ giảng hoặc tác giả).
@@ -1616,12 +1781,14 @@ FormData:
 **Content-Type:** `multipart/form-data`
 
 **Form Fields:**
+
 - `title` (string, optional): Tiêu đề mới
 - `content` (string, optional): Nội dung mới
 - `files` (File[], optional): Files mới cần thêm
 - `files_to_remove` (string, optional): JSON array của URLs files cần xóa
 
 **Example Request:**
+
 ```
 PUT /api/classrooms/posts/507f1f77bcf86cd799439015
 Content-Type: multipart/form-data
@@ -1635,6 +1802,7 @@ FormData:
 ```
 
 **Lưu ý:**
+
 - Tất cả field đều optional
 - `files`: Upload files mới (multipart)
 - `files_to_remove`: JSON string array của URLs cần xóa
@@ -1643,6 +1811,7 @@ FormData:
 - Notification sẽ được gửi cho tất cả students trong lớp
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1678,11 +1847,13 @@ FormData:
 ---
 
 ### Xóa bài đăng (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `DELETE /api/classrooms/posts/:post_id`
 
 **Mô tả:** Xóa bài đăng và tất cả attachments trên Cloudinary.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1694,17 +1865,20 @@ FormData:
 ```
 
 **Notes:**
+
 - Tất cả files đính kèm sẽ được xóa khỏi Cloudinary tự động
 - Chỉ lecturer hoặc co-lecturer mới có quyền xóa post
 
 ---
 
 ### Ghim/bỏ ghim bài đăng (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `PATCH /api/classrooms/posts/:post_id/pin`
 
 **Mô tả:** Ghim hoặc bỏ ghim bài đăng.
 
 **Request Body:**
+
 ```json
 {
   "is_pinned": true
@@ -1712,6 +1886,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1727,11 +1902,13 @@ FormData:
 ## Groups
 
 ### Tạo nhóm
+
 **Endpoint:** `POST /api/groups`
 
 **Mô tả:** Tạo nhóm đồ án mới.
 
 **Request Body:**
+
 ```json
 {
   "classroom_id": "507f1f77bcf86cd799439011",
@@ -1742,6 +1919,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -1763,11 +1941,13 @@ FormData:
 ---
 
 ### Lấy thông tin nhóm
+
 **Endpoint:** `GET /api/groups/:group_id`
 
 **Mô tả:** Lấy chi tiết thông tin một nhóm.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1799,16 +1979,19 @@ FormData:
 ---
 
 ### Lấy danh sách nhóm (Filter)
+
 **Endpoint:** `GET /api/groups?classroom_id=xxx&project_id=yyy&member_id=zzz`
 
 **Mô tả:** Lấy danh sách nhóm theo filter.
 
 **Query Parameters:**
+
 - `classroom_id` (required): ID lớp học
 - `project_id` (optional): ID đồ án
 - `member_id` (optional): ID thành viên
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1828,11 +2011,13 @@ FormData:
 ---
 
 ### Cập nhật nhóm
+
 **Endpoint:** `PUT /api/groups`
 
 **Mô tả:** Cập nhật thông tin nhóm (project, leader, settings).
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -1848,6 +2033,7 @@ FormData:
 **Lưu ý:** Tất cả field đều optional trừ `group_id`.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1859,11 +2045,13 @@ FormData:
 ---
 
 ### Xóa nhóm
+
 **Endpoint:** `DELETE /api/groups/:group_id`
 
 **Mô tả:** Xóa nhóm (leader hoặc giảng viên).
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1877,11 +2065,13 @@ FormData:
 ## Group Join Requests & Invitations
 
 ### Gửi yêu cầu tham gia nhóm
-**Endpoint:** `POST /api/groups/join-requests` 
+
+**Endpoint:** `POST /api/groups/join-requests`
 
 **Mô tả:** Sinh viên gửi yêu cầu tham gia nhóm.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -1890,6 +2080,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -1906,22 +2097,26 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Nhóm không cho phép yêu cầu tham gia (AllowJoinRequest = false)
 - `400 BAD_REQUEST` - Người dùng đã là thành viên hoặc đã có yêu cầu pending
 - `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
 
 **Notification:**
+
 - **Người nhận:** Nhóm trưởng (leader)
 - **Nội dung:** "Bạn có yêu cầu tham gia nhóm mới"
 
 ---
 
 ### Chấp nhận yêu cầu tham gia nhóm
-**Endpoint:** `PUT /api/groups/join-requests/accept` 
+
+**Endpoint:** `PUT /api/groups/join-requests/accept`
 
 **Mô tả:** Nhóm trưởng chấp nhận yêu cầu tham gia.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -1930,6 +2125,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1939,22 +2135,26 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Chỉ nhóm trưởng mới có quyền chấp nhận
 - `400 BAD_REQUEST` - Yêu cầu không ở trạng thái pending
 - `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
 
 **Notification:**
+
 - **Người nhận:** Người gửi yêu cầu
 - **Nội dung:** "Yêu cầu tham gia nhóm của bạn đã được chấp nhận"
 
 ---
 
 ### Từ chối yêu cầu tham gia nhóm
-**Endpoint:** `PUT /api/groups/join-requests/reject` 
+
+**Endpoint:** `PUT /api/groups/join-requests/reject`
 
 **Mô tả:** Nhóm trưởng từ chối yêu cầu tham gia.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -1963,6 +2163,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -1972,21 +2173,25 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Chỉ nhóm trưởng mới có quyền từ chối
 - `400 BAD_REQUEST` - Yêu cầu không ở trạng thái pending
 
 **Notification:**
+
 - **Người nhận:** Người gửi yêu cầu
 - **Nội dung:** "Yêu cầu tham gia nhóm của bạn đã bị từ chối"
 
 ---
 
 ### Mời sinh viên vào nhóm
-**Endpoint:** `POST /api/groups/invitations` 
+
+**Endpoint:** `POST /api/groups/invitations`
 
 **Mô tả:** Nhóm trưởng mời sinh viên tham gia nhóm.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -1995,6 +2200,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2010,22 +2216,26 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Chỉ nhóm trưởng mới có quyền mời
 - `400 BAD_REQUEST` - Người được mời đã là thành viên hoặc đã có lời mời pending
 - `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
 
 **Notification:**
+
 - **Người nhận:** Người được mời (recipient)
 - **Nội dung:** "Bạn có thư mời tham gia nhóm"
 
 ---
 
 ### Chấp nhận lời mời tham gia nhóm
-**Endpoint:** `PUT /api/groups/invitations/accept` 
+
+**Endpoint:** `PUT /api/groups/invitations/accept`
 
 **Mô tả:** Sinh viên chấp nhận lời mời tham gia nhóm.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2034,6 +2244,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2043,22 +2254,26 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Chỉ người được mời mới có quyền chấp nhận
 - `400 BAD_REQUEST` - Lời mời không ở trạng thái pending
 - `400 BAD_REQUEST` - Nhóm đã đạt số lượng thành viên tối đa
 
 **Notification:**
+
 - **Người nhận:** Nhóm trưởng (inviter/leader)
 - **Nội dung:** "Lời mời tham gia nhóm đã được chấp nhận"
 
 ---
 
 ### Từ chối lời mời tham gia nhóm
-**Endpoint:** `PUT /api/groups/invitations/reject` 
+
+**Endpoint:** `PUT /api/groups/invitations/reject`
 
 **Mô tả:** Sinh viên từ chối lời mời tham gia nhóm.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2067,6 +2282,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2076,10 +2292,12 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `403 FORBIDDEN` - Chỉ người được mời mới có quyền từ chối
 - `400 BAD_REQUEST` - Lời mời không ở trạng thái pending
 
 **Notification:**
+
 - **Người nhận:** Nhóm trưởng (inviter/leader)
 - **Nội dung:** "Lời mời tham gia nhóm đã bị từ chối"
 
@@ -2088,11 +2306,13 @@ FormData:
 ## Group Tasks
 
 ### Tạo task
+
 **Endpoint:** `POST /api/groups/tasks`
 
 **Mô tả:** Tạo task mới cho nhóm.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2105,6 +2325,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2122,11 +2343,13 @@ FormData:
 ---
 
 ### Cập nhật task
+
 **Endpoint:** `PUT /api/groups/tasks`
 
 **Mô tả:** Cập nhật thông tin task.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2137,6 +2360,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2148,11 +2372,13 @@ FormData:
 ---
 
 ### Xóa task
+
 **Endpoint:** `DELETE /api/groups/:group_id/tasks/:task_id`
 
 **Mô tả:** Xóa task khỏi nhóm.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2164,11 +2390,13 @@ FormData:
 ---
 
 ### Tạo báo cáo
+
 **Endpoint:** `POST /api/groups/reports`
 
 **Mô tả:** Tạo báo cáo tiến độ cho nhóm.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2185,6 +2413,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2202,11 +2431,13 @@ FormData:
 ---
 
 ### Cập nhật báo cáo
+
 **Endpoint:** `PUT /api/groups/reports`
 
 **Mô tả:** Cập nhật nội dung báo cáo.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2217,6 +2448,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2228,11 +2460,13 @@ FormData:
 ---
 
 ### Xóa báo cáo
+
 **Endpoint:** `DELETE /api/groups/:group_id/reports/:report_id`
 
 **Mô tả:** Xóa báo cáo.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2244,11 +2478,13 @@ FormData:
 ---
 
 ### Tạo feedback cho báo cáo (Giảng viên hoặc trợ giảng)
+
 **Endpoint:** `POST /api/groups/reports/feedback`
 
 **Mô tả:** Giảng viên hoặc trợ giảng đưa feedback và điểm cho báo cáo.
 
 **Request Body:**
+
 ```json
 {
   "group_id": "507f1f77bcf86cd799439022",
@@ -2259,6 +2495,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2275,11 +2512,13 @@ FormData:
 ---
 
 ### Cập nhật feedback
+
 **Endpoint:** `PUT /api/groups/:group_id/reports/:report_id/feedback`
 
 **Mô tả:** Cập nhật feedback đã tạo.
 
 **Request Body:**
+
 ```json
 {
   "content": "Feedback mới...",
@@ -2288,6 +2527,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2299,11 +2539,13 @@ FormData:
 ---
 
 ### Xóa feedback
+
 **Endpoint:** `DELETE /api/groups/:group_id/reports/:report_id/feedback`
 
 **Mô tả:** Xóa feedback.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2317,11 +2559,13 @@ FormData:
 ## Channels
 
 ### Tạo channel
+
 **Endpoint:** `POST /api/channels`
 
 **Mô tả:** Tạo channel chat mới giữa các user.
 
 **Request Body:**
+
 ```json
 {
   "members": [
@@ -2340,6 +2584,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2360,11 +2605,13 @@ FormData:
 ---
 
 ### Lấy thông tin channel
+
 **Endpoint:** `GET /api/channels/:channel_id`
 
 **Mô tả:** Lấy chi tiết một channel.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2392,16 +2639,19 @@ FormData:
 ---
 
 ### Lấy danh sách channel của user
+
 **Endpoint:** `GET /api/channels/user?user_id=xxx&page=1&pageSize=20`
 
 **Mô tả:** Lấy danh sách channel mà user tham gia.
 
 **Query Parameters:**
+
 - `user_id`: ID của user
 - `page`: Số trang (mặc định: 1)
 - `pageSize`: Số channel/trang (mặc định: 20)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2420,11 +2670,13 @@ FormData:
 ---
 
 ### Lấy channel giữa 2 user
+
 **Endpoint:** `GET /api/channels/between/:user1/:user2`
 
 **Mô tả:** Tìm channel giữa 2 user cụ thể.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2438,16 +2690,19 @@ FormData:
 ```
 
 **Lỗi:**
+
 - `404 CHANNEL_NOT_FOUND` - Không tìm thấy channel
 
 ---
 
 ### Cập nhật channel
+
 **Endpoint:** `PUT /api/channels`
 
 **Mô tả:** Cập nhật settings của channel (nickname, background, notification, ...).
 
 **Request Body:**
+
 ```json
 {
   "channel_id": "507f1f77bcf86cd799439027",
@@ -2459,6 +2714,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2470,11 +2726,13 @@ FormData:
 ---
 
 ### Xóa channel
+
 **Endpoint:** `DELETE /api/channels/:channel_id`
 
 **Mô tả:** Xóa channel.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2488,11 +2746,13 @@ FormData:
 ## Messages
 
 ### Lấy thông tin tin nhắn
+
 **Endpoint:** `GET /api/messages/:message_id`
 
 **Mô tả:** Lấy chi tiết một tin nhắn.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2513,11 +2773,13 @@ FormData:
 ---
 
 ### Lấy danh sách tin nhắn (Filter)
+
 **Endpoint:** `GET /api/messages/filter?channel_id=xxx&page=1&pageSize=50`
 
 **Mô tả:** Lấy danh sách tin nhắn theo filter.
 
 **Query Parameters:**
+
 - `channel_id` (required): ID channel
 - `sender_id` (optional): ID người gửi
 - `search_content` (optional): Tìm kiếm nội dung
@@ -2528,6 +2790,7 @@ FormData:
 - `pageSize`: Số tin/trang (mặc định: 50)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2550,11 +2813,13 @@ FormData:
 ---
 
 ### Xóa tin nhắn
+
 **Endpoint:** `DELETE /api/messages/:message_id`
 
 **Mô tả:** Xóa một tin nhắn.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2570,15 +2835,18 @@ FormData:
 ## Notifications
 
 ### Lấy danh sách thông báo
+
 **Endpoint:** `GET /api/notifications?page=1&pageSize=20`
 
 **Mô tả:** Lấy danh sách thông báo của user.
 
 **Query Parameters:**
+
 - `page`: Số trang (mặc định: 1)
 - `pageSize`: Số thông báo/trang (mặc định: 20)
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2607,11 +2875,13 @@ FormData:
 ---
 
 ### Đánh dấu tất cả đã đọc
+
 **Endpoint:** `PUT /api/notifications/read-all`
 
 **Mô tả:** Đánh dấu tất cả thông báo là đã đọc.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2625,15 +2895,19 @@ FormData:
 ## WebSocket
 
 ### Kết nối WebSocket
+
 **Endpoint:** `ws://localhost:8080/api/ws?token=<access_token>`
 
 **Mô tả:** Kết nối WebSocket để nhận/gửi tin nhắn real-time.
 
 **Query Parameters:**
+
 - `token`: Access token để xác thực
 
 ### Gửi tin nhắn
+
 **Message Format (Client → Server):**
+
 ```json
 {
   "type": "send_message",
@@ -2646,13 +2920,16 @@ FormData:
 ```
 
 **Message Types:**
+
 - `text`: Tin nhắn văn bản
 - `image`: Hình ảnh
 - `file`: File đính kèm
 - `voice`: Tin nhắn voice
 
 ### Nhận tin nhắn
+
 **Message Format (Server → Client):**
+
 ```json
 {
   "type": "new_message",
@@ -2669,7 +2946,9 @@ FormData:
 ```
 
 ### Typing indicator
+
 **Client → Server:**
+
 ```json
 {
   "type": "typing",
@@ -2681,6 +2960,7 @@ FormData:
 ```
 
 **Server → Client:**
+
 ```json
 {
   "type": "user_typing",
@@ -2694,7 +2974,9 @@ FormData:
 ```
 
 ### Mark message as read
+
 **Client → Server:**
+
 ```json
 {
   "type": "mark_read",
@@ -2709,11 +2991,13 @@ FormData:
 ## Projects
 
 ### Tạo report period
+
 **Endpoint:** `POST /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods`
 
 **Mô tả:** Tạo một report period mới cho project round.
 
 **Request Body:**
+
 ```json
 {
   "name": "Báo cáo tuần 1",
@@ -2724,6 +3008,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2740,11 +3025,13 @@ FormData:
 ---
 
 ### Tạo nhiều report periods
+
 **Endpoint:** `POST /api/projects/classrooms/:classroom_id/report-periods/bulk`
 
 **Mô tả:** Tạo nhiều report periods một lúc.
 
 **Request Body:**
+
 ```json
 {
   "round_id": "507f1f77bcf86cd799439021",
@@ -2764,6 +3051,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2778,11 +3066,13 @@ FormData:
 ---
 
 ### Lấy thông tin report period
+
 **Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods/:period_id`
 
 **Mô tả:** Lấy chi tiết một report period.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2800,11 +3090,13 @@ FormData:
 ---
 
 ### Lấy danh sách report periods
+
 **Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods`
 
 **Mô tả:** Lấy danh sách report periods theo round.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2823,11 +3115,13 @@ FormData:
 ---
 
 ### Cập nhật report period
+
 **Endpoint:** `PUT /api/projects/report-periods`
 
 **Mô tả:** Cập nhật thông tin report period.
 
 **Request Body:**
+
 ```json
 {
   "period_id": "507f1f77bcf86cd799439030",
@@ -2839,6 +3133,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2850,11 +3145,13 @@ FormData:
 ---
 
 ### Xóa report period
+
 **Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/rounds/:round_id/report-periods/:period_id`
 
 **Mô tả:** Xóa report period.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2866,11 +3163,13 @@ FormData:
 ---
 
 ### Tạo project
+
 **Endpoint:** `POST /api/projects`
 
 **Mô tả:** Tạo project mới.
 
 **Request Body:**
+
 ```json
 {
   "classroom_id": "507f1f77bcf86cd799439011",
@@ -2882,6 +3181,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2898,11 +3198,13 @@ FormData:
 ---
 
 ### Tạo nhiều projects
+
 **Endpoint:** `POST /api/projects/bulk`
 
 **Mô tả:** Tạo nhiều projects một lúc.
 
 **Request Body:**
+
 ```json
 {
   "classroom_id": "507f1f77bcf86cd799439011",
@@ -2921,6 +3223,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -2935,11 +3238,13 @@ FormData:
 ---
 
 ### Lấy thông tin project
+
 **Endpoint:** `GET /api/projects/classrooms/:classroom_id/:project_id`
 
 **Mô tả:** Lấy chi tiết một project.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2958,11 +3263,13 @@ FormData:
 ---
 
 ### Lấy danh sách projects
+
 **Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id/projects`
 
 **Mô tả:** Lấy danh sách projects theo round.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -2980,11 +3287,13 @@ FormData:
 ---
 
 ### Cập nhật project
+
 **Endpoint:** `PUT /api/projects`
 
 **Mô tả:** Cập nhật thông tin project.
 
 **Request Body:**
+
 ```json
 {
   "project_id": "507f1f77bcf86cd799439020",
@@ -2995,6 +3304,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -3006,11 +3316,13 @@ FormData:
 ---
 
 ### Xóa project
+
 **Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/:project_id`
 
 **Mô tả:** Xóa project.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -3022,11 +3334,13 @@ FormData:
 ---
 
 ### Tạo project round
+
 **Endpoint:** `POST /api/projects/rounds`
 
 **Mô tả:** Tạo project round mới cho lớp học.
 
 **Request Body:**
+
 ```json
 {
   "classroom_id": "507f1f77bcf86cd799439011",
@@ -3039,6 +3353,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -3057,11 +3372,13 @@ FormData:
 ---
 
 ### Tạo nhiều project rounds
+
 **Endpoint:** `POST /api/projects/rounds/bulk`
 
 **Mô tả:** Tạo nhiều project rounds một lúc.
 
 **Request Body:**
+
 ```json
 {
   "classroom_id": "507f1f77bcf86cd799439011",
@@ -3083,6 +3400,7 @@ FormData:
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -3097,11 +3415,13 @@ FormData:
 ---
 
 ### Lấy thông tin project round
+
 **Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds/:round_id`
 
 **Mô tả:** Lấy chi tiết một project round.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -3121,11 +3441,13 @@ FormData:
 ---
 
 ### Lấy danh sách project rounds
+
 **Endpoint:** `GET /api/projects/classrooms/:classroom_id/rounds`
 
 **Mô tả:** Lấy danh sách project rounds theo lớp học.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -3144,11 +3466,13 @@ FormData:
 ---
 
 ### Cập nhật project round
+
 **Endpoint:** `PUT /api/projects/rounds`
 
 **Mô tả:** Cập nhật thông tin project round.
 
 **Request Body:**
+
 ```json
 {
   "round_id": "507f1f77bcf86cd799439021",
@@ -3161,6 +3485,7 @@ FormData:
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -3172,11 +3497,13 @@ FormData:
 ---
 
 ### Xóa project round
+
 **Endpoint:** `DELETE /api/projects/classrooms/:classroom_id/rounds/:round_id`
 
 **Mô tả:** Xóa project round.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -3189,59 +3516,66 @@ FormData:
 
 ## Common Error Codes
 
-| Error Code | HTTP Status | Mô tả |
-|------------|-------------|-------|
-| `BAD_REQUEST` | 400 | Dữ liệu request không hợp lệ |
-| `INVALID_CREDENTIALS` | 401 | Sai username/password |
-| `INVALID_TOKEN` | 401 | Token không hợp lệ hoặc hết hạn |
-| `UNAUTHORIZED` | 401 | Chưa đăng nhập |
-| `FORBIDDEN` | 403 | Không có quyền truy cập |
-| `EMAIL_NOT_VERIFIED` | 403 | Email chưa xác minh |
-| `USER_NOT_FOUND` | 404 | Không tìm thấy user |
-| `CLASSROOM_NOT_FOUND` | 404 | Không tìm thấy lớp học |
-| `POST_NOT_FOUND` | 404 | Không tìm thấy bài đăng |
-| `GROUP_NOT_FOUND` | 404 | Không tìm thấy nhóm |
-| `CHANNEL_NOT_FOUND` | 404 | Không tìm thấy channel |
-| `INVITATION_NOT_FOUND` | 404 | Không tìm thấy lời mời |
-| `EMAIL_EXISTS` | 409 | Email đã tồn tại |
-| `ALREADY_IN_CLASSROOM` | 409 | Đã là thành viên của lớp |
-| `ALREADY_CO_LECTURER` | 409 | Đã là trợ giảng của lớp |
-| `ALREADY_LECTURER` | 409 | Đã là giảng viên của lớp |
-| `INVITATION_ALREADY_EXISTS` | 409 | Đã có lời mời pending |
-| `INVITATION_ALREADY_PROCESSED` | 409 | Lời mời đã được xử lý |
-| `CLASSROOM_FULL` | 409 | Lớp học đã đầy |
-| `STUDENT_CODE_NOT_IN_WHITELIST` | 409 | Mã SV không trong whitelist |
-| `STUDENT_CODE_ALREADY_USED` | 409 | Mã SV đã được sử dụng |
-| `INVALID_EMAIL_DOMAIN` | 400 | Email không đúng domain cho phép |
-| `LOGIN_METHOD_MISMATCH` | 409 | Sai phương thức đăng nhập |
-| `INTERNAL_ERROR` | 500 | Lỗi server |
+| Error Code                      | HTTP Status | Mô tả                            |
+| ------------------------------- | ----------- | -------------------------------- |
+| `BAD_REQUEST`                   | 400         | Dữ liệu request không hợp lệ     |
+| `INVALID_CREDENTIALS`           | 401         | Sai username/password            |
+| `INVALID_TOKEN`                 | 401         | Token không hợp lệ hoặc hết hạn  |
+| `UNAUTHORIZED`                  | 401         | Chưa đăng nhập                   |
+| `FORBIDDEN`                     | 403         | Không có quyền truy cập          |
+| `EMAIL_NOT_VERIFIED`            | 403         | Email chưa xác minh              |
+| `USER_NOT_FOUND`                | 404         | Không tìm thấy user              |
+| `CLASSROOM_NOT_FOUND`           | 404         | Không tìm thấy lớp học           |
+| `POST_NOT_FOUND`                | 404         | Không tìm thấy bài đăng          |
+| `GROUP_NOT_FOUND`               | 404         | Không tìm thấy nhóm              |
+| `CHANNEL_NOT_FOUND`             | 404         | Không tìm thấy channel           |
+| `INVITATION_NOT_FOUND`          | 404         | Không tìm thấy lời mời           |
+| `EMAIL_EXISTS`                  | 409         | Email đã tồn tại                 |
+| `ALREADY_IN_CLASSROOM`          | 409         | Đã là thành viên của lớp         |
+| `ALREADY_CO_LECTURER`           | 409         | Đã là trợ giảng của lớp          |
+| `ALREADY_LECTURER`              | 409         | Đã là giảng viên của lớp         |
+| `INVITATION_ALREADY_EXISTS`     | 409         | Đã có lời mời pending            |
+| `INVITATION_ALREADY_PROCESSED`  | 409         | Lời mời đã được xử lý            |
+| `CLASSROOM_FULL`                | 409         | Lớp học đã đầy                   |
+| `STUDENT_CODE_NOT_IN_WHITELIST` | 409         | Mã SV không trong whitelist      |
+| `STUDENT_CODE_ALREADY_USED`     | 409         | Mã SV đã được sử dụng            |
+| `INVALID_EMAIL_DOMAIN`          | 400         | Email không đúng domain cho phép |
+| `LOGIN_METHOD_MISMATCH`         | 409         | Sai phương thức đăng nhập        |
+| `INTERNAL_ERROR`                | 500         | Lỗi server                       |
 
 ---
 
 ## Notes
 
 ### Authentication Headers
+
 Đối với các endpoint yêu cầu xác thực, gửi access token trong header:
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 ### Token Expiration
+
 - **Access Token:** 15 phút
 - **Refresh Token:** 7 ngày
 - **OTP Codes:** 15 phút
 - **Invitation Codes:** Tùy theo cấu hình lớp học
 
 ### User Types
+
 - **Student:** Có field `student_code` khác null
 - **Lecturer:** Field `student_code` là null
 
 ### Pagination
+
 Hầu hết endpoints có phân trang đều sử dụng:
+
 - `page`: Số trang (bắt đầu từ 1)
 - `pageSize`: Số items mỗi trang (max: 100)
 
 ### File Upload
+
 - Upload files qua `multipart/form-data`
 - Files được lưu trên Cloudinary
 - Trả về `public_id` để xóa sau này

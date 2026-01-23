@@ -1,67 +1,116 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { push } from "svelte-spa-router";
+  import { getProject } from "../../services/project-service";
+  import { getGroupsFilter, createGroup } from "../../services/group-service";
+  import { authStore } from "../../stores/auth-store";
+  import type { ProjectResponse, Group } from "../../models";
 
   let { params } = $props<{
     params: { id: string; categoryId: string; projectId: string };
   }>();
 
   let loading = $state(true);
+  let error = $state<string | null>(null);
   let registrationState = $state<
     "not-registered" | "forming-team" | "registered"
   >("not-registered");
   let showInviteModal = $state(false);
   let inviteEmail = $state("");
 
-  // Mock data
-  let project = $state({
-    id: params.projectId,
-    name: "Hệ thống quản lý thư viện trực tuyến",
-    description:
-      "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-    instructor: "TS. Nguyễn Văn A",
-    minTeamMembers: 2,
-    maxTeamMembers: 3,
-    tags: ["Web", "React", "Node.js", "MongoDB"],
-  });
-
-  let currentUser = $state({
-    id: "user1",
-    name: "Nguyễn Văn An",
-    email: "nguyenvanan@student.edu.vn",
-  });
-
-  let team = $state<any>(null);
-
+  let project = $state<ProjectResponse | null>(null);
+  let myGroup = $state<Group | null>(null);
+  let allGroups = $state<Group[]>([]);
   let pendingInvitations = $state<any[]>([]);
 
-  onMount(() => {
-    loading = false;
-    // Simulate checking registration status
-    // registrationState = 'not-registered' | 'forming-team' | 'registered'
+  // Load data
+  $effect(() => {
+    async function loadData() {
+      try {
+        loading = true;
+        error = null;
+
+        // Fetch project detail (optional - may fail if project deleted)
+        try {
+          const projectData = await getProject(params.id, params.projectId);
+          project = projectData;
+        } catch (projectErr) {
+          console.warn("Could not load project detail:", projectErr);
+          // Continue without project detail - will use basic info only
+        }
+
+        // Check if user already has a group for this project
+        const groups = await getGroupsFilter({
+          classroom_id: params.id,
+          project_id: params.projectId,
+        });
+
+        allGroups = groups || [];
+        console.log("👥 Groups for this project:", groups);
+        console.log("🔍 Current user ID:", $authStore.user?.id);
+
+        const userGroup = groups?.find((g) =>
+          g.members?.some((m) => m.user_id === $authStore.user?.id),
+        );
+
+        console.log("✅ My group:", userGroup);
+
+        if (userGroup) {
+          myGroup = userGroup;
+          // Allow completing registration with just 1 member (the leader)
+          registrationState = "forming-team"; // Always allow adding more members
+        } else {
+          registrationState = "not-registered";
+        }
+      } catch (err) {
+        console.error("Error loading project:", err);
+        error = err instanceof Error ? err.message : "Không thể tải dữ liệu";
+      } finally {
+        loading = false;
+      }
+    }
+
+    loadData();
   });
 
   function handleBack() {
-    push(`/classes/${params.id}/categories/${params.categoryId}`);
+    push(`/student/classes/${params.id}/categories/${params.categoryId}`);
   }
 
   async function handleStartRegistration() {
-    // Create group and set as leader
-    team = {
-      id: "team1",
-      leaderId: currentUser.id,
-      members: [
-        {
-          id: currentUser.id,
-          name: currentUser.name,
-          email: currentUser.email,
-          role: "leader",
-          joinedAt: new Date().toISOString(),
-        },
-      ],
-      createdAt: new Date().toISOString(),
-    };
-    registrationState = "forming-team";
+    try {
+      if (!$authStore.user) {
+        alert("Vui lòng đăng nhập");
+        return;
+      }
+
+      // Check if project is full
+      if (project) {
+        const totalGroups = allGroups.length;
+        const maxGroups = project.amount || 0;
+
+        if (totalGroups >= maxGroups) {
+          alert(
+            `Đề tài này đã đủ số lượng nhóm (${totalGroups}/${maxGroups}). Vui lòng chọn đề tài khác.`,
+          );
+          return;
+        }
+      }
+
+      // Create group with current user as leader
+      const newGroup = await createGroup(
+        params.id,
+        params.projectId,
+        params.categoryId,
+      );
+
+      myGroup = newGroup;
+      registrationState = "forming-team";
+      alert("Tạo nhóm thành công! Bạn có thể mời thêm thành viên.");
+    } catch (err: any) {
+      console.error("Error creating group:", err);
+      const errorMsg = err?.message || "Không thể tạo nhóm. Vui lòng thử lại.";
+      alert(errorMsg);
+    }
   }
 
   function handleOpenInviteModal() {
@@ -98,21 +147,19 @@
   function handleCancelInvite(inviteId: string) {
     if (!confirm("Bạn có chắc chắn muốn hủy lời mời này?")) return;
     pendingInvitations = pendingInvitations.filter(
-      (inv) => inv.id !== inviteId
+      (inv) => inv.id !== inviteId,
     );
   }
 
   async function handleCompleteRegistration() {
-    if (team.members.length < project.minTeamMembers) {
-      alert(
-        `Nhóm cần ít nhất ${project.minTeamMembers} thành viên để đăng ký đề tài`
-      );
+    if (!myGroup || myGroup.members.length === 0) {
+      alert("Nhóm cần ít nhất 1 thành viên để đăng ký đề tài");
       return;
     }
 
     if (
       !confirm(
-        "Bạn có chắc chắn muốn hoàn tất đăng ký? Sau khi đăng ký, bạn sẽ không thể thay đổi thành viên nhóm."
+        "Bạn có chắc chắn muốn hoàn tất đăng ký? Sau khi đăng ký, bạn sẽ không thể thay đổi thành viên nhóm.",
       )
     ) {
       return;
@@ -127,7 +174,8 @@
     push("/my-projects");
   }
 
-  function getInitials(name: string): string {
+  function getInitials(name: string | undefined): string {
+    if (!name) return "?";
     const words = name.split(" ");
     if (words.length >= 2) {
       return (words[0][0] + words[words.length - 1][0]).toUpperCase();
@@ -169,24 +217,10 @@
       </button>
 
       <div class="project-info">
-        <h1 class="project-title">{project.name}</h1>
-        <p class="project-description">{project.description}</p>
+        <h1 class="project-title">{project?.title || "Loading..."}</h1>
+        <p class="project-description">{project?.description || ""}</p>
 
         <div class="project-meta">
-          <div class="meta-item">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span>GVHD: {project.instructor}</span>
-          </div>
           <div class="meta-item">
             <svg
               width="16"
@@ -202,15 +236,9 @@
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
             <span
-              >Nhóm: {project.minTeamMembers}-{project.maxTeamMembers} thành viên</span
+              >Nhóm: {project?.minMember || 0}-{project?.maxMember || 0} thành viên</span
             >
           </div>
-        </div>
-
-        <div class="project-tags">
-          {#each project.tags as tag}
-            <span class="tag">{tag}</span>
-          {/each}
         </div>
       </div>
     </div>
@@ -237,7 +265,7 @@
           <h2>Bạn chưa đăng ký đề tài này</h2>
           <p>
             Để đăng ký đề tài, bạn cần tạo nhóm và mời thành viên tham gia. Nhóm
-            cần có từ {project.minTeamMembers} đến {project.maxTeamMembers}
+            cần có từ {project?.minMember || 2} đến {project?.maxMember || 3}
             thành viên.
           </p>
           <button onclick={handleStartRegistration} class="btn-primary-large">
@@ -269,7 +297,7 @@
             </div>
           </div>
 
-          {#if team.members.length < project.minTeamMembers}
+          {#if myGroup && myGroup.members.length < (project?.minMember || 2)}
             <div class="alert alert-warning">
               <svg
                 width="20"
@@ -288,8 +316,8 @@
               <div>
                 <strong>Chưa đủ thành viên</strong>
                 <p>
-                  Nhóm cần ít nhất {project.minTeamMembers} thành viên. Hiện tại:
-                  {team.members.length}/{project.minTeamMembers}
+                  Nhóm cần ít nhất {project?.minMember || 2} thành viên. Hiện tại:
+                  {myGroup.members.length}/{project?.minMember || 2}
                 </p>
               </div>
             </div>
@@ -298,9 +326,10 @@
           <div class="section-card">
             <div class="section-header">
               <h3>
-                Thành viên nhóm ({team.members.length}/{project.maxTeamMembers})
+                Thành viên nhóm ({myGroup?.members.length ||
+                  0}/{project?.maxMember || 3})
               </h3>
-              {#if team.members.length < project.maxTeamMembers}
+              {#if myGroup && myGroup.members.length < (project?.maxMember || 3)}
                 <button onclick={handleOpenInviteModal} class="btn-secondary">
                   <svg
                     width="16"
@@ -319,14 +348,14 @@
             </div>
 
             <div class="members-list">
-              {#each team.members as member}
+              {#each myGroup?.members || [] as member}
                 <div class="member-card">
                   <div class="member-avatar">
-                    {getInitials(member.name)}
+                    {getInitials(member.full_name)}
                   </div>
                   <div class="member-info">
                     <div class="member-header">
-                      <h4 class="member-name">{member.name}</h4>
+                      <h4 class="member-name">{member.full_name}</h4>
                       {#if member.role === "leader"}
                         <span class="leader-badge">
                           <svg
@@ -399,7 +428,7 @@
             <button
               onclick={handleCompleteRegistration}
               class="btn-primary-large"
-              disabled={team.members.length < project.minTeamMembers}
+              disabled={!myGroup || myGroup.members.length === 0}
             >
               Hoàn tất đăng ký
             </button>
@@ -423,21 +452,21 @@
           </div>
           <h2>Đã đăng ký đề tài thành công!</h2>
           <p>
-            Bạn và nhóm đã đăng ký đề tài "{project.name}" thành công. Giảng
-            viên hướng dẫn sẽ liên hệ với nhóm trong thời gian sớm nhất.
+            Bạn và nhóm đã đăng ký đề tài "{project?.name || "này"}" thành công.
+            Giảng viên hướng dẫn sẽ liên hệ với nhóm trong thời gian sớm nhất.
           </p>
 
           <div class="registered-team-info">
             <h3>Thông tin nhóm</h3>
             <div class="members-list">
-              {#each team.members as member}
+              {#each myGroup?.members || [] as member}
                 <div class="member-card">
                   <div class="member-avatar">
-                    {getInitials(member.name)}
+                    {getInitials(member.full_name)}
                   </div>
                   <div class="member-info">
                     <div class="member-header">
-                      <h4 class="member-name">{member.name}</h4>
+                      <h4 class="member-name">{member.full_name}</h4>
                       {#if member.role === "leader"}
                         <span class="leader-badge">
                           <svg

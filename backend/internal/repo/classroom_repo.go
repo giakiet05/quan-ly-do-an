@@ -389,8 +389,8 @@ func (c *classroomRepo) IsMember(ctx context.Context, classroomID, userID string
 	filter := bson.M{
 		"_id": classroomObjectID,
 		"$or": []bson.M{
-			{"lecturer._id": userObjectID},
-			{"students._id": userObjectID},
+			{"lecturer_id": userObjectID},
+			{"student_ids": userObjectID},
 		},
 	}
 

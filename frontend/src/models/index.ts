@@ -34,9 +34,11 @@ export interface UserInfo {
 }
 
 export interface UserInfoResponse {
-  userId: string;
-  fullName: string;
-  avatar: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  avatar?: Image;
+  student_code?: string;
 }
 
 // ==================== USER ====================
@@ -165,21 +167,21 @@ export interface JoinGroupInvitation {
 
 export interface Group {
   id: string;
-  classroomId: string;
-  projectId: string;
-  groupChannelId?: string;
-  leaderId: string;
-  members: UserInfoResponse[];  // Backend sends UserInfoResponse, not UserInfo
+  classroom_id: string;
+  project_id: string;
+  group_channel_id?: string;
+  leader_id: string;
+  members: UserInfoResponse[];
   tasks: Task[];
-  taskStatuses: string[];
+  task_statuses: string[];
   reports: Report[];
   setting: GroupSetting;
-  minMember: number;
-  maxMember: number;
-  joinRequests: JoinGroupRequest[];
-  joinInvitation: JoinGroupInvitation[];
-  createdAt: string;
-  updatedAt: string;
+  min_member: number;
+  max_member: number;
+  join_requests: JoinGroupRequest[];
+  join_invitations: JoinGroupInvitation[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface GroupSetting {

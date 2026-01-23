@@ -19,9 +19,9 @@
 
   let projectRound = $state<ProjectRound | null>(null);
   let projects = $state<ProjectResponse[]>([]);
-  let groups = $state<Group[]>([]);
+  let groups = $state<Group[] | null>(null);
   let myGroup = $derived(
-    groups.find((g) => g.members.some((m) => m.id === $authStore.user?.id)),
+    groups?.find((g) => g.members.some((m) => m.id === $authStore.user?.id)),
   );
 
   // Mock data - Replace with API calls
@@ -143,7 +143,8 @@
 
         // Try to fetch groups (may fail if backend not fixed)
         try {
-          groups = await getGroupsFilter({ classroom_id: params.id });
+          const groupsData = await getGroupsFilter({ classroom_id: params.id });
+          groups = groupsData || [];
           console.log("👥 Groups in this classroom:", groups);
         } catch (groupErr) {
           console.warn("⚠️ Could not load groups (backend issue):", groupErr);
@@ -164,7 +165,7 @@
 
   function handleProjectClick(projectId: string) {
     push(
-      `/classes/${params.id}/categories/${params.categoryId}/projects/${projectId}`,
+      `/student/classes/${params.id}/categories/${params.categoryId}/projects/${projectId}`,
     );
   }
 
@@ -239,7 +240,7 @@
 
     <div class="content-section">
       {#if activeTab === "projects"}
-        {@const myProjectId = myGroup?.projectId}
+        {@const myProjectId = myGroup?.project_id}
         <div class="projects-tab">
           {#if myProjectId}
             {@const myProject = projects.find((p) => p.id === myProjectId)}
@@ -310,13 +311,13 @@
             <div class="projects-list">
               {#each projects as project}
                 {@const projectGroups = groups.filter(
-                  (g) => g.projectId === project.id,
+                  (g) => g.project_id === project.id,
                 )}
                 {@const currentMembers = projectGroups.reduce(
                   (sum, g) => sum + g.members.length,
                   0,
                 )}
-                {@const maxMembers = project.amount * project.maxMember}
+                {@const maxMembers = project.amount * project.max_member}
                 {@const isMyProject = myProjectId === project.id}
                 {@const isFull = currentMembers >= maxMembers}
 

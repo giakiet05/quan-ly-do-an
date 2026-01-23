@@ -4,7 +4,7 @@
   import { get } from "svelte/store";
   import { authStore } from "../stores/auth-store";
   import { getGroup } from "../services/group-service";
-  import { getMyJoinedClassrooms } from "../services/classroom-service";
+  import { getClassroom } from "../services/classroom-service";
   import StudentProjectReportsTab from "../components/StudentProjectReportsTab.svelte";
   import StudentProjectTeamChatTab from "../components/StudentProjectTeamChatTab.svelte";
   import StudentProjectMembersTab from "../components/StudentProjectMembersTab.svelte";
@@ -69,9 +69,14 @@
       const groupData = await getGroup(params.id);
       group = groupData;
 
-      // Fetch classrooms to get project info
-      const classrooms = await getMyJoinedClassrooms();
-      const classroom = classrooms.find((c) => c.id === groupData.classroomId);
+      console.log("🔍 Raw group data:", groupData);
+      console.log("👥 Members:", groupData.members);
+      console.log("👑 Leader ID:", groupData.leader_id);
+
+      // Fetch full classroom detail to get project rounds
+      const classroom = await getClassroom(groupData.classroom_id);
+      console.log("🏫 Full classroom:", classroom);
+      console.log("📋 Project rounds:", classroom?.projectRounds);
 
       // Find project info
       let projectInfo = null;
@@ -79,19 +84,30 @@
 
       if (classroom?.projectRounds) {
         for (const round of classroom.projectRounds) {
+          console.log(
+            "🔍 Checking round:",
+            round.name,
+            "projects:",
+            round.projects,
+          );
           const proj = round.projects?.find(
-            (p) => p.id === groupData.projectId
+            (p) => p.id === groupData.project_id,
           );
           if (proj) {
             projectInfo = proj;
             categoryName = round.name;
+            console.log("✅ Found project:", projectInfo);
             break;
           }
         }
       }
 
+      if (!projectInfo) {
+        console.warn("⚠️ Project not found in any round!");
+      }
+
       project = {
-        id: groupData.projectId,
+        id: groupData.project_id,
         name: projectInfo?.title || "Đề tài chưa có thông tin",
         description: projectInfo?.description || "",
         instructor: classroom?.lecturer?.fullName || "Chưa có GVHD",
@@ -101,27 +117,32 @@
 
       // Map group members to team
       const leaderInfo = groupData.members.find(
-        (m) => m.userId === groupData.leaderId
+        (m) => m.user_id === groupData.leader_id,
       );
+
+      console.log("👑 Leader info found:", leaderInfo);
+      console.log("📋 Filtering non-leader members...");
 
       team = {
         id: groupData.id,
         name: `Nhóm ${groupData.members.length}`,
-        leaderId: groupData.leaderId,
-        leaderName: leaderInfo?.fullName || "Unknown",
+        leaderId: groupData.leader_id,
+        leaderName: leaderInfo?.full_name || "Unknown",
         status: "registered",
         createdAt: new Date().toISOString(),
-        groupChannelId: groupData.groupChannelId,
+        groupChannelId: groupData.group_channel_id,
         members: groupData.members
-          .filter((m) => m.userId !== groupData.leaderId)
+          .filter((m) => m.user_id !== groupData.leader_id)
           .map((m) => ({
-            id: m.userId,
-            name: m.fullName,
-            studentId: m.userId,
-            email: "",
+            id: m.user_id,
+            name: m.full_name,
+            studentId: m.student_code || m.user_id,
+            email: m.email || "",
             joinedAt: new Date().toISOString(),
           })),
       };
+
+      console.log("✅ Final team:", team);
     } catch (err: any) {
       console.error("Failed to fetch project detail:", err);
       error = err.message || "Không thể tải thông tin đề tài";
