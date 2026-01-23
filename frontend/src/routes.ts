@@ -20,6 +20,7 @@ import StudentClassDetail from './pages/student/StudentClassDetail.svelte';
 import StudentCategoryDetail from './pages/student/StudentCategoryDetail.svelte';
 import StudentProjectRegister from './pages/student/StudentProjectRegister.svelte';
 import JoinClassroom from './pages/student/JoinClassroom.svelte';
+import Dashboard from './pages/Dashboard.svelte';
 
 // Archived pages available in src/_archived/pages for reference:
 // Home, Profile, Settings, PostDetail, Community, ManageCommunities, ModTools, CreateCommunity
@@ -40,6 +41,7 @@ const routes = {
     '/my-projects': MyProjects,
     '/my-projects/:id': MyProjectDetail,
     '/notifications': Notification,
+    '/dashboard': Dashboard,
 
     // Lecturer routes
     '/lecture/my-classes': ClassLecture,

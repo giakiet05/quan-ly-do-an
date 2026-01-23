@@ -94,3 +94,47 @@ export async function deleteProject(
         method: "DELETE",
     });
 }
+
+
+export async function downloadProjectTemplate(): Promise<void> {
+    const response = await apiFetch<Response>("/api/projects/template", {
+        method: "GET",
+    });
+
+    // apiFetch trả về Response object khi content-type không phải json
+    // Ta cần ép kiểu hoặc gọi .blob() từ kết quả trả về
+    const blob = await response.blob();
+
+    // Tạo link tải xuống
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "project_import_template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// 2. UPLOAD EXCEL
+// Sử dụng apiFetch thay vì fetch thường để được tự động Refresh Token nếu hết hạn
+export async function uploadProjectsExcel(
+    classroomId: string,
+    projectRoundId: string,
+    file: File
+): Promise<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Không cần set Header thủ công, apiFetch sẽ tự nhận diện FormData
+    // và bỏ qua việc set 'Content-Type': 'application/json'
+    const response = await apiFetch(
+        `/api/projects/classrooms/${classroomId}/rounds/${projectRoundId}/upload-excel`,
+        {
+            method: "POST",
+            body: formData,
+        }
+    );
+
+    return response;
+}

@@ -57,7 +57,19 @@
       // Chuyển về danh sách lớp
       push("/student/classes");
     } catch (err: any) {
-      error = getClassroomErrorMessage(err.error_code);
+      console.error("🔥 Join failed raw:", err);
+      console.error("🔥 Join failed response data:", err.response?.data);
+      // 🛠️ SỬA LẠI THỨ TỰ:
+      // Phải ưu tiên kiểm tra trong err.response.data trước!
+      const errorCode =
+        err.code ||
+        err.response?.data?.code || //
+        err.response?.data?.error_code ||
+        "INTERNAL_ERROR";
+
+      console.log("✅ Mã lỗi cuối cùng bắt được:", errorCode); // Xem nó in ra gì
+
+      error = getClassroomErrorMessage(errorCode);
     } finally {
       loading = false;
     }
