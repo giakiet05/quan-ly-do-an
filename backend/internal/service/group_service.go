@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log"
 	"time"
 
 	"github.com/giakiet05/quan-ly-do-an/backend/internal/apperror"
@@ -187,35 +188,45 @@ func (g *groupService) GetGroupsFilter(query *dto.GetGroupsFilterQuery, requeste
 	ctx, cancel := util.NewDefaultDBContext()
 	defer cancel()
 
-	// If member_id is specified, check if requester is that member or is lecturer
-	if query.MemberID != nil && *query.MemberID != "" {
-		// Allow if requester is the member themselves
-		if *query.MemberID != requesterID {
-			// Or if requester is lecturer of the classroom
-			ok, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, query.ClassroomID, requesterID)
-			if err != nil {
-				return nil, err
-			}
-			if !ok {
-				return nil, apperror.ErrForbidden
-			}
-		}
-	} else {
-		// No member_id filter, only lecturer can view all groups
-		ok, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, query.ClassroomID, requesterID)
+	log.Printf("🔍 GetGroupsFilter: classroomID=%s, requesterID=%s", query.ClassroomID, requesterID)
+
+	// Check if requester is lecturer
+	isLecturer, err := g.classroomRepo.IsLecturerOrCoLecturer(ctx, query.ClassroomID, requesterID)
+	if err != nil {
+		log.Printf("❌ Error checking lecturer: %v", err)
+		return nil, err
+	}
+	log.Printf("👨‍🏫 IsLecturer: %v", isLecturer)
+
+	// If not lecturer, check if requester is a member (student) of the classroom
+	if !isLecturer {
+		isMember, err := g.classroomRepo.IsMember(ctx, query.ClassroomID, requesterID)
 		if err != nil {
+			log.Printf("❌ Error checking member: %v", err)
 			return nil, err
 		}
-		if !ok {
+		log.Printf("👤 IsMember: %v", isMember)
+		if !isMember {
+			log.Printf("🚫 Forbidden: User is not a member of classroom")
+			return nil, apperror.ErrForbidden
+		}
+	}
+
+	// If member_id is specified and requester is not lecturer, ensure they can only see their own group
+	if query.MemberID != nil && *query.MemberID != "" && !isLecturer {
+		if *query.MemberID != requesterID {
+			log.Printf("🚫 Forbidden: Cannot view other member's group")
 			return nil, apperror.ErrForbidden
 		}
 	}
 
 	groups, err := g.groupRepo.GetFilter(ctx, query.ClassroomID, query.ProjectID, query.MemberID)
 	if err != nil {
+		log.Printf("❌ Error getting groups: %v", err)
 		return nil, err
 	}
 
+	log.Printf("✅ Returning %d groups", len(groups))
 	return groups, nil
 }
 

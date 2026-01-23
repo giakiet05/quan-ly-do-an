@@ -98,7 +98,7 @@ func (g *groupRepo) GetFilter(
 			return nil, err
 		}
 		// adjust field name based on schema
-		filter["members.id"] = memberOID
+		filter["members._id"] = memberOID
 	}
 
 	cursor, err := g.groupCollection.Find(ctx, filter)

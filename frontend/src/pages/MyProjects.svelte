@@ -52,26 +52,29 @@
             classroom_id: classroom.id,
             member_id: auth.user.id,
           });
-          allGroups.push(...groups);
+          if (groups && Array.isArray(groups)) {
+            allGroups.push(...groups);
+          }
         } catch (err) {
           console.warn(
             `Failed to fetch groups for classroom ${classroom.id}:`,
-            err
+            err,
           );
+          // Continue to next classroom if groups API fails
         }
       }
 
       // Map groups to projects
       myProjects = allGroups.map((group) => {
         // Find classroom and project info
-        const classroom = classrooms.find((c) => c.id === group.classroomId);
+        const classroom = classrooms.find((c) => c.id === group.classroom_id);
         let projectInfo = null;
         let categoryName = "";
 
         if (classroom?.projectRounds) {
           for (const round of classroom.projectRounds) {
             const project = round.projects?.find(
-              (p) => p.id === group.projectId
+              (p) => p.id === group.project_id,
             );
             if (project) {
               projectInfo = project;
@@ -82,7 +85,7 @@
         }
 
         const memberCount = group.members.length;
-        const isFull = memberCount >= group.maxMember;
+        const isFull = memberCount >= group.max_member;
 
         return {
           id: group.id,
@@ -91,7 +94,7 @@
           instructor: classroom?.lecturer?.fullName || "Chưa có GVHD",
           status: isFull ? "full" : "available",
           currentStudents: memberCount,
-          maxStudents: group.maxMember,
+          maxStudents: group.max_member,
           tags: [],
           className: classroom?.name || "",
           categoryName,

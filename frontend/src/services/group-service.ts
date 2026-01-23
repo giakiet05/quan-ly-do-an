@@ -46,14 +46,14 @@ export async function getMyProjectGroup(projectId: string): Promise<Group> {
 export async function createGroup(
   classroomId: string,
   projectId: string,
-  groupData: Partial<Group>
+  projectRoundId: string
 ): Promise<Group> {
   return apiFetch<Group>(`/api/groups`, {
     method: "POST",
     body: JSON.stringify({
-      ...groupData,
-      classroomId,
-      projectId,
+      classroom_id: classroomId,
+      project_id: projectId,
+      project_round_id: projectRoundId,
     }),
   });
 }

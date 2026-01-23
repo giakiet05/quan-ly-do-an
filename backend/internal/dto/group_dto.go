@@ -121,11 +121,11 @@ type TaskResponse struct {
 }
 
 type ReportResponse struct {
-	ID             string             `json:"id"`
-	ReportPeriodID string             `json:"report_period_id"`
-	Title          string             `json:"title"`
-	Content        string             `json:"content"`
-	Attachments    []model.Attachment `json:"attachments,omitempty"`
+	ID             string                 `json:"id"`
+	ReportPeriodID string                 `json:"report_period_id"`
+	Title          string                 `json:"title"`
+	Content        string                 `json:"content"`
+	Attachments    []model.Attachment     `json:"attachments,omitempty"`
 	Feedback       ReportFeedbackResponse `json:"feedback"`
 }
 
@@ -206,7 +206,7 @@ func FromGroup(group *model.Group) *GroupResponse {
 
 func FromGroups(groups []model.Group) []GroupResponse {
 	if len(groups) == 0 {
-		return nil
+		return []GroupResponse{}
 	}
 
 	responses := make([]GroupResponse, len(groups))
