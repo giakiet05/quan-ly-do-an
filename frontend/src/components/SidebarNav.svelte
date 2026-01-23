@@ -35,12 +35,12 @@
 
   // Danh sách menu gốc
   const teacherMenuItems: MenuItem[] = [
-    {
-      id: "dashboard",
-      label: "Tổng quan",
-      route: "/dashboard",
-      icon: "/layout-dashboard.svg",
-    },
+    // {
+    //   id: "dashboard",
+    //   label: "Tổng quan",
+    //   route: "/dashboard",
+    //   icon: "/layout-dashboard.svg",
+    // },
     {
       id: "classes",
       label: "Lớp học",
