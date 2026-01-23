@@ -1,22 +1,27 @@
 <script lang="ts">
     import { X, Plus } from "lucide-svelte";
     import type { UpdateProjectRequest } from "../../../../../dtos/project-dto";
+    import type { ProjectRound } from "../../../../../types/project-round";
     // 1. Props
-    let { onClose, onSubmit, projectRoundId, editingProject } = $props<{
-        onClose: () => void;
-        onSubmit: (project: any) => void;
-        projectRoundId: string;
-        editingProject?: UpdateProjectRequest;
-    }>();
+    let { onClose, onSubmit, projectRoundId, projectRound, editingProject } =
+        $props<{
+            onClose: () => void;
+            onSubmit: (project: any) => void;
+            projectRoundId: string;
+            editingProject?: UpdateProjectRequest;
+            projectRound: ProjectRound | null;
+        }>();
+    // lấy data project round
 
+    console.log("projectRound trong modal:", projectRound);
     // 2. Form State sử dụng Rune $state
     let formData = $state({
         projectRoundId,
         title: editingProject?.title || "",
         amount: editingProject?.amount || 1, // Map to "amount" field
         description: editingProject?.description || "",
-        minMember: editingProject?.minMember || 1, // Map to "minMember"
-        maxMember: editingProject?.maxMember || 3, // Map to "maxMember"
+        minMember: editingProject?.minMember || projectRound.minStudents, // Map to "minMember"
+        maxMember: editingProject?.maxMember || projectRound.maxStudents, // Map to "maxMember"
         status: editingProject?.status || "available",
     });
 

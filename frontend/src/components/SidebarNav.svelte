@@ -1,6 +1,7 @@
 <script lang="ts">
   import { link, location } from "svelte-spa-router";
-  import { authStore } from "../stores/auth-store";
+  import { push } from "svelte-spa-router";
+  import { authStore, clearAuth } from "../stores/auth-store";
   import {
     unreadNotificationCount,
     notificationStore,
@@ -34,12 +35,12 @@
 
   // Danh sách menu gốc
   const teacherMenuItems: MenuItem[] = [
-    {
-      id: "dashboard",
-      label: "Tổng quan",
-      route: "/dashboard",
-      icon: "/layout-dashboard.svg",
-    },
+    // {
+    //   id: "dashboard",
+    //   label: "Tổng quan",
+    //   route: "/dashboard",
+    //   icon: "/layout-dashboard.svg",
+    // },
     {
       id: "classes",
       label: "Lớp học",
@@ -133,11 +134,21 @@
 
     return () => clearInterval(interval); // Xóa bộ đợi khi logout/hủy component
   });
+  async function handleLogout() {
+    const confirmed = window.confirm("Bạn có chắc chắn muốn đăng xuất?");
+    if (!confirmed) return;
+
+    // 1. Xóa dữ liệu (Store + LocalStorage)
+    clearAuth();
+
+    // 2. Chuyển về trang login
+    push("/login");
+  }
 </script>
 
 <aside class="sidebar" class:collapsed>
   <div class="sidebar-header">
-    <div class="logo-wrapper" class:centered={collapsed}>
+    <div class="logo-wrapper" class:centered={collapsed} onclick={handleLogout}>
       <div class="logo-container">
         <div class="brand-icon">
           <GraduationCap size={28} strokeWidth={2.5} />

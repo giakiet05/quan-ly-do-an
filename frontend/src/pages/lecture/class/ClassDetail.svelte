@@ -21,6 +21,12 @@
     import type { UpdateProjectRoundRequest } from "../../../dtos/project-dto";
     import type { ClassroomResponse } from "../../../dtos";
     import { getClassroom } from "../../../services/classroom-service";
+    import { postStore } from "../../../stores/post-store";
+    import type {
+        CreatePostRequest,
+        PostResponse,
+        UpdatePostRequest,
+    } from "../../../dtos/post-dto";
 
     const classroomId = $derived($params?.id);
     const classesStore = classStore.classes;
@@ -61,7 +67,7 @@
     );
     let isCreateCategoryModalOpen = $state(false);
     let editingCategory = $state<ProjectRound | null>(null);
-    let editingAnnouncement = $state<Announcement | null>(null);
+    let editingAnnouncement = $state<PostResponse | null>(null);
     let showCreateAnnouncementModal = $state(false);
 
     const tabs = [
@@ -74,7 +80,6 @@
     // 4. Handlers
     async function handleCreateRound(data: any) {
         try {
-            console.log("Creating round with data:", data);
             await projectRoundStore.addRound({
                 ...data,
                 classroomId: classroomId,
@@ -101,7 +106,6 @@
             editingCategory = null;
             alert("✅ Cập nhật hạng mục thành công!");
         } catch (error) {
-            console.error("❌ Error updating category:", error);
             alert("Có lỗi khi cập nhật: " + (error as Error).message);
         }
     }
@@ -126,13 +130,6 @@
                         class="text-3xl font-bold text-gray-800 flex items-center gap-3"
                     >
                         {classData.name}
-                        <span
-                            class="text-sm font-normal px-2 py-1 bg-blue-100 text-blue-700 rounded"
-                        >
-                            {classData.status === "active"
-                                ? "Đang chạy"
-                                : "Lưu trữ"}
-                        </span>
                     </h1>
 
                     <div
@@ -177,6 +174,52 @@
                             viên
                         </div>
                     </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1">
+                        <span class="font-regular text-gray-900"
+                            >Trạng thái:</span
+                        >
+                    </div>
+                    <button
+                        class="relative w-20 h-10 rounded-full transition-colors duration-300
+                        focus:outline-none focus:ring-2 focus:ring-offset-2
+                        {classData.status === 'active'
+                            ? 'bg-green-500 hover:bg-green-600 focus:ring-green-400'
+                            : 'bg-gray-300 hover:bg-gray-400 focus:ring-gray-400'}"
+                        onclick={async () => {
+                            const newStatus =
+                                classData.status === "active"
+                                    ? "inactive"
+                                    : "active";
+                            try {
+                                await classStore.updateClassroomStatus(
+                                    classroomId,
+                                    newStatus,
+                                );
+                                classData.status = newStatus;
+                            } catch (err) {
+                                alert("Không thể cập nhật trạng thái lớp học!");
+                                console.error(err);
+                            }
+                        }}
+                    >
+                        <!-- Nút tròn trượt -->
+                        <span
+                            class="absolute top-1 left-1 w-8 h-8 bg-white rounded-full shadow-md
+                            transition-transform duration-300"
+                            class:translate-x-10={classData.status === "active"}
+                        ></span>
+
+                        <!-- Text trạng thái -->
+                        <span
+                            class="absolute inset-0 flex items-center justify-center text-xs font-semibold
+                            text-white select-none pointer-events-none"
+                        >
+                            {classData.status === "active" ? "ON" : "OFF"}
+                        </span>
+                    </button>
                 </div>
 
                 {#if classData.avatar}
@@ -239,7 +282,7 @@
                         onEdit={(announcement) =>
                             (editingAnnouncement = announcement)}
                         onOpen={() => (showCreateAnnouncementModal = true)}
-                        id={classroomId}
+                        {classroomId}
                     />
                 </div>
             {:else if activeTab === "chat"}
@@ -278,8 +321,15 @@
             showCreateAnnouncementModal = false;
             editingAnnouncement = null;
         }}
-        onSubmit={(data) => {
-            console.log("Announcement data:", data);
+        onSubmit={(post) => {
+            if (editingAnnouncement) {
+                postStore.updatePostData(
+                    editingAnnouncement.id,
+                    post as UpdatePostRequest,
+                );
+            } else {
+                postStore.addPost(post as CreatePostRequest, classroomId);
+            }
             showCreateAnnouncementModal = false;
             editingAnnouncement = null;
         }}

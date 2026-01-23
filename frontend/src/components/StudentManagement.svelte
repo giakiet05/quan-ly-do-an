@@ -48,10 +48,6 @@
     $effect(() => {
         if (whitelistStudents.length > 0 && localWhitelist.length === 0) {
             localWhitelist = [...whitelistStudents];
-            console.log(
-                "✅ Whitelist synced:",
-                $state.snapshot(localWhitelist),
-            );
         }
     });
 
@@ -59,7 +55,6 @@
     $effect(() => {
         if (initialDomain && !domainInput) {
             domainInput = initialDomain;
-            console.log("✅ Domain initialized:", domainInput);
         }
     });
 
@@ -178,7 +173,7 @@
                         <input
                             id="domain-email"
                             type="text"
-                            placeholder="VD: hcmute.edu.vn"
+                            placeholder="VD: uit.edu.vn"
                             value={domainInput}
                             onchange={(e) =>
                                 updateDomain(

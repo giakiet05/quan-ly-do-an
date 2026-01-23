@@ -126,9 +126,6 @@
             // 1. Create classroom first (without file, using JSON whitelist instead)
             const newClassroom = await classStore.addClass(formData);
 
-            console.log("✅ Classroom created:", newClassroom);
-            console.log("📋 Whitelist codes:", whitelistStudentCodes);
-
             // 2. Upload whitelist if there are student codes
             if (whitelistStudentCodes.length > 0) {
                 await uploadWhitelistStudentCodes(newClassroom.id, {
@@ -141,7 +138,6 @@
             // Close modal without calling onSubmit (avoid double creation)
             onClose();
         } catch (error) {
-            console.error("Error creating classroom:", error);
             alert("Lỗi khi tạo lớp học!");
         }
     }

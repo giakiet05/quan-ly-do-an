@@ -1,19 +1,50 @@
-export interface CreateClassPostRequest {
+export interface CreatePostRequest {
     title: string;
     content: string;
-    attachments?: Array<AttachmentUpload>;
+    files: File[]; // Ensure this is an array of File objects
 }
-// {{base_url}}/api/classrooms/{{classroom_id}}/posts POST
-// {
-//     "title": "Thông báo nghỉ học",
-//     "content": "Lớp nghỉ ngày 10/1/2026",
-//     "attachments": [
-//         {
-//             "file_name": "schedule.pdf",
-//             "file_url": "https://cloudinary.com/...",
-//             "file_size": 1024000,
-//             "mime_type": "application/pdf"
-//         }
-//     ]
-// }
 
+export interface UpdatePostRequest {
+    title: string;
+    content: string;
+    files: File | File[];
+    filesToRemove: string[];
+}
+
+export interface PostResponse {
+    id: string;
+    classroom_id: string;
+    author: {
+        userId: string;
+        fullName: string;
+        email: string;
+        avatar: {
+            url: string;
+            publicId: string;
+            uploadedAt: string;
+        };
+    };
+    attachments: {
+        fileName: string;
+        fileUrl: string;
+        publicId: string;
+        fileSize: number;
+        mimeType: string;
+    }[];
+    title: string;
+    content: string;
+    isPinned: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PaginatedPostResponse {
+    page: number;
+    pageSize: number;
+    posts: PostResponse[];
+    total: number;
+}
+
+export interface PinPostRequest {
+    isPinned: boolean;
+}

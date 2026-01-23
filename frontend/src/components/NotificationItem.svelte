@@ -1,10 +1,48 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
+    import { createEventDispatcher, onMount } from "svelte";
     import type { NotificationItem } from "../types/notification";
+    import { getClassroomByChannelId } from "../services/classroom-service";
+    import { push } from "svelte-spa-router";
 
     export let item: NotificationItem;
 
     const dispatch = createEventDispatcher();
+
+    // --- LOGIC XỬ LÝ MỚI ---
+    let displayContent = item.content;
+    let targetClassId = ""; // Lưu Classroom ID để điều hướng
+    let isLoadingClass = false;
+
+    onMount(async () => {
+        // Regex tìm ID 24 ký tự ở cuối chuỗi
+        const match = item.content.match(/(.*)\s([a-f\d]{24})$/i);
+
+        if (item.ui_type === "message" && match) {
+            const prefix = match[1].trim(); // "Tin nhắn mới từ"
+            const channelId = match[2];
+
+            try {
+                isLoadingClass = true;
+                const res = await getClassroomByChannelId(channelId);
+                if (res) {
+                    displayContent = `${prefix} lớp ${res.name}`;
+                    targetClassId = res.id; // ID thật của lớp học
+                }
+            } catch (e) {
+                console.error("Lỗi lấy thông tin lớp:", e);
+            } finally {
+                isLoadingClass = false;
+            }
+        }
+    });
+
+    const handleItemClick = () => {
+        if (targetClassId) {
+            push(`/lecture/my-classes/${targetClassId}`);
+            if (!item.read) doMark();
+        }
+    };
+    // -----------------------
 
     const doMark = () => {
         dispatch("mark", { id: item.id });
@@ -13,6 +51,7 @@
     const doDelete = () => {
         dispatch("delete", { id: item.id });
     };
+
     function formatTime(dateStr: string) {
         const date = new Date(dateStr);
         const now = new Date();
@@ -33,7 +72,11 @@
     }
 </script>
 
-<div class="notification-item">
+<div
+    class="notification-item"
+    on:click={handleItemClick}
+    style:cursor={targetClassId ? "pointer" : "default"}
+>
     <div class="icon-wrapper {item.ui_type}">
         {#if item.ui_type === "message"}
             <svg
@@ -93,9 +136,8 @@
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                ><path d="M22 10v6M2 10v6M6 6h12M6 18h12" /></svg
             >
-                <path d="M22 10v6M2 10v6M6 6h12M6 18h12" />
-            </svg>
         {:else}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -122,7 +164,15 @@
             {/if}
         </div>
 
-        <p class="description">{item.content}</p>
+        <p class="description">
+            {#if isLoadingClass}
+                <span style="color: #94a3b8; font-style: italic;"
+                    >Đang xác định lớp học...</span
+                >
+            {:else}
+                {displayContent}
+            {/if}
+        </p>
 
         {#if item.meta}
             <div class="meta-info">{item.meta}</div>
@@ -138,7 +188,7 @@
             {#if !item.read}
                 <button
                     class="tool-btn mark"
-                    on:click={doMark}
+                    on:click|stopPropagation={doMark}
                     title="Đánh dấu đã đọc"
                 >
                     <svg
@@ -155,7 +205,11 @@
                     >
                 </button>
             {/if}
-            <button class="tool-btn delete" on:click={doDelete} title="Xóa">
+            <button
+                class="tool-btn delete"
+                on:click|stopPropagation={doDelete}
+                title="Xóa"
+            >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -176,6 +230,7 @@
 </div>
 
 <style>
+    /* TOÀN BỘ CSS CỦA BẠN GIỮ NGUYÊN */
     .notification-item {
         display: flex;
         gap: 16px;
@@ -186,7 +241,6 @@
         position: relative;
         transition: all 0.2s ease;
         margin-bottom: 12px;
-        /* Đã bỏ border-left cho trạng thái unread */
     }
 
     .notification-item:hover {
@@ -226,7 +280,6 @@
         color: #ca8a04;
     }
 
-    /* Nội dung chính */
     .content-body {
         flex: 1;
         min-width: 0;
@@ -254,7 +307,6 @@
         color: #94a3b8;
     }
 
-    /* Cột phải */
     .side-panel {
         display: flex;
         flex-direction: column;
@@ -270,7 +322,6 @@
         white-space: nowrap;
     }
 
-    /* Tool panel */
     .tool-panel {
         display: flex;
         gap: 4px;
@@ -305,7 +356,6 @@
         color: #ef4444;
     }
 
-    /* Trạng thái chưa đọc (Chỉ còn dấu chấm xanh) */
     .dot-unread {
         width: 8px;
         height: 8px;

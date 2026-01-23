@@ -99,6 +99,19 @@ export async function updateClassroomStatus(
 }
 
 /**
+ * Change the status of a classroom
+ */
+export async function changeClassroomStatus(
+  classroomId: string,
+  status: "active" | "inactive" | "archived"
+): Promise<void> {
+  await apiFetch(`/api/classrooms/${classroomId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+/**
  * Delete a classroom
  */
 export async function deleteClassroom(classroomId: string): Promise<void> {
@@ -166,6 +179,16 @@ export async function removeStudentFromClassroom(
   await apiFetch(`/api/classrooms/${classroomId}/students/${studentId}`, {
     method: "DELETE",
   });
+}
+
+export async function getClassroomByChannelId(
+  channelId: string
+): Promise<ClassroomResponse> {
+  // Lưu ý: Nếu backend bọc trong ApiResponse, hãy dùng .data
+  const response = await apiFetch<ClassroomResponse>(
+    `/api/classrooms/channel/${channelId}`
+  );
+  return response;
 }
 
 // ==================== STUDENT: JOIN CLASSROOM ====================

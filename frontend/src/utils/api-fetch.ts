@@ -1,7 +1,9 @@
 import type { ApiResponse } from "../dtos/api-response-dto";
 import { convertKeysToCamel, convertKeysToSnake } from "./case-converter";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8082";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
+console.log("API Base URL:", API_BASE_URL);
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
@@ -60,7 +62,10 @@ async function refreshAccessToken(): Promise<boolean> {
 
     const rawData = await response.json();
 
-    const data = convertKeysToCamel<ApiResponse<{ accessToken: string; refreshToken: string }>>(rawData);
+    const data =
+      convertKeysToCamel<
+        ApiResponse<{ accessToken: string; refreshToken: string }>
+      >(rawData);
 
     if (data.success && data.data) {
       saveTokens(data.data.accessToken, data.data.refreshToken);
@@ -78,7 +83,7 @@ async function refreshAccessToken(): Promise<boolean> {
 
 /**
  * Enhanced fetch function with automatic authentication and token refresh
- * 
+ *
  * @param url - API endpoint (relative to base URL or absolute)
  * @param options - Fetch options with optional skipAuth flag
  * @returns Response data
@@ -86,7 +91,7 @@ async function refreshAccessToken(): Promise<boolean> {
  */
 export async function apiFetch<T = any>(
   url: string,
-  options: FetchOptions = {}
+  options: FetchOptions = {},
 ): Promise<T> {
   const { skipAuth = false, ...fetchOptions } = options;
 
@@ -103,7 +108,7 @@ export async function apiFetch<T = any>(
     headers["Content-Type"] = "application/json";
 
     // Convert request body from camelCase to snake_case for backend
-    if (fetchOptions.body && typeof fetchOptions.body === 'string') {
+    if (fetchOptions.body && typeof fetchOptions.body === "string") {
       try {
         const parsed = JSON.parse(fetchOptions.body);
         fetchOptions.body = JSON.stringify(convertKeysToSnake(parsed));
@@ -159,13 +164,12 @@ export async function apiFetch<T = any>(
       const errorData = await response.json();
       errorCode = errorData.code || errorData.error_code || "INTERNAL_ERROR";
       message = errorData.message || message;
-    } catch {
-    }
+    } catch {}
 
     throw {
       code: errorCode,
       message: message,
-      status: response.status
+      status: response.status,
     };
   }
 
@@ -200,7 +204,7 @@ export async function uploadFile(
   file: File,
   fieldName: string = "file",
   additionalData?: Record<string, any>,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
 ): Promise<any> {
   const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
   const accessToken = getAccessToken();
