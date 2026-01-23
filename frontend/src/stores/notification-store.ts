@@ -8,6 +8,7 @@ import {
 } from "../services/notification-service";
 import { mapNotifications } from "../mappers/notification-mapper";
 
+
 function createNotificationStore() {
     const notifications = writable<NotificationItem[]>([]);
     const loading = writable(false);

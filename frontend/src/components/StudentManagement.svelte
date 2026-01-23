@@ -173,7 +173,7 @@
                         <input
                             id="domain-email"
                             type="text"
-                            placeholder="VD: hcmute.edu.vn"
+                            placeholder="VD: uit.edu.vn"
                             value={domainInput}
                             onchange={(e) =>
                                 updateDomain(

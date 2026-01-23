@@ -10,9 +10,16 @@
         Copy,
         CheckSquare,
         Square,
+        Download,
+        Upload,
+        FileSpreadsheet,
     } from "lucide-svelte";
     import CreateProjectModal from "./CreateProjectModal.svelte";
     import { projectStore } from "../../../../../stores/project-store";
+    import {
+        downloadProjectTemplate,
+        uploadProjectsExcel,
+    } from "../../../../../services/project-service";
     import { push } from "svelte-spa-router";
     import type {
         CreateProjectRequest,
@@ -41,7 +48,7 @@
     let showCreateModal = $state(false);
     let editingProject = $state<UpdateProjectRequest | null>(null);
     let selectedProjectIds = $state<Set<string>>(new Set<string>());
-
+    let fileInput: HTMLInputElement;
     $effect(() => {
         fetchProjects(classroomId, projectRoundId);
     });
@@ -120,6 +127,42 @@
             selectedProjectIds = new Set();
         }
     };
+    const handleDownloadTemplate = async () => {
+        try {
+            await downloadProjectTemplate();
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi khi tải xuống file mẫu.");
+        }
+    };
+
+    // ✨ NEW: Hàm kích hoạt input file khi bấm nút Upload
+    const triggerFileUpload = () => {
+        fileInput.click();
+    };
+
+    // ✨ NEW: Hàm xử lý khi người dùng chọn file Excel xong
+    const handleFileChange = async (event: Event) => {
+        const target = event.target as HTMLInputElement;
+        const file = target.files?.[0];
+
+        if (!file) return;
+
+        // Reset value để nếu chọn lại file cũ vẫn kích hoạt event
+        target.value = "";
+
+        try {
+            if (confirm(`Bạn muốn import đề tài từ file "${file.name}"?`)) {
+                await uploadProjectsExcel(classroomId, projectRoundId, file);
+                alert("Import thành công!");
+                // Refresh lại danh sách
+                fetchProjects(classroomId, projectRoundId);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi khi upload file. Vui lòng kiểm tra lại định dạng.");
+        }
+    };
 </script>
 
 <div class="rounded-lg bg-white p-6 shadow-sm">
@@ -152,12 +195,42 @@
                 </div>
             {/if}
         </div>
-        <button
-            onclick={() => (showCreateModal = true)}
-            class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-        >
-            <Plus class="h-5 w-5" /> Thêm đề tài mới
-        </button>
+
+        <div class="flex items-center gap-2">
+            <input
+                type="file"
+                accept=".xlsx, .xls"
+                class="hidden"
+                bind:this={fileInput}
+                onchange={handleFileChange}
+            />
+
+            <button
+                onclick={handleDownloadTemplate}
+                class="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 transition-colors hover:bg-gray-50"
+                title="Tải file mẫu Excel"
+            >
+                <Download class="h-5 w-5" />
+                <span class="hidden sm:inline">Mẫu Excel</span>
+            </button>
+
+            <button
+                onclick={triggerFileUpload}
+                class="flex items-center gap-2 rounded-lg border border-green-600 bg-green-50 px-3 py-2 text-green-700 transition-colors hover:bg-green-100"
+                title="Import từ Excel"
+            >
+                <FileSpreadsheet class="h-5 w-5" />
+                <span class="hidden sm:inline">Import Excel</span>
+            </button>
+
+            <button
+                onclick={() => (showCreateModal = true)}
+                class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+            >
+                <Plus class="h-5 w-5" />
+                <span class="hidden sm:inline">Thêm mới</span>
+            </button>
+        </div>
     </div>
 
     <div class="mb-6 space-y-4">

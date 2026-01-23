@@ -181,6 +181,16 @@ export async function removeStudentFromClassroom(
   });
 }
 
+export async function getClassroomByChannelId(
+  channelId: string
+): Promise<ClassroomResponse> {
+  // Lưu ý: Nếu backend bọc trong ApiResponse, hãy dùng .data
+  const response = await apiFetch<ClassroomResponse>(
+    `/api/classrooms/channel/${channelId}`
+  );
+  return response;
+}
+
 // ==================== STUDENT: JOIN CLASSROOM ====================
 
 /**

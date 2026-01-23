@@ -130,7 +130,11 @@
                     {@const status =
                         statusMap[cls.status as keyof typeof statusMap] ||
                         statusMap.inactive}
-                    <tr class="hover:bg-gray-50 transition-colors align-top">
+
+                    <tr
+                        class="hover:bg-gray-50 transition-colors align-top cursor-pointer"
+                        onclick={() => push(`/lecture/my-classes/${cls.id}`)}
+                    >
                         <td class="px-6 py-4">
                             <div class="flex items-start gap-3">
                                 <img
@@ -174,21 +178,37 @@
                         <td class="px-6 py-4">
                             <div class="flex items-center justify-center gap-3">
                                 <button
-                                    onclick={() =>
-                                        push(`/lecture/my-classes/${cls.id}`)}
+                                    onclick={(e) => {
+                                        e.stopPropagation();
+                                        push(`/lecture/my-classes/${cls.id}`);
+                                    }}
                                     class="text-blue-600 hover:scale-110 transition-transform"
-                                    ><Eye size={18} /></button
+                                    title="Xem chi tiết"
                                 >
+                                    <Eye size={18} />
+                                </button>
+
                                 <button
-                                    onclick={() => openEditModal(cls)}
+                                    onclick={(e) => {
+                                        e.stopPropagation();
+                                        openEditModal(cls);
+                                    }}
                                     class="text-green-600 hover:scale-110 transition-transform"
-                                    ><Edit2 size={18} /></button
+                                    title="Chỉnh sửa"
                                 >
+                                    <Edit2 size={18} />
+                                </button>
+
                                 <button
-                                    onclick={() => handleDeleteClass(cls.id)}
+                                    onclick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClass(cls.id);
+                                    }}
                                     class="text-red-600 hover:scale-110 transition-transform"
-                                    ><Trash2 size={18} /></button
+                                    title="Xóa lớp"
                                 >
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                         </td>
                     </tr>
