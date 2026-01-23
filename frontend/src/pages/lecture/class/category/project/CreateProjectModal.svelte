@@ -20,8 +20,8 @@
         title: editingProject?.title || "",
         amount: editingProject?.amount || 1, // Map to "amount" field
         description: editingProject?.description || "",
-        minMember: editingProject?.minMember || projectRound.minMember, // Map to "minMember"
-        maxMember: editingProject?.maxMember || projectRound.maxMember, // Map to "maxMember"
+        minMember: editingProject?.minMember || projectRound.minStudents, // Map to "minMember"
+        maxMember: editingProject?.maxMember || projectRound.maxStudents, // Map to "maxMember"
         status: editingProject?.status || "available",
     });
 
