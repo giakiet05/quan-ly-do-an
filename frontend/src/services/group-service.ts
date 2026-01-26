@@ -22,7 +22,7 @@ export async function getGroupsFilter(
   Object.entries(filters).forEach(([key, value]) => {
     params.append(key, String(value));
   });
-  
+
   return apiFetch<Group[]>(`/api/groups?${params.toString()}`);
 }
 
@@ -256,9 +256,18 @@ export async function sendGroupInvitation(
   groupId: string,
   recipientId: string
 ): Promise<void> {
-  return apiFetch<void>(`/api/groups/${groupId}/invitations`, {
+  const payload = { groupId, recipientId };
+  console.log("📤 Gửi lời mời nhóm:", {
+    url: `/api/groups/invitations`,
     method: "POST",
-    body: JSON.stringify({ recipientId }),
+    body: JSON.stringify(payload, null, 2), // in đẹp
+    groupId,
+    recipientId,
+  });
+
+  return apiFetch<void>(`/api/groups/invitations`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
