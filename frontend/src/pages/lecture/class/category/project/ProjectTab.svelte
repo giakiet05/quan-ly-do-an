@@ -201,6 +201,32 @@
                 {/if}
             {/if}
         </div>
+        <div class="flex items-center gap-2">
+            <button
+                onclick={handleDownloadTemplate}
+                class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+            >
+                <Download class="h-4 w-4" />
+                Tải file mẫu
+            </button>
+
+            <button
+                onclick={triggerFileUpload}
+                class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+            >
+                <Upload class="h-4 w-4" />
+                Import Excel
+            </button>
+
+            <input
+                type="file"
+                accept=".xlsx,.xls"
+                bind:this={fileInput}
+                onchange={handleFileChange}
+                class="hidden"
+            />
+        </div>
+
         <button
             onclick={() => (showCreateModal = true)}
             class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
