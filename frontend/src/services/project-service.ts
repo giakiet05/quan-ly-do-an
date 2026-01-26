@@ -29,10 +29,17 @@ export async function getProject(
     classroomId: string,
     projectId: string
 ): Promise<ProjectResponse> {
-    const response = await apiFetch<ApiResponse<ProjectResponse>>(
+    // apiFetch đã unwrap ApiResponse rồi → trả về trực tiếp ProjectResponse
+    const project = await apiFetch<ProjectResponse>(
         `/api/projects/classrooms/${classroomId}/${projectId}`
     );
-    return response.data!;
+
+    // Optional: Kiểm tra nếu null hoặc undefined
+    if (!project) {
+        throw new Error("Không tìm thấy đề tài");
+    }
+
+    return project;
 }
 
 /**

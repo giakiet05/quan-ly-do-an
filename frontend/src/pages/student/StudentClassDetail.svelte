@@ -57,6 +57,55 @@
     }
   });
 
+  function getRoundStatus(
+    start: string | Date | undefined,
+    end: string | Date | undefined,
+  ): "upcoming" | "ongoing" | "overdue" {
+    if (!start || !end) return "ongoing";
+
+    const toDateStr = (val: string | Date): string => {
+      const d = typeof val === "string" ? new Date(val) : val;
+      if (isNaN(d.getTime())) return new Date().toISOString().split("T")[0];
+      return d.toISOString().split("T")[0];
+    };
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const startStr = toDateStr(start);
+    const endStr = toDateStr(end);
+
+    if (todayStr < startStr) return "upcoming";
+    if (todayStr > endStr) return "overdue";
+    return "ongoing";
+  }
+
+  function getStatusText(status: string): string {
+    switch (status) {
+      case "upcoming":
+        return "Sắp diễn ra";
+      case "overdue":
+        return "Đã kết thúc";
+      default:
+        return "Đang diễn ra";
+    }
+  }
+
+  function getStatusClass(status: string): string {
+    switch (status) {
+      case "upcoming":
+        return "status-upcoming";
+      case "overdue":
+        return "status-overdue";
+      default:
+        return "status-active";
+    }
+  }
+
+  // Fix lỗi 2345: chấp nhận cả string và Date
+  function formatDate(dateInput: string | Date): string {
+    const date =
+      typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+    return date.toLocaleDateString("vi-VN");
+  }
   function handleBack() {
     push("/student/classes");
   }
@@ -152,10 +201,6 @@
       return (words[0][0] + words[words.length - 1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
-  }
-
-  function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString("vi-VN");
   }
 
   function downloadAttachment(url: string, fileName: string) {
@@ -295,13 +340,17 @@
           {:else}
             <div class="categories-grid">
               {#each projectRounds as round}
+                {@const status = getRoundStatus(round.startDate, round.endDate)}
+
                 <div
                   class="category-card"
                   onclick={() => handleCategoryClick(round.id)}
                 >
                   <div class="category-header">
                     <h3 class="category-name">{round.name}</h3>
-                    <span class="status-badge status-active">Đang diễn ra</span>
+                    <span class="status-badge {getStatusClass(status)}">
+                      {getStatusText(status)}
+                    </span>
                   </div>
 
                   {#if round.description}
@@ -357,11 +406,6 @@
                           src={student.avatar}
                           alt={student.fullName}
                           class="student-avatar-large"
-                          onerror={(e) => {
-                            e.currentTarget.style.display = "none";
-                            e.currentTarget.nextElementSibling.style.display =
-                              "flex";
-                          }}
                         />
                         <div
                           class="student-avatar-large"

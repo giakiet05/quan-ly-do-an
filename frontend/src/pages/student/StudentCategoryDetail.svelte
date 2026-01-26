@@ -19,140 +19,47 @@
 
   let projectRound = $state<ProjectRound | null>(null);
   let projects = $state<ProjectResponse[]>([]);
-  let groups = $state<Group[] | null>(null);
+  let groups = $state<Group[]>([]);
   let myGroup = $derived(
-    groups?.find((g) => g.members.some((m) => m.id === $authStore.user?.id)),
+    groups.find((g) =>
+      g.members.some((m) => m.user_id === $authStore.user?.id),
+    ),
   );
-
-  // Mock data - Replace with API calls
-  let category = $state({
-    id: params.categoryId,
-    name: "Đồ án chuyên ngành",
-    description: "Phát triển ứng dụng hoàn chỉnh với đầy đủ tính năng",
-    startDate: "2024-01-15",
-    endDate: "2024-05-30",
-    status: "ongoing",
-  });
-
-  // ...
-
-  let reports = $state([
-    {
-      id: "r1",
-      title: "Báo cáo đề cương",
-      deadline: "2024-02-15",
-      status: "submitted",
-      submittedDate: "2024-02-14",
-    },
-    {
-      id: "r2",
-      title: "Báo cáo tiến độ giữa kỳ",
-      deadline: "2024-03-30",
-      status: "pending",
-    },
-    {
-      id: "r3",
-      title: "Báo cáo cuối kỳ",
-      deadline: "2024-05-25",
-      status: "upcoming",
-    },
-  ]);
 
   onMount(async () => {
     try {
       loading = true;
       error = null;
 
-      // TEMPORARY: Use mock data if classroom ID starts with "mock-"
-      if (params.id.startsWith("mock-")) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      const classroom = await getClassroom(params.id);
+      console.log("📚 Classroom data:", classroom);
 
-        const mockClassroom = {
-          id: params.id,
-          projectRounds:
-            params.id === "mock-class-1"
-              ? [
-                  {
-                    id: "round1",
-                    name: "Đợt 1 - Đồ án cuối kỳ",
-                    description: "Phát triển ứng dụng web hoàn chỉnh",
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-05-31T23:59:59Z",
-                    reportPeriods: [
-                      {
-                        id: "rp1",
-                        title: "Báo cáo đề cương",
-                        description: "Nộp báo cáo đề cương dự án",
-                        fileType: ["pdf", "docx"],
-                        startDate: "2024-02-01T00:00:00Z",
-                        endDate: "2024-02-15T23:59:59Z",
-                      },
-                    ],
-                    createdAt: "2024-01-15T00:00:00Z",
-                    isDeleted: false,
-                  },
-                ]
-              : [
-                  {
-                    id: "round2",
-                    name: "Đợt 1 - AI Research",
-                    description: "Nghiên cứu và ứng dụng AI",
-                    startDate: "2024-02-01T00:00:00Z",
-                    endDate: "2024-05-31T23:59:59Z",
-                    reportPeriods: [],
-                    createdAt: "2024-01-15T00:00:00Z",
-                    isDeleted: false,
-                  },
-                ],
-        };
+      const projectRounds = await getProjectRounds(params.id);
+      console.log("📋 Project rounds:", projectRounds);
 
-        const foundRound = mockClassroom.projectRounds.find(
-          (round) => round.id === params.categoryId,
-        );
+      const foundRound = projectRounds.find(
+        (round) => round.id === params.categoryId,
+      );
+      projectRound = foundRound ?? null;
 
-        if (!foundRound) {
-          error = "Không tìm thấy đợt đồ án này";
-          return;
-        }
+      if (!projectRound) {
+        error = `Không tìm thấy hạng mục đề tài với ID: ${params.categoryId}`;
+        console.error("Không tìm thấy round:", params.categoryId);
+      }
 
-        projectRound = foundRound as unknown as ProjectRound;
-        groups = []; // Empty groups for mock data
-      } else {
-        // Fetch classroom info first
-        const classroom = await getClassroom(params.id);
-        console.log("📚 Classroom data:", classroom);
+      projects = await getProjects(params.id, params.categoryId);
+      console.log("📁 Projects in this round:", projects);
 
-        // Fetch project rounds separately
-        const projectRounds = await getProjectRounds(params.id);
-        console.log("📋 Project rounds:", projectRounds);
-
-        const foundRound = projectRounds.find(
-          (round) => round.id === params.categoryId,
-        );
-
-        if (!foundRound) {
-          error = "Không tìm thấy đợt đồ án này";
-          return;
-        }
-
-        projectRound = foundRound;
-
-        // Fetch projects in this round
-        projects = await getProjects(params.id, params.categoryId);
-        console.log("📁 Projects in this round:", projects);
-
-        // Try to fetch groups (may fail if backend not fixed)
-        try {
-          const groupsData = await getGroupsFilter({ classroom_id: params.id });
-          groups = groupsData || [];
-          console.log("👥 Groups in this classroom:", groups);
-        } catch (groupErr) {
-          console.warn("⚠️ Could not load groups (backend issue):", groupErr);
-          groups = []; // Continue without groups
-        }
+      try {
+        const groupsData = await getGroupsFilter({ classroom_id: params.id });
+        groups = groupsData || [];
+        console.log("👥 Groups in this classroom:", groups);
+      } catch (groupErr) {
+        console.warn("⚠️ Could not load groups:", groupErr);
+        groups = [];
       }
     } catch (err) {
-      console.error("Error loading project round:", err);
+      console.error("Error loading data:", err);
       error = err instanceof Error ? err.message : "Không thể tải dữ liệu";
     } finally {
       loading = false;
@@ -169,15 +76,34 @@
     );
   }
 
-  function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString("vi-VN");
+  // Hàm formatDate an toàn (chấp nhận string/Date/undefined)
+  function formatDate(dateInput: string | Date | undefined): string {
+    if (!dateInput) return "N/A";
+    const date =
+      typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+    return date.toLocaleDateString("vi-VN");
   }
 
-  function getDaysUntil(dateString: string): number {
-    const deadline = new Date(dateString);
-    const today = new Date();
-    const diff = deadline.getTime() - today.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  // Hàm tính trạng thái báo cáo – phiên bản an toàn, không lệch múi giờ
+  function getPeriodStatus(
+    start: string | Date | undefined,
+    end: string | Date | undefined,
+  ): "upcoming" | "ongoing" | "overdue" {
+    if (!start || !end) return "ongoing";
+
+    const toDateStr = (val: string | Date): string => {
+      const d = typeof val === "string" ? new Date(val) : val;
+      if (isNaN(d.getTime())) return new Date().toISOString().split("T")[0];
+      return d.toISOString().split("T")[0];
+    };
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const startStr = toDateStr(start);
+    const endStr = toDateStr(end);
+
+    if (todayStr < startStr) return "upcoming";
+    if (todayStr > endStr) return "overdue";
+    return "ongoing";
   }
 </script>
 
@@ -317,7 +243,7 @@
                   (sum, g) => sum + g.members.length,
                   0,
                 )}
-                {@const maxMembers = project.amount * project.max_member}
+                {@const maxMembers = project.amount * project.maxMember}
                 {@const isMyProject = myProjectId === project.id}
                 {@const isFull = currentMembers >= maxMembers}
 
@@ -333,6 +259,12 @@
                           Đề tài của tôi
                         </span>
                       {/if}
+                      <!-- Bỏ điều kiện project.status === "approved" nếu backend không set đúng -->
+                      <span class="badge badge-available">
+                        {isFull ? "Đã đủ" : "Còn chỗ"}
+                      </span>
+                      <!-- Nếu muốn giữ logic status, uncomment và kiểm tra backend -->
+                      <!--
                       {#if project.status === "approved"}
                         <span class="badge badge-available">
                           {isFull ? "Đã đủ" : "Còn chỗ"}
@@ -344,6 +276,7 @@
                       {:else}
                         <span class="badge badge-pending">Chờ duyệt</span>
                       {/if}
+                      -->
                     </div>
                   </div>
 
@@ -391,122 +324,141 @@
       {:else if activeTab === "reports"}
         <div class="reports-tab">
           {#if myGroup}
-            <div class="reports-timeline">
-              {#each projectRound.reportPeriods as reportPeriod}
-                {@const myReport = myGroup.reports.find(
-                  (r) => r.reportPeriodId === reportPeriod.id,
-                )}
-                {@const daysUntil = getDaysUntil(reportPeriod.endDate)}
-                {@const isSubmitted = !!myReport}
+            {#if projectRound?.reportPeriods?.length}
+              <div class="reports-timeline">
+                {#each projectRound.reportPeriods as reportPeriod}
+                  {@const myReport = myGroup.reports.find(
+                    (r) => r.reportPeriodId === reportPeriod.id,
+                  )}
+                  {@const status = getPeriodStatus(
+                    reportPeriod.startDate,
+                    reportPeriod.endDate,
+                  )}
+                  {@const isSubmitted = !!myReport}
 
-                <div class="timeline-item" class:completed={isSubmitted}>
-                  <div class="timeline-marker">
-                    {#if isSubmitted}
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                      </svg>
-                    {:else if daysUntil >= 0 && daysUntil <= 7}
-                      <div class="marker-pending"></div>
-                    {:else}
-                      <div class="marker-upcoming"></div>
-                    {/if}
-                  </div>
-
-                  <div class="timeline-content">
-                    <div class="report-header">
-                      <h3 class="report-title">{reportPeriod.title}</h3>
+                  <div class="timeline-item" class:completed={isSubmitted}>
+                    <div class="timeline-marker">
                       {#if isSubmitted}
-                        <span class="status-badge status-submitted">
-                          Đã nộp
-                        </span>
-                      {:else if daysUntil >= 0}
-                        <span class="status-badge status-pending">
-                          Chưa nộp
-                        </span>
-                      {:else}
-                        <span class="status-badge status-overdue">
-                          Quá hạn
-                        </span>
-                      {/if}
-                    </div>
-
-                    <p class="report-description">{reportPeriod.description}</p>
-
-                    <div class="report-info">
-                      <div class="info-item">
                         <svg
-                          width="16"
-                          height="16"
+                          width="20"
+                          height="20"
                           viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
+                          fill="currentColor"
                         >
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"
-                          ></rect>
-                          <line x1="16" y1="2" x2="16" y2="6"></line>
-                          <line x1="8" y1="2" x2="8" y2="6"></line>
-                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
                         </svg>
-                        <span>Hạn nộp: {formatDate(reportPeriod.endDate)}</span>
-                      </div>
-
-                      {#if isSubmitted && myReport}
-                        <div class="info-item success">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                          >
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                          </svg>
-                          <span>Đã nộp: {formatDate(myReport.createdAt)}</span>
-                        </div>
-                      {:else if daysUntil >= 0}
-                        <div class="info-item warning">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                          >
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                          </svg>
-                          <span>Còn {daysUntil} ngày</span>
-                        </div>
+                      {:else if status === "ongoing"}
+                        <div class="marker-pending"></div>
                       {:else}
-                        <div class="info-item error">
-                          <span>Đã quá hạn {Math.abs(daysUntil)} ngày</span>
-                        </div>
+                        <div class="marker-upcoming"></div>
                       {/if}
                     </div>
 
-                    {#if isSubmitted && myReport?.feedback}
-                      <div class="feedback-box">
-                        <h4>Nhận xét từ giảng viên:</h4>
-                        <p>{myReport.feedback.content}</p>
-                        {#if myReport.feedback.grade}
-                          <p class="grade">Điểm: {myReport.feedback.grade}</p>
+                    <div class="timeline-content">
+                      <div class="report-header">
+                        <h3 class="report-title">{reportPeriod.title}</h3>
+                        {#if isSubmitted}
+                          <span class="status-badge status-submitted">
+                            Đã nộp
+                          </span>
+                        {:else if status === "upcoming"}
+                          <span class="status-badge status-upcoming">
+                            Chưa bắt đầu
+                          </span>
+                        {:else if status === "ongoing"}
+                          <span class="status-badge status-pending">
+                            Chưa nộp
+                          </span>
+                        {:else}
+                          <span class="status-badge status-overdue">
+                            Quá hạn
+                          </span>
                         {/if}
                       </div>
-                    {/if}
+
+                      <p class="report-description">
+                        {reportPeriod.description}
+                      </p>
+
+                      <div class="report-info">
+                        <div class="info-item">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <rect
+                              x="3"
+                              y="4"
+                              width="18"
+                              height="18"
+                              rx="2"
+                              ry="2"
+                            ></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                          </svg>
+                          <span
+                            >Hạn nộp: {formatDate(reportPeriod.endDate)}</span
+                          >
+                        </div>
+
+                        {#if isSubmitted && myReport}
+                          <div class="info-item success">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"
+                              ></path>
+                              <polyline points="22 4 12 14.01 9 11.01"
+                              ></polyline>
+                            </svg>
+                            <span>Đã nộp: {formatDate(myReport.createdAt)}</span
+                            >
+                          </div>
+                        {:else if status === "ongoing"}
+                          <div class="info-item warning">
+                            <span>Đang trong thời gian nộp</span>
+                          </div>
+                        {:else if status === "upcoming"}
+                          <div class="info-item">
+                            <span>Chưa đến thời gian nộp</span>
+                          </div>
+                        {:else}
+                          <div class="info-item error">
+                            <span>Đã quá hạn</span>
+                          </div>
+                        {/if}
+                      </div>
+
+                      {#if isSubmitted && myReport?.feedback}
+                        <div class="feedback-box">
+                          <h4>Nhận xét từ giảng viên:</h4>
+                          <p>{myReport.feedback.content}</p>
+                          {#if myReport.feedback.grade}
+                            <p class="grade">Điểm: {myReport.feedback.grade}</p>
+                          {/if}
+                        </div>
+                      {/if}
+                    </div>
                   </div>
-                </div>
-              {/each}
-            </div>
+                {/each}
+              </div>
+            {:else}
+              <div class="alert alert-info">
+                <p>Hạng mục này chưa có đợt báo cáo nào.</p>
+              </div>
+            {/if}
           {:else}
             <div class="alert alert-info">
               <p>Bạn chưa tham gia nhóm nào trong hạng mục này</p>
@@ -940,5 +892,172 @@
   .empty-state p {
     font-size: 0.875rem;
     color: #6b7280;
+  }
+  /* Reports Timeline - Làm đẹp hơn */
+  .reports-timeline {
+    position: relative;
+    padding-left: 2rem; /* Để có chỗ cho đường timeline */
+  }
+
+  .timeline-item {
+    position: relative;
+    padding: 1.5rem 1rem 2rem 3rem;
+    margin-bottom: 1rem;
+    background: #f9fafb;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+  }
+
+  .timeline-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: 1.25rem;
+    top: 2.5rem;
+    bottom: -1rem;
+    width: 2px;
+    background: #d1d5db;
+  }
+
+  .timeline-item:last-child::before {
+    bottom: 0;
+  }
+
+  .timeline-item.completed::before {
+    background: #10b981; /* xanh khi hoàn thành */
+  }
+
+  .timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: white;
+    border: 3px solid #e5e7eb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .timeline-marker svg,
+  .timeline-marker .marker-pending,
+  .timeline-marker .marker-upcoming {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .marker-pending {
+    background: #fef3c7;
+    border: 3px solid #f59e0b;
+  }
+
+  .marker-upcoming {
+    background: #f3f4f6;
+    border: 3px solid #9ca3af;
+  }
+
+  .timeline-content {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .report-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .status-badge {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+  }
+
+  .status-submitted {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .status-pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .status-upcoming {
+    background: #e5e7eb;
+    color: #4b5563;
+  }
+  .status-overdue {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .report-description {
+    font-size: 0.95rem;
+    color: #4b5563;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .report-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .info-item.success {
+    color: #065f46;
+  }
+  .info-item.warning {
+    color: #92400e;
+  }
+  .info-item.error {
+    color: #b91c1c;
+  }
+
+  .feedback-box {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-left: 4px solid #3b82f6;
+    border-radius: 0.5rem;
+  }
+
+  .feedback-box h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: #111827;
+  }
+
+  .grade {
+    font-weight: 600;
+    color: #3b82f6;
   }
 </style>
