@@ -6,7 +6,7 @@
   import { authStore } from "../../stores/auth-store";
   import type { Group } from "../../models";
   import type { ProjectResponse } from "../../dtos/project-dto";
-  import { getClassroomStudents } from "../../services/classroom-service";
+  import { getClassroom } from "../../services/classroom-service";
   import {
     sendGroupInvitation,
     getGroupInvitations,
@@ -22,11 +22,14 @@
   >("not-registered");
   let showInviteModal = $state(false);
   let inviteEmail = $state("");
-
+  let selectedStudentId = $state<string>("");
   let project = $state<ProjectResponse | null>(null);
   let myGroup = $state<Group | null>(null);
   let allGroups = $state<Group[]>([]);
   let pendingInvitations = $state<any[]>([]);
+  let studentsInClass = $state<
+    { userId: string; fullName: string; email?: string }[]
+  >([]);
 
   // Hàm load dữ liệu (có thể gọi lại khi cần)
   async function loadData() {
@@ -37,7 +40,6 @@
       // 1. Load chi tiết đề tài
       try {
         const projectData = await getProject(params.id, params.projectId);
-        console.log("Project loaded:", projectData);
         project = projectData;
       } catch (projectErr) {
         console.warn("Không load được chi tiết đề tài:", projectErr);
@@ -75,8 +77,17 @@
     }
   }
 
-  onMount(() => {
-    loadData();
+  onMount(async () => {
+    await loadData();
+
+    try {
+      const classroom = await getClassroom(params.id);
+      studentsInClass = classroom.students || [];
+      console.log("Sinh viên trong lớp:", studentsInClass);
+    } catch (err) {
+      console.error("Lỗi lấy sinh viên lớp:", err);
+      studentsInClass = [];
+    }
   });
 
   async function handleStartRegistration() {
@@ -121,28 +132,37 @@
   }
 
   async function handleSendInvite() {
-    if (!inviteEmail) {
-      alert("Vui lòng nhập email");
+    if (!selectedStudentId) {
+      alert("Vui lòng chọn một sinh viên để mời");
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(inviteEmail)) {
-      alert("Email không hợp lệ");
+    if (!myGroup) {
+      alert("Bạn chưa có nhóm để mời");
       return;
     }
 
-    // TODO: Thay bằng API gửi lời mời thật khi backend hỗ trợ
-    const newInvitation = {
-      id: `inv${Date.now()}`,
-      email: inviteEmail,
-      status: "pending",
-      sentAt: new Date().toISOString(),
-    };
+    try {
+      console.log("myGroup, selectedStudentId:", myGroup.id, selectedStudentId);
+      await sendGroupInvitation(myGroup.id, selectedStudentId);
 
-    pendingInvitations = [...pendingInvitations, newInvitation];
-    showInviteModal = false;
-    alert(`Đã gửi lời mời đến ${inviteEmail}`);
+      // Load lại lời mời từ backend
+      const invitations = await getGroupInvitations(myGroup.id);
+      pendingInvitations = invitations || [];
+
+      const selected = studentsInClass.find(
+        (s) => s.userId === selectedStudentId,
+      );
+      alert(
+        `Đã gửi lời mời thành công đến ${selected?.fullName || "sinh viên"}`,
+      );
+
+      showInviteModal = false;
+      selectedStudentId = "";
+    } catch (err: any) {
+      console.error("Lỗi gửi lời mời:", err);
+      alert("Không thể gửi lời mời: " + (err.message || "Lỗi hệ thống"));
+    }
   }
 
   function handleCancelInvite(inviteId: string) {
@@ -389,8 +409,6 @@
   {/if}
 </div>
 
-<!-- Modal mời thành viên -->
-<!-- Invite Modal -->
 {#if showInviteModal}
   <div class="modal-overlay" onclick={() => (showInviteModal = false)}>
     <div class="modal" onclick={(e) => e.stopPropagation()}>
@@ -412,22 +430,39 @@
       </div>
 
       <div class="modal-body">
-        <label for="invite-email" class="form-label">Email sinh viên</label>
-        <input
-          type="email"
-          id="invite-email"
-          bind:value={inviteEmail}
-          placeholder="example@student.edu.vn"
+        <label for="student-select" class="form-label"
+          >Chọn sinh viên trong lớp</label
+        >
+        <select
+          id="student-select"
+          bind:value={selectedStudentId}
           class="form-input"
-        />
-        <p class="form-help">Nhập email của sinh viên bạn muốn mời vào nhóm</p>
+        >
+          <option value="">-- Chọn sinh viên --</option>
+          {#each studentsInClass as student}
+            <option value={student.userId}>
+              {student.fullName} ({student.email || "không có email"})
+            </option>
+          {/each}
+        </select>
+        <p class="form-help">
+          {#if studentsInClass.length === 0}
+            Không có sinh viên nào trong lớp hoặc đang tải...
+          {:else}
+            Chọn một sinh viên để gửi lời mời tham gia nhóm
+          {/if}
+        </p>
       </div>
 
       <div class="modal-footer">
         <button onclick={() => (showInviteModal = false)} class="btn-secondary">
           Hủy
         </button>
-        <button onclick={handleSendInvite} class="btn-primary">
+        <button
+          onclick={handleSendInvite}
+          class="btn-primary"
+          disabled={!selectedStudentId}
+        >
           Gửi lời mời
         </button>
       </div>
