@@ -25,8 +25,8 @@ func NewGroupController(groupService service.GroupService) *GroupController {
 // Group CRUD Operations
 
 func (g *GroupController) CreateGroup(ctx *gin.Context) {
-	var req *dto.CreateGroupRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.CreateGroupRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -37,7 +37,7 @@ func (g *GroupController) CreateGroup(ctx *gin.Context) {
 		return
 	}
 
-	group, err := g.groupService.CreateGroup(req, authUser.(auth.AuthUser).ID)
+	group, err := g.groupService.CreateGroup(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -91,8 +91,8 @@ func (g *GroupController) GetGroupsFilter(ctx *gin.Context) {
 }
 
 func (g *GroupController) UpdateGroup(ctx *gin.Context) {
-	var req *dto.UpdateGroupRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateGroupRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -103,7 +103,7 @@ func (g *GroupController) UpdateGroup(ctx *gin.Context) {
 		return
 	}
 
-	group, err := g.groupService.UpdateGroup(req, authUser.(auth.AuthUser).ID)
+	group, err := g.groupService.UpdateGroup(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -160,8 +160,8 @@ func (g *GroupController) LeaveGroup(ctx *gin.Context) {
 // Join Request Operations
 
 func (g *GroupController) CreateJoinRequest(ctx *gin.Context) {
-	var req *dto.CreateJoinGroupRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.CreateJoinGroupRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -172,7 +172,7 @@ func (g *GroupController) CreateJoinRequest(ctx *gin.Context) {
 		return
 	}
 
-	joinRequest, err := g.groupService.CreateJoinRequest(req, authUser.(auth.AuthUser).ID)
+	joinRequest, err := g.groupService.CreateJoinRequest(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -182,8 +182,8 @@ func (g *GroupController) CreateJoinRequest(ctx *gin.Context) {
 }
 
 func (g *GroupController) AcceptJoinRequest(ctx *gin.Context) {
-	var req *dto.UpdateJoinGroupRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateJoinGroupRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -194,7 +194,7 @@ func (g *GroupController) AcceptJoinRequest(ctx *gin.Context) {
 		return
 	}
 
-	err := g.groupService.AcceptJoinRequest(req, authUser.(auth.AuthUser).ID)
+	err := g.groupService.AcceptJoinRequest(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -204,8 +204,8 @@ func (g *GroupController) AcceptJoinRequest(ctx *gin.Context) {
 }
 
 func (g *GroupController) RejectJoinRequest(ctx *gin.Context) {
-	var req *dto.UpdateJoinGroupRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateJoinGroupRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -216,7 +216,7 @@ func (g *GroupController) RejectJoinRequest(ctx *gin.Context) {
 		return
 	}
 
-	err := g.groupService.RejectJoinRequest(req, authUser.(auth.AuthUser).ID)
+	err := g.groupService.RejectJoinRequest(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -228,8 +228,8 @@ func (g *GroupController) RejectJoinRequest(ctx *gin.Context) {
 // Invitation Operations
 
 func (g *GroupController) InviteToGroup(ctx *gin.Context) {
-	var req *dto.CreateGroupInvitationRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.CreateGroupInvitationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -240,7 +240,7 @@ func (g *GroupController) InviteToGroup(ctx *gin.Context) {
 		return
 	}
 
-	invitation, err := g.groupService.InviteToGroup(req, authUser.(auth.AuthUser).ID)
+	invitation, err := g.groupService.InviteToGroup(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -250,8 +250,8 @@ func (g *GroupController) InviteToGroup(ctx *gin.Context) {
 }
 
 func (g *GroupController) AcceptInvitation(ctx *gin.Context) {
-	var req *dto.UpdateGroupInvitationRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateGroupInvitationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -262,7 +262,7 @@ func (g *GroupController) AcceptInvitation(ctx *gin.Context) {
 		return
 	}
 
-	err := g.groupService.AcceptInvitation(req, authUser.(auth.AuthUser).ID)
+	err := g.groupService.AcceptInvitation(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -272,8 +272,8 @@ func (g *GroupController) AcceptInvitation(ctx *gin.Context) {
 }
 
 func (g *GroupController) RejectInvitation(ctx *gin.Context) {
-	var req *dto.UpdateGroupInvitationRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateGroupInvitationRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -284,7 +284,7 @@ func (g *GroupController) RejectInvitation(ctx *gin.Context) {
 		return
 	}
 
-	err := g.groupService.RejectInvitation(req, authUser.(auth.AuthUser).ID)
+	err := g.groupService.RejectInvitation(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -296,8 +296,8 @@ func (g *GroupController) RejectInvitation(ctx *gin.Context) {
 // Task Operations
 
 func (g *GroupController) CreateTask(ctx *gin.Context) {
-	var req *dto.CreateTaskRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.CreateTaskRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -308,7 +308,7 @@ func (g *GroupController) CreateTask(ctx *gin.Context) {
 		return
 	}
 
-	task, err := g.groupService.CreateTask(req, authUser.(auth.AuthUser).ID)
+	task, err := g.groupService.CreateTask(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -318,8 +318,8 @@ func (g *GroupController) CreateTask(ctx *gin.Context) {
 }
 
 func (g *GroupController) UpdateTask(ctx *gin.Context) {
-	var req *dto.UpdateTaskRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateTaskRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -330,7 +330,7 @@ func (g *GroupController) UpdateTask(ctx *gin.Context) {
 		return
 	}
 
-	task, err := g.groupService.UpdateTask(req, authUser.(auth.AuthUser).ID)
+	task, err := g.groupService.UpdateTask(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -586,8 +586,8 @@ func (g *GroupController) DeleteReport(ctx *gin.Context) {
 // Report Feedback Operations
 
 func (g *GroupController) CreateReportFeedback(ctx *gin.Context) {
-	var req *dto.CreateReportFeedbackRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.CreateReportFeedbackRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -598,7 +598,7 @@ func (g *GroupController) CreateReportFeedback(ctx *gin.Context) {
 		return
 	}
 
-	feedback, err := g.groupService.CreateReportFeedback(req, authUser.(auth.AuthUser).ID)
+	feedback, err := g.groupService.CreateReportFeedback(&req, authUser.(auth.AuthUser).ID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return
@@ -608,8 +608,8 @@ func (g *GroupController) CreateReportFeedback(ctx *gin.Context) {
 }
 
 func (g *GroupController) UpdateReportFeedback(ctx *gin.Context) {
-	var req *dto.UpdateReportFeedbackRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var req dto.UpdateReportFeedbackRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		dto.SendError(ctx, http.StatusBadRequest, apperror.Message(apperror.ErrBadRequest), apperror.ErrBadRequest.Code)
 		return
 	}
@@ -622,7 +622,7 @@ func (g *GroupController) UpdateReportFeedback(ctx *gin.Context) {
 		return
 	}
 
-	err := g.groupService.UpdateReportFeedback(req, groupID, reportID)
+	err := g.groupService.UpdateReportFeedback(&req, groupID, reportID)
 	if err != nil {
 		dto.SendError(ctx, apperror.StatusFromError(err), apperror.Message(err), apperror.Code(err))
 		return

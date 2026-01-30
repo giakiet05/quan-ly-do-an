@@ -156,6 +156,8 @@ func (g *groupService) CreateGroup(req *dto.CreateGroupRequest, requesterID stri
 		Members:        members,
 		Tasks:          []model.Task{},
 		Reports:        []model.Report{},
+		JoinInvitation: []model.JoinGroupInvitation{},
+		JoinRequests:   []model.JoinGroupRequest{},
 		Setting: model.GroupSetting{
 			AllowJoinRequest: true,
 		},
