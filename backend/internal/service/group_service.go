@@ -338,6 +338,22 @@ func (g *groupService) CreateJoinRequest(req *dto.CreateJoinGroupRequest, reques
 		return nil, apperror.ErrForbidden
 	}
 
+	ok, err := g.classroomRepo.IsMember(ctx, group.ClassroomID.Hex(), requesterID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, apperror.ErrUserNotMember
+	}
+
+	ok, err = g.groupRepo.IsAlreadyInGroup(ctx, requesterID)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return nil, apperror.ErrUserAlreadyInAGroup
+	}
+
 	// Check if user is already a member
 	for _, member := range group.Members {
 		if member.ID == requesterOID {
@@ -433,6 +449,14 @@ func (g *groupService) AcceptJoinRequest(req *dto.UpdateJoinGroupRequest, reques
 	}
 	if isMaxReached {
 		return apperror.ErrBadRequest
+	}
+
+	ok, err = g.groupRepo.IsAlreadyInGroup(ctx, joinRequest.UserID.Hex())
+	if err != nil {
+		return err
+	}
+	if ok {
+		return apperror.ErrUserAlreadyInAGroup
 	}
 
 	err = g.AddMemberToGroup(req.GroupID, joinRequest.UserID.Hex())
@@ -564,6 +588,22 @@ func (g *groupService) InviteToGroup(req *dto.CreateGroupInvitationRequest, requ
 		return nil, err
 	}
 
+	ok, err = g.classroomRepo.IsMember(ctx, group.ClassroomID.Hex(), req.RecipientID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, apperror.ErrUserNotMember
+	}
+
+	ok, err = g.groupRepo.IsAlreadyInGroup(ctx, req.RecipientID)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return nil, apperror.ErrUserAlreadyInAGroup
+	}
+
 	for _, member := range group.Members {
 		if member.ID == recipientOID {
 			return nil, apperror.ErrBadRequest
@@ -640,6 +680,14 @@ func (g *groupService) AcceptInvitation(req *dto.UpdateGroupInvitationRequest, r
 
 	if invitation.Status != model.RequestPending {
 		return apperror.ErrBadRequest
+	}
+
+	ok, err := g.groupRepo.IsAlreadyInGroup(ctx, requesterID)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return apperror.ErrUserAlreadyInAGroup
 	}
 
 	// Check if group is at max capacity

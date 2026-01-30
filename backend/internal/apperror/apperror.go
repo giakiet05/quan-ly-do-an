@@ -115,6 +115,7 @@ var (
 	ErrProjectGroupNotFound = AppError{Code: "PROJECT_GROUP_NOT_FOUND", Message: "Project group not found"}
 	ErrProjectNotFound      = AppError{Code: "PROJECT_NOT_FOUND", Message: "Project not found"}
 	ErrInvalidMemberNumber  = AppError{Code: "INVALID_MEMBER_NUMBER", Message: "Invalid member number"}
+	ErrUserAlreadyInAGroup  = AppError{Code: "USER_ALREADY_IN_A_GROUP", Message: "User is already in a group"}
 
 	// Project-related
 	ErrReportAlreadyExists      = AppError{Code: "REPORT_ALREADY_EXISTS", Message: "Report already exists for this period"}
@@ -124,7 +125,7 @@ var (
 
 	// Class Membership-related
 	ErrMembershipNotFound     = AppError{Code: "MEMBERSHIP_NOT_FOUND", Message: "Membership not found"}
-	ErrAlreadyMember          = AppError{Code: "ALREADY_MEMBER", Message: "User is already a member of this community"}
+	ErrAlreadyMember          = AppError{Code: "ALREADY_MEMBER", Message: "User is already a member of this classroom"}
 	ErrMembershipCreateFailed = AppError{Code: "MEMBERSHIP_CREATE_FAILED", Message: "Failed to create membership"}
 	ErrMembershipDeleteFailed = AppError{Code: "MEMBERSHIP_DELETE_FAILED", Message: "Failed to delete membership"}
 	ErrInvalidMembershipData  = AppError{Code: "INVALID_MEMBERSHIP_DATA", Message: "Invalid membership data"}
@@ -137,6 +138,7 @@ var (
 	ErrClassroomNotFound = AppError{Code: "CLASSROOM_NOT_FOUND", Message: "Classroom not found"}
 	ErrRoundNotFound     = AppError{Code: "ROUND_NOT_FOUND", Message: "Round not found"}
 	ErrPostNotFound      = AppError{Code: "POST_NOT_FOUND", Message: "Post not found"}
+	ErrUserNotMember     = AppError{Code: "USER_NOT_MEMBER", Message: "User is not a member of this classroom"}
 
 	// Invitation-related
 	ErrInvitationNotFound         = AppError{Code: "INVITATION_NOT_FOUND", Message: "Invitation not found"}

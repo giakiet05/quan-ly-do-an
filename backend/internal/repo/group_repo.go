@@ -31,6 +31,7 @@ type GroupRepo interface {
 	IsMember(ctx context.Context, groupID string, userID string) (bool, error)
 	IsMaxMemberReached(ctx context.Context, groupID string) (bool, error)
 	ReportExistsByPeriod(ctx context.Context, classroomID string, periodID string) (bool, error)
+	IsAlreadyInGroup(ctx context.Context, userID string) (bool, error)
 }
 
 type groupRepo struct {
@@ -390,4 +391,25 @@ func (g *groupRepo) ReportExistsByPeriod(
 	}
 
 	return count > 0, nil
+}
+
+func (g *groupRepo) IsAlreadyInGroup(ctx context.Context, userID string) (bool, error) {
+	userOID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{
+		"members._id": userOID,
+	}
+
+	err = g.groupCollection.FindOne(ctx, filter).Err()
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
