@@ -1,7 +1,16 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte";
     import type { NotificationItem } from "../types/notification";
-    import { getClassroomByChannelId } from "../services/classroom-service";
+    import {
+        getClassroomByChannelId,
+        getClassroom,
+    } from "../services/classroom-service";
+    import {
+        getGroup,
+        acceptGroupInvitation,
+        rejectGroupInvitation,
+    } from "../services/group-service";
+    import Swal from "sweetalert2";
     import { push } from "svelte-spa-router";
 
     export let item: NotificationItem;
@@ -12,6 +21,7 @@
     let displayContent = item.content;
     let targetClassId = ""; // Lưu Classroom ID để điều hướng
     let isLoadingClass = false;
+    const isGroupInvite = item.content.includes("mời tham gia nhóm");
 
     onMount(async () => {
         // Regex tìm ID 24 ký tự ở cuối chuỗi
@@ -37,13 +47,60 @@
     });
 
     const handleItemClick = () => {
-        if (targetClassId) {
+        if (isGroupInvite) {
+            handleGroupInviteClick();
+        } else if (targetClassId) {
             push(`/lecture/my-classes/${targetClassId}`);
             if (!item.read) doMark();
         }
     };
     // -----------------------
+    const handleGroupInviteClick = async () => {
+        const link = item.link || "";
+        const regex = /\/groups\/([a-f\d]{24})\/invitations\/([a-f\d]{24})/;
+        const match = link.match(regex);
+        if (!match) return;
 
+        const groupId = match[1];
+        const invitationId = match[2];
+
+        // 1. Thử lấy thông tin, nếu bị FORBIDDEN thì hiện xác nhận "mù"
+        try {
+            const group = await getGroup(groupId);
+            // ... (Đoạn hiện Swal đầy đủ thông tin như cũ) ...
+        } catch (error: any) {
+            if (error.error_code === "FORBIDDEN") {
+                // 2. Nếu bị chặn quyền xem, hỏi thẳng người dùng luôn
+                const result = await Swal.fire({
+                    title: "Lời mời vào nhóm",
+                    text: "Bạn nhận được một lời mời tham gia nhóm. Do chính sách bảo mật, bạn cần chấp nhận tham gia để xem chi tiết thành viên.",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Chấp nhận tham gia",
+                    cancelButtonText: "Để sau",
+                    confirmButtonColor: "#22c55e",
+                });
+
+                if (result.isConfirmed) {
+                    try {
+                        await acceptGroupInvitation(groupId, invitationId);
+                        Swal.fire(
+                            "Thành công!",
+                            "Bạn đã vào nhóm. Giờ bạn có thể xem chi tiết.",
+                            "success",
+                        );
+                        doMark();
+                    } catch (acceptError: any) {
+                        Swal.fire(
+                            "Lỗi",
+                            "Không thể chấp nhận lời mời này.",
+                            "error",
+                        );
+                    }
+                }
+            }
+        }
+    };
     const doMark = () => {
         dispatch("mark", { id: item.id });
     };
@@ -367,5 +424,21 @@
         .tool-panel {
             opacity: 1;
         }
+    }
+    .icon-wrapper.group {
+        background: #f5f3ff;
+        color: #7c3aed;
+    }
+
+    .invite-bg {
+        border-left: 4px solid #7c3aed !important;
+    }
+
+    .action-hint {
+        display: block;
+        font-size: 12px;
+        color: #7c3aed;
+        margin-top: 4px;
+        font-weight: 500;
     }
 </style>

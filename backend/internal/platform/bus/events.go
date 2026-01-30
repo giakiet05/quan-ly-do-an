@@ -237,6 +237,7 @@ func (e InChatMessageEvent) Payload() map[string]interface{} {
 }
 
 type GroupInvitationEvent struct {
+	InvitationID string     `json:"invitation_id"`
 	GroupID     string     `json:"group_id"`
 	InviterID   string     `json:"inviter_id"`
 	InviteeID   string     `json:"invitee_id"`
@@ -250,6 +251,7 @@ func (e GroupInvitationEvent) Topic() string {
 }
 func (e GroupInvitationEvent) Payload() map[string]interface{} {
 	return map[string]interface{}{
+		"invitation_id": e.InvitationID,
 		"group_id":     e.GroupID,
 		"inviter_id":   e.InviterID,
 		"invitee_id":   e.InviteeID,

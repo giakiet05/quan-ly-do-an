@@ -36,6 +36,7 @@
     "lucide-svelte": "^0.562.0",
     "postcss-import": "^16.1.1",
     "svelte-spa-router": "^4.0.1",
+    "sweetalert2": "^11.26.17",
     "xlsx": "^0.18.5",
     "zod": "^4.3.5"
   }
