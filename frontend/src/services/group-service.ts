@@ -256,11 +256,11 @@ export async function sendGroupInvitation(
   groupId: string,
   recipientId: string
 ): Promise<void> {
-  const payload = { groupId, recipientId };
+  const payload = { group_id: groupId, recipient_id: recipientId };
   console.log("📤 Gửi lời mời nhóm:", {
     url: `/api/groups/invitations`,
     method: "POST",
-    body: JSON.stringify(payload, null, 2), // in đẹp
+    body: JSON.stringify(payload, null, 2),
     groupId,
     recipientId,
   });
@@ -292,10 +292,12 @@ export async function acceptGroupInvitation(
   groupId: string,
   invitationId: string
 ): Promise<void> {
+  const payload = { group_id: groupId, invitation_id: invitationId };
   return apiFetch<void>(
-    `/api/groups/${groupId}/invitations/${invitationId}/accept`,
+    `/api/groups/invitations/accept`,
     {
-      method: "POST",
+      method: "PUT",
+      body: JSON.stringify(payload),
     }
   );
 }
@@ -308,9 +310,10 @@ export async function rejectGroupInvitation(
   invitationId: string
 ): Promise<void> {
   return apiFetch<void>(
-    `/api/groups/${groupId}/invitations/${invitationId}/reject`,
+    `/api/groups/invitations/reject`,
     {
-      method: "POST",
+      method: "PUT",
+      body: JSON.stringify({ group_id: groupId, invitation_id: invitationId }),
     }
   );
 }

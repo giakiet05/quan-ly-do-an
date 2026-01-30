@@ -644,6 +644,7 @@ func (g *groupService) InviteToGroup(req *dto.CreateGroupInvitationRequest, requ
 	}
 
 	g.eventBus.Publish(bus.GroupInvitationEvent{
+		InvitationID: invitation.ID.Hex(),
 		GroupID:     req.GroupID,
 		InviterID:   requesterID,
 		InviteeID:   req.RecipientID,
