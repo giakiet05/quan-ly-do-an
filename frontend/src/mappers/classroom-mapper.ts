@@ -46,6 +46,26 @@ export function mapClassroomToClassItem(cls: ClassroomResponse): ClassItem {
             joinedBy: w.joinedBy,
             joinedAt: w.joinedAt
         })),
+        projectRounds: (cls.projectRounds || []).map(round => ({
+            id: round.id,
+            name: round.name,
+            description: round.description || "",
+            startDate: round.startDate,
+            endDate: round.endDate,
+            defaultMinMember: round.defaultMinMember,
+            defaultMaxMember: round.defaultMaxMember,
+            isDeleted: round.isDeleted,
+            createdAt: round.createdAt,
+            // Map Report Periods bên trong Round
+            reportPeriods: (round.reportPeriods || []).map(period => ({
+                id: period.id,
+                title: period.title,
+                description: period.description || "",
+                fileType: period.fileType || [],
+                startDate: period.startDate,
+                endDate: period.endDate
+            }))
+        })),
 
         studentCount: cls.students?.length ?? 0,
         createdAt: cls.createdAt || new Date().toISOString(),

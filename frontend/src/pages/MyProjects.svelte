@@ -5,7 +5,10 @@
   import { authStore } from "../stores/auth-store";
   import { getGroupsFilter } from "../services/group-service";
   import { getMyJoinedClassrooms } from "../services/classroom-service";
+  import { getProject } from "../services/project-service";
+  import { getProjectRoundById } from "../services/project-round-service";
   import type { Group } from "../models";
+  import type { ProjectResponse } from "../dtos/project-dto";
 
   interface Project {
     id: string; // groupId
@@ -41,11 +44,9 @@
         return;
       }
 
-      // Fetch all joined classrooms to get project info
       const classrooms = await getMyJoinedClassrooms();
-
-      // Fetch groups where current user is a member
       const allGroups: Group[] = [];
+
       for (const classroom of classrooms) {
         try {
           const groups = await getGroupsFilter({
@@ -60,92 +61,69 @@
             `Failed to fetch groups for classroom ${classroom.id}:`,
             err,
           );
-          // Continue to next classroom if groups API fails
         }
       }
 
-      // Map groups to projects
-      myProjects = allGroups.map((group) => {
-        // Find classroom and project info
-        const classroom = classrooms.find((c) => c.id === group.classroom_id);
-        let projectInfo = null;
-        let categoryName = "";
+      // Xử lý song song tất cả các group
+      // Xử lý song song tất cả các group
+      myProjects = await Promise.all(
+        allGroups.map(async (group) => {
+          const classroom = classrooms.find((c) => c.id === group.classroom_id);
+          let projectInfo: ProjectResponse | null = null;
+          let categoryName = "Đang tải..."; // Trạng thái chờ
 
-        if (classroom?.projectRounds) {
-          for (const round of classroom.projectRounds) {
-            const project = round.projects?.find(
-              (p) => p.id === group.project_id,
-            );
-            if (project) {
-              projectInfo = project;
-              categoryName = round.name;
-              break;
+          try {
+            // 1. Lấy thông tin chi tiết project
+            if (group.project_id) {
+              projectInfo = await getProject(
+                group.classroom_id,
+                group.project_id,
+              );
             }
+
+            // 2. Gọi service lấy thông tin Round để lấy Name (Category)
+            if (projectInfo?.projectRoundId) {
+              try {
+                const roundInfo = await getProjectRoundById(
+                  group.classroom_id,
+                  projectInfo.projectRoundId,
+                );
+                categoryName = roundInfo?.name || "Không xác định";
+              } catch (roundErr) {
+                console.warn("Không thể lấy thông tin Round:", roundErr);
+                categoryName = "N/A";
+              }
+            } else {
+              categoryName = "Chưa phân đợt";
+            }
+          } catch (e) {
+            console.error(`Lỗi thông tin project ${group.project_id}:`, e);
+            categoryName = "Lỗi dữ liệu";
           }
-        }
 
-        const memberCount = group.members.length;
-        const isFull = memberCount >= group.max_member;
+          const memberCount = group.members?.length || 0;
+          const maxStudents = projectInfo?.maxMember || group.max_member || 0;
+          const isFull = memberCount >= maxStudents;
 
-        return {
-          id: group.id,
-          name: projectInfo?.title || "Đề tài chưa có thông tin",
-          description: projectInfo?.description || "",
-          instructor: classroom?.lecturer?.fullName || "Chưa có GVHD",
-          status: isFull ? "full" : "available",
-          currentStudents: memberCount,
-          maxStudents: group.max_member,
-          tags: [],
-          className: classroom?.name || "",
-          categoryName,
-          categoryStatus: "ongoing",
-          allowStudentEdit: classroom?.canStudentDeleteGroup || false,
-        };
-      });
-
-      // Mock fallback if no data
-      if (myProjects.length === 0) {
-        console.log("No groups found, using mock data");
-        myProjects = [
-          {
-            id: "mock-p1",
-            name: "Hệ thống quản lý thư viện trực tuyến",
-            description:
-              "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-            instructor: "TS. Nguyễn Văn A",
-            status: "available",
-            currentStudents: 2,
-            maxStudents: 3,
-            tags: ["Web", "React", "Node.js", "MongoDB"],
-            className: "Công nghệ phần mềm - K18",
-            categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
+          return {
+            id: group.id,
+            name: projectInfo?.title || "Đề tài chưa có thông tin",
+            description: projectInfo?.description || "Không có mô tả",
+            instructor: classroom?.lecturer?.fullName || "Chưa có GVHD",
+            status: isFull ? "full" : "available",
+            currentStudents: memberCount,
+            maxStudents: maxStudents,
+            tags: [],
+            className: classroom?.name || "Lớp học đã giải tán",
+            categoryName: categoryName, // Tên lấy từ getProjectRoundById
             categoryStatus: "ongoing",
-            allowStudentEdit: true,
-          },
-        ];
-      }
+            allowStudentEdit: classroom?.canStudentDeleteGroup || false,
+          };
+        }),
+      );
     } catch (err: any) {
       console.error("Failed to fetch projects:", err);
       error = err.message || "Không thể tải danh sách đề tài";
-
-      // Mock fallback on error
-      myProjects = [
-        {
-          id: "mock-p1",
-          name: "Hệ thống quản lý thư viện trực tuyến",
-          description:
-            "Xây dựng hệ thống quản lý thư viện với các tính năng mượn/trả sách, tìm kiếm, đặt chỗ",
-          instructor: "TS. Nguyễn Văn A",
-          status: "available",
-          currentStudents: 2,
-          maxStudents: 3,
-          tags: ["Web", "React", "Node.js", "MongoDB"],
-          className: "Công nghệ phần mềm - K18",
-          categoryName: "Đồ án chuyên ngành - HK1 2024-2025",
-          categoryStatus: "ongoing",
-          allowStudentEdit: true,
-        },
-      ];
     } finally {
       isLoading = false;
     }

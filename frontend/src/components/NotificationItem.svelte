@@ -118,7 +118,7 @@
                     showConfirmButton: false,
                 });
                 doMark();
-                push(`/lecture/my-classes/${classroomId}`);
+                push(`/students/classes/${classroomId}`);
             }
         } catch (error: any) {
             console.error("Lỗi lấy thông tin:", error);
