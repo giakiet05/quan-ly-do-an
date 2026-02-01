@@ -355,6 +355,8 @@ func (s *notificationService) handleGroupInvitation(event bus.Event) {
 	isAccepted, _ := payload["is_accepted"].(bool)
 	respondedAt, _ := payload["responded_at"].(*time.Time)
 	invitationID, _ := payload["invitation_id"].(string)
+	classroomID, _ := payload["classroom_id"].(string)
+	projectID, _ := payload["project_id"].(string)
 
 	// If respondedAt is nil, it's a new invitation (sent)
 	if respondedAt == nil {
@@ -367,7 +369,7 @@ func (s *notificationService) handleGroupInvitation(event bus.Event) {
 			ActorID:     inviterObjectID,
 			Type:        model.NotificationTypeGroupInvitation,
 			Message:     "Bạn có thư mời tham gia nhóm",
-			Link:        fmt.Sprintf("/groups/%s/invitations/%s", groupID, invitationID),
+			Link:        fmt.Sprintf("/classrooms/%s/projects/%s/groups/%s/invitations/%s", classroomID, projectID, groupID, invitationID),
 			IsRead:      false,
 			Metadata:    payload,
 			CreatedAt:   time.Now(),

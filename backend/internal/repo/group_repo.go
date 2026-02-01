@@ -174,7 +174,7 @@ func (g *groupRepo) AddMember(ctx context.Context, groupID string, user *model.U
 	update := bson.M{
 		"$addToSet": bson.M{
 			"members": bson.M{
-				"user_id":   user.ID,
+				"_id":   user.ID,
 				"full_name": user.FullName,
 				"avatar":    user.Avatar,
 				"joined_at": time.Now(),

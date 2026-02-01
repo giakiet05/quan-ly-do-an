@@ -12,6 +12,7 @@
     } from "../services/group-service";
     import Swal from "sweetalert2";
     import { push } from "svelte-spa-router";
+    import { getProject } from "../services/project-service";
 
     export let item: NotificationItem;
 
@@ -25,6 +26,7 @@
 
     onMount(async () => {
         // Regex tìm ID 24 ký tự ở cuối chuỗi
+        console.log("Item trong onMount:", item);
         const match = item.content.match(/(.*)\s([a-f\d]{24})$/i);
 
         if (item.ui_type === "message" && match) {
@@ -57,48 +59,74 @@
     // -----------------------
     const handleGroupInviteClick = async () => {
         const link = item.link || "";
-        const regex = /\/groups\/([a-f\d]{24})\/invitations\/([a-f\d]{24})/;
+        const regex =
+            /\/classrooms\/([a-f\d]{24})\/projects\/([a-f\d]{24})\/groups\/([a-f\d]{24})\/invitations\/([a-f\d]{24})/;
         const match = link.match(regex);
+
         if (!match) return;
 
-        const groupId = match[1];
-        const invitationId = match[2];
+        const [_, classroomId, projectId, groupId, invitationId] = match;
 
-        // 1. Thử lấy thông tin, nếu bị FORBIDDEN thì hiện xác nhận "mù"
         try {
-            const group = await getGroup(groupId);
-            // ... (Đoạn hiện Swal đầy đủ thông tin như cũ) ...
-        } catch (error: any) {
-            if (error.error_code === "FORBIDDEN") {
-                // 2. Nếu bị chặn quyền xem, hỏi thẳng người dùng luôn
-                const result = await Swal.fire({
-                    title: "Lời mời vào nhóm",
-                    text: "Bạn nhận được một lời mời tham gia nhóm. Do chính sách bảo mật, bạn cần chấp nhận tham gia để xem chi tiết thành viên.",
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonText: "Chấp nhận tham gia",
-                    cancelButtonText: "Để sau",
-                    confirmButtonColor: "#22c55e",
-                });
+            // Sử dụng Promise.all để gọi 2 API song song, tiết kiệm thời gian chờ
+            const [classroom, project] = await Promise.all([
+                getClassroom(classroomId),
+                getProject(classroomId, projectId),
+            ]);
+            const result = await Swal.fire({
+                title: '<span style="font-size: 20px; font-weight: 800; color: #1e293b;">Lời mời tham gia nhóm</span>',
+                html: `
+                <div style="margin-top: 15px; text-align: left; font-family: 'Inter', sans-serif;">
+                    <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid #64748b;">
+                        <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Lớp học</div>
+                        <div style="font-size: 15px; font-weight: 600; color: #334155;">${classroom.name}</div>
+                    </div>
 
-                if (result.isConfirmed) {
-                    try {
-                        await acceptGroupInvitation(groupId, invitationId);
-                        Swal.fire(
-                            "Thành công!",
-                            "Bạn đã vào nhóm. Giờ bạn có thể xem chi tiết.",
-                            "success",
-                        );
-                        doMark();
-                    } catch (acceptError: any) {
-                        Swal.fire(
-                            "Lỗi",
-                            "Không thể chấp nhận lời mời này.",
-                            "error",
-                        );
-                    }
-                }
+                    <div style="background: #f5f3ff; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; border-left: 4px solid #7c3aed;">
+                        <div style="font-size: 11px; font-weight: 700; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Đề tài dự án</div>
+                        <div style="font-size: 15px; font-weight: 600; color: #4c1d95;">${project.title}</div>
+                    </div>
+
+                    <div style="padding: 0 4px;">
+                        <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0;">
+                            <span style="color: #1e293b; font-weight: 600;">Thông báo:</span> 
+                            ${item.content.split(" ").slice(0, -1).join(" ")}
+                        </p>
+                    </div>
+                </div>
+            `,
+                icon: "info",
+                iconColor: "#7c3aed",
+                showCancelButton: true,
+                confirmButtonText: "Đồng ý tham gia",
+                cancelButtonText: "Để sau",
+                confirmButtonColor: "#7c3aed",
+                cancelButtonColor: "#f1f5f9",
+                customClass: {
+                    confirmButton: "swal-confirm-btn",
+                    cancelButton: "swal-cancel-btn",
+                },
+            });
+
+            if (result.isConfirmed) {
+                await acceptGroupInvitation(groupId, invitationId);
+                Swal.fire({
+                    title: "Thành công!",
+                    text: `Bạn đã tham gia nhóm của đề tài: ${project.title}`,
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false,
+                });
+                doMark();
+                push(`/lecture/my-classes/${classroomId}`);
             }
+        } catch (error: any) {
+            console.error("Lỗi lấy thông tin:", error);
+            Swal.fire(
+                "Lỗi",
+                "Không thể tải thông tin lớp học hoặc đề tài này.",
+                "error",
+            );
         }
     };
     const doMark = () => {
