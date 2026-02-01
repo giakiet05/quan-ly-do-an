@@ -143,20 +143,30 @@
     }
 
     try {
-      console.log("myGroup, selectedStudentId:", myGroup.id, selectedStudentId);
+      // 1. Gọi API gửi lời mời
       await sendGroupInvitation(myGroup.id, selectedStudentId);
 
-      // Load lại lời mời từ backend
-      const invitations = await getGroupInvitations(myGroup.id);
-      pendingInvitations = invitations || [];
-
-      const selected = studentsInClass.find(
+      // 2. Tìm thông tin sinh viên vừa được mời từ danh sách có sẵn trong class
+      const selectedStudent = studentsInClass.find(
         (s) => s.userId === selectedStudentId,
       );
+
+      // 3. Tự tạo một đối tượng lời mời "giả" để hiển thị ngay trên giao diện
+      const newInvitation = {
+        id: Date.now().toString(), // Tạo ID tạm thời để xóa/hủy nếu cần
+        email: selectedStudent?.email || "N/A",
+        fullName: selectedStudent?.fullName || "Sinh viên",
+        sentAt: new Date().toISOString(),
+      };
+
+      // 4. Cập nhật mảng local state (Svelte 5 sẽ tự reactive)
+      pendingInvitations = [...pendingInvitations, newInvitation];
+
       alert(
-        `Đã gửi lời mời thành công đến ${selected?.fullName || "sinh viên"}`,
+        `Đã gửi lời mời thành công đến ${selectedStudent?.fullName || "sinh viên"}`,
       );
 
+      // Đóng modal và reset
       showInviteModal = false;
       selectedStudentId = "";
     } catch (err: any) {
@@ -328,10 +338,12 @@
                     {getInitials(member.full_name)}
                   </div>
                   <div class="member-info">
-                    <h4 class="member-name">{member.full_name}</h4>
-                    {#if member.role === "leader"}
-                      <span class="leader-badge">Trưởng nhóm</span>
-                    {/if}
+                    <div class="member-header">
+                      <span class="member-name">{member.full_name}</span>
+                      {#if member.user_id === myGroup?.leader_id}
+                        <span class="leader-badge">Trưởng nhóm</span>
+                      {/if}
+                    </div>
                     <p class="member-email">{member.email}</p>
                   </div>
                 </div>
@@ -390,8 +402,8 @@
                   </div>
                   <div class="member-info">
                     <h4>{member.full_name}</h4>
-                    {#if member.role === "leader"}<span class="leader-badge"
-                        >Trưởng nhóm</span
+                    {#if member.user_id === myGroup?.leader_id}<span
+                        class="leader-badge">Trưởng nhóm</span
                       >{/if}
                     <p>{member.email}</p>
                   </div>
@@ -744,13 +756,6 @@
     flex: 1;
   }
 
-  .member-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
-  }
-
   .member-name {
     font-size: 1rem;
     font-weight: 600;
@@ -758,15 +763,35 @@
   }
 
   .leader-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    /* Màu nền vàng nhạt, chữ nâu đậm cho dễ đọc và sang hơn */
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border-radius: 9999px; /* Bo tròn hoàn toàn dạng viên thuốc */
+    border: 1px solid #fcd34d;
+    margin-left: 8px; /* Khoảng cách với tên */
+    vertical-align: middle;
+  }
+
+  /* Thêm hiệu ứng icon nhỏ phía trước chữ Trưởng nhóm nếu muốn xịn hơn */
+  .leader-badge::before {
+    content: "★";
+    font-size: 10px;
+  }
+
+  /* Căn chỉnh lại dòng chứa tên và badge */
+  .member-header {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.125rem 0.5rem;
-    background: #fbbf24;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 9999px;
+    flex-wrap: wrap; /* Tránh bị vỡ khi tên quá dài */
+    margin-bottom: 4px;
   }
 
   .member-email,
