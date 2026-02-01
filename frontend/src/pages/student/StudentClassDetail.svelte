@@ -34,28 +34,28 @@
     "all",
   );
   let unreadNotifications = $state(1);
-
-  // Mock data - sinh viên đã đăng ký category nào
-  let registeredCategoryIds = $state<string[]>(["round1"]);
-  onMount(async () => {
+  const currentId = $derived(params?.id);
+  $effect(() => {
+    if (currentId) {
+      console.log("Effect đã chạy với ID:", currentId);
+      loadData(currentId);
+    }
+  });
+  async function loadData(id: string) {
     try {
       loading = true;
-      classroom = await getClassroom(params.id);
+      classroom = await getClassroom(id);
 
-      // 1. Gọi API để đổ dữ liệu vào roundsStore
-      await projectRoundStore.fetchRounds(params.id);
-
-      // 2. Gán danh sách từ getter "currentRounds" (có chữ 's' ở cuối)
-      // chứ không phải "currentRound"
+      await projectRoundStore.fetchRounds(id);
       projectRounds = projectRoundStore.currentRounds;
 
-      classPosts = await getClassPosts(params.id);
+      classPosts = await getClassPosts(id);
     } catch (err) {
       // ... handle error
     } finally {
       loading = false;
     }
-  });
+  }
 
   function getRoundStatus(
     start: string | Date | undefined,

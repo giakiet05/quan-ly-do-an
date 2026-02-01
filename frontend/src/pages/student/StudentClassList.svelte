@@ -3,12 +3,14 @@
   import { push } from "svelte-spa-router";
   import { getMyJoinedClassrooms } from "../../services/classroom-service";
   import type { ClassroomResponse } from "../../dtos/classroom-dto";
+  import { projectRoundStore } from "../../stores/project-round-store";
   import JoinClassroomModal from "../../components/JoinClassroomModal.svelte";
 
   let classes = $state<ClassroomResponse[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let showJoinModal = $state(false);
+  let roundsCountMap = $state<Record<string, number>>({});
 
   async function loadClasses() {
     try {
@@ -105,6 +107,7 @@
   {:else}
     <div class="classes-grid">
       {#each classes as classData (classData.id)}
+        {@debug classData}
         <div class="class-card" onclick={() => handleClassClick(classData.id)}>
           <div class="card-header">
             {#if classData.avatar}
@@ -164,7 +167,9 @@
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
               </svg>
-              <span>{classData.projectRounds?.length || 0} đợt đồ án</span>
+              <span
+                >{projectRoundStore.currentRounds.length || 0} đợt đồ án</span
+              >
             </div>
 
             <div class="stat-item instructor">

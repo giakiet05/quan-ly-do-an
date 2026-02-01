@@ -6,6 +6,28 @@ export interface WhitelistEntry {
     joinedAt: string | null;
 }
 
+export interface ReportPeriod {
+    id: string;
+    title: string;
+    description: string;
+    fileType: string[];
+    startDate: string;
+    endDate: string;
+}
+
+export interface ProjectRound {
+    id: string;
+    name: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    defaultMinMember: number;
+    defaultMaxMember: number;
+    reportPeriods: ReportPeriod[];
+    createdAt: string;
+    isDeleted: boolean;
+}
+
 export interface ClassItem {
     id: string;
     name: string;
@@ -28,6 +50,7 @@ export interface ClassItem {
     coLecturers: UserInfo[];
     students: UserInfo[];
     whitelistStudentCode?: WhitelistEntry[];
+    projectRounds: ProjectRound[];
 
     createdAt: string;
     generalChannelId: string;
